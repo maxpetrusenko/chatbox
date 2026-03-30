@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChatBridge Pre-search</title>
+    <link rel="stylesheet" href="./chatbridge-presearch.css" />
+    <link rel="stylesheet" href="./chatbridge-tech.css" />
+  </head>
+  <body>
+    <main class="page">
+
+      <section id="phases">
+        <div class="section-head">
+          <p class="eyebrow">Appendix-driven planning</p>
+          <h2>Three solutions per phase</h2>
+          <p class="lede">Each phase gets three viable approaches. Option B is the recommended path for this repo and timeline.</p>
+        </div>
+
+        <div class="card">
+          <h3>Phase 1 · Define Your Constraints</h3>
+          <p class="lede">
+            Scale, budget, security, and team capacity decide whether the architecture should be mostly local, hybrid, or platform-grade.
+          </p>
+        </div>
+        <div class="phase-solutions">
+          <article class="phase-card">
+            <span class="label">Solution A · Demo-first</span>
+            <h3>Bundle apps into the product</h3>
+            <div class="tag-row">
+              <span class="tag warm">Fastest</span>
+              <span class="tag cool">Low infra</span>
+              <span class="tag hot">Weakest trust boundary</span>
+            </div>
+            <ul>
+              <li>Assume trusted apps only, shipped with the desktop/web client.</li>
+              <li>Support three first-party style apps with no public marketplace yet.</li>
+              <li>Best when the real goal is a fast proof of interaction patterns.</li>
+            </ul>
+            <p><strong>Tradeoff:</strong> quick demo, but it avoids the hardest third-party safety problem.</p>
+          </article>
+          <article class="phase-card recommended">
+            <span class="label">Solution B · Recommended</span>
+            <h3>Reviewed remote apps with sandboxed UI</h3>
+            <div class="tag-row">
+              <span class="tag warm">Balanced</span>
+              <span class="tag cool">Realistic</span>
+              <span class="tag">Defendable</span>
+            </div>
+            <ul>
+              <li>Assume a reviewed allowlist of remote apps, each on its own origin.</li>
+              <li>Support 10k districts by isolating app UI and limiting scopes up front.</li>
+              <li>Fits the one week sprint without pretending a full ecosystem is finished.</li>
+            </ul>
+            <p><strong>Tradeoff:</strong> more moving parts, but it solves the actual assignment boundary.</p>
+          </article>
+          <article class="phase-card">
+            <span class="label">Solution C · Ecosystem-first</span>
+            <h3>Open app marketplace from day one</h3>
+            <div class="tag-row">
+              <span class="tag hot">Highest ambition</span>
+              <span class="tag cool">Strong long-term story</span>
+              <span class="tag hot">Highest risk</span>
+            </div>
+            <ul>
+              <li>Assume public developer onboarding, signed manifests, app review queues, and policy engine.</li>
+              <li>Best if the sprint were about platform strategy instead of shipping a credible demo.</li>
+              <li>Too much operational surface for the current deadline.</li>
+            </ul>
+            <p><strong>Tradeoff:</strong> impressive roadmap, but dangerous scope creep this week.</p>
+          </article>
+        </div>
+
+        <div class="card" style="margin-top: 18px">
+          <h3>Phase 2 · Architecture Discovery</h3>
+          <p class="lede">This phase decides the contract: how apps register, render, receive calls, and publish state.</p>
+        </div>
+        <div class="phase-solutions">
+          <article class="phase-card">
+            <span class="label">Solution A · Local plugin host</span>
+            <h3>Registry + React components</h3>
+            <ul>
+              <li>Apps register a manifest and ship a local React component loaded inside the renderer.</li>
+              <li>Tool calls are internal function calls, no iframe bridge required.</li>
+              <li>Works well for chess and weather, less honest for remote third-party trust.</li>
+            </ul>
+            <p><strong>Use when:</strong> speed matters more than isolation.</p>
+          </article>
+          <article class="phase-card recommended">
+            <span class="label">Solution B · Recommended</span>
+            <h3>Manifest registry + sandboxed iframe SDK</h3>
+            <ul>
+              <li>Each app publishes metadata, scopes, tool schemas, allowed origins, and widget URL.</li>
+              <li>The chat shell renders apps in sandboxed iframes and exchanges structured events over <code>postMessage</code>.</li>
+              <li>A backend-for-frontend handles OAuth token exchange and app-side credential brokering.</li>
+            </ul>
+            <p><strong>Use when:</strong> you want a real plugin boundary and still need to ship this week.</p>
+          </article>
+          <article class="phase-card">
+            <span class="label">Solution C · Protocol-first</span>
+            <h3>MCP-style remote tool servers + widget shell</h3>
+            <ul>
+              <li>Tools are exposed by remote servers via a protocol like MCP; UI is attached separately as a widget.</li>
+              <li>Strong long-term interoperability and cleaner discovery semantics.</li>
+              <li>Higher integration cost for a one week student sprint.</li>
+            </ul>
+            <p><strong>Use when:</strong> the main goal is platform elegance, not fastest completion.</p>
+          </article>
+        </div>
+
+        <div class="card" style="margin-top: 18px">
+          <h3>Phase 3 · Post-Stack Refinement</h3>
+          <p class="lede">Hardening decides whether the demo feels safe, resilient, and teachable to graders.</p>
+        </div>
+        <div class="phase-solutions">
+          <article class="phase-card">
+            <span class="label">Solution A · Minimal hardening</span>
+            <h3>Add retries, logs, and obvious guardrails</h3>
+            <ul>
+              <li>Focus on timeout handling, app crash recovery, and visible loading states.</li>
+              <li>Add a simple allowlist and manual app approval process.</li>
+              <li>Enough for a demo, but thin for a school deployment story.</li>
+            </ul>
+            <p><strong>Tradeoff:</strong> fastest polish, weakest long-term argument.</p>
+          </article>
+          <article class="phase-card recommended">
+            <span class="label">Solution B · Recommended</span>
+            <h3>Zero-trust default for apps</h3>
+            <ul>
+              <li>Permission-scoped manifests, per-app origins, moderated descriptions, audit logs, and OAuth via BFF.</li>
+              <li>Conversation state is platform-owned; app state is app-owned but echoed through signed events.</li>
+              <li>Strong enough to justify safety claims without boiling the ocean.</li>
+            </ul>
+            <p><strong>Tradeoff:</strong> more implementation work, but directly answers the grader rubric.</p>
+          </article>
+          <article class="phase-card">
+            <span class="label">Solution C · Platform-grade operations</span>
+            <h3>Policy engine, anomaly detection, and governance</h3>
+            <ul>
+              <li>Add app reputation, automated scanning, kill switches, and richer admin review workflows.</li>
+              <li>Best for a production roadmap or follow-up milestone.</li>
+              <li>Likely overbuilt for this sprint unless a team is parallelizing aggressively.</li>
+            </ul>
+            <p><strong>Tradeoff:</strong> strongest story, biggest schedule risk.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="design">
+        <div class="section-head">
+          <p class="eyebrow">Recommended architecture</p>
+          <h2>System design</h2>
+          <p class="lede">
+            Messaging and history already exist in the product. This section covers the missing requirements only: app context,
+            multi-turn continuity, tool registration, tool schemas, embedded UI, structured invocation, completion signaling, and
+            independent app state.
+          </p>
+        </div>
+        <div class="phase-solutions" style="margin-top: 18px">
+          <article class="phase-card">
+            <span class="label">Idea 1 · Fastest</span>
+            <h3>Local plugin contract</h3>
+            <ul>
+              <li>Apps register capabilities directly with the host product.</li>
+              <li>Tool schemas live in the same platform runtime, so discovery is simple.</li>
+              <li>UI renders as trusted internal components inside the chat area.</li>
+              <li>Multi-turn context is easiest because app state and chat state share one store.</li>
+              <li>Weak point: this does not prove a real third-party boundary very well.</li>
+            </ul>
+            <p><strong>Best for:</strong> fastest prototype, lowest realism.</p>
+          </article>
+          <article class="phase-card recommended">
+            <span class="label">Idea 2 · Recommended</span>
+            <h3>Manifest + iframe bridge</h3>
+            <ul>
+              <li>Each app registers through a manifest: id, capabilities, tool schemas, widget URL, auth type, allowed origins.</li>
+              <li>The model discovers tools from manifest-derived schemas and invokes them with structured parameters.</li>
+              <li>The UI renders inside the chat as a sandboxed iframe, so the app can own its own interface and state.</li>
+              <li>Multi-turn works through state snapshots sent back to the platform after each meaningful user action.</li>
+              <li>The app signals <code>complete</code>, <code>error</code>, and <code>state.update</code>, so the chat stays aware without owning app internals.</li>
+            </ul>
+            <p><strong>Best for:</strong> strongest fit to the assignment.</p>
+          </article>
+          <article class="phase-card">
+            <span class="label">Idea 3 · Most extensible</span>
+            <h3>Remote tool server + widget shell</h3>
+            <ul>
+              <li>Apps expose capabilities through a remote tool server, while UI comes from a separate widget endpoint.</li>
+              <li>Tool discovery is clean and protocol-shaped, good for future ecosystem growth.</li>
+              <li>Multi-turn context still depends on structured state echo from the app back to the platform.</li>
+              <li>Completion and error signals are explicit lifecycle events, not inferred from chat text.</li>
+              <li>Weak point: bigger build cost and more integration pieces this week.</li>
+            </ul>
+            <p><strong>Best for:</strong> long-term platform story, highest complexity.</p>
+          </article>
+        </div>
+
+        <div class="tech-grid">
+          <article class="tech-card">
+            <p class="kicker">Web search finding 1</p>
+            <h3>Best UI boundary</h3>
+            <p>OpenAI Apps SDK patterns, MDN iframe sandbox guidance, and OWASP third-party JS guidance all point toward isolated embedded UI, not direct host-DOM execution.</p>
+            <p><strong>Why:</strong> lets the app render rich UI in chat while keeping the host product in control.</p>
+          </article>
+          <article class="tech-card">
+            <p class="kicker">Web search finding 2</p>
+            <h3>Best communication model</h3>
+            <p>MDN <code>postMessage</code> plus OAuth browser-app guidance support a narrow, origin-checked message bridge with explicit event types.</p>
+            <p><strong>Why:</strong> the chatbot gets structured app state instead of guessing from visible UI.</p>
+          </article>
+          <article class="tech-card">
+            <p class="kicker">Web search finding 3</p>
+            <h3>Best auth model</h3>
+            <p>RFC 9700 and browser-app OAuth guidance favor platform-mediated auth with PKCE and token handling outside the widget.</p>
+            <p><strong>Why:</strong> authenticated apps connect safely without letting the embedded app own long-lived secrets.</p>
+          </article>
+        </div>
+
+        <div class="mono-grid">
+          <article class="mono-block">
+            <h3>Architecture</h3>
+            <pre>Chat App
+├── Conversation UI
+├── Tool Router
+├── App Registry
+├── Widget Host (sandboxed iframe)
+├── App Context Store
+├── Policy Guard
+└── OAuth Broker
+
+Third-Party App
+├── manifest.json
+├── tool schemas
+├── widget UI
+└── internal state</pre>
+            <p class="mini-note">Host owns trust, routing, and conversation context. App owns UI and its own working state.</p>
+          </article>
+          <article class="mono-block">
+            <h3>Signal chain</h3>
+            <pre>User asks for task
+  → model selects tool from registered schemas
+    → platform validates app + scope + auth
+      → widget mounts inline in chat
+        → structured invoke sent to app
+          → app emits state.update snapshots
+            → snapshots appended to chat context
+              → user asks follow-up
+                → model answers from chat + app state
+                  → app emits complete or error
+                    → chat continues naturally</pre>
+            <p class="mini-note">Key rule: no UI scraping. Only published state becomes model context.</p>
+          </article>
+        </div>
+
+        <div class="mono-grid">
+          <article class="mono-block">
+            <h3>Data model</h3>
+            <pre>conversation/
+  {conversation_id}/
+    messages/
+    active_apps/
+      {app_instance_id}/
+        app_id
+        status
+        approved_scopes.json
+        last_tool_call.json
+        latest_state_snapshot.json
+        completion.json
+
+app_registry/
+  {app_id}/manifest.json
+  {app_id}/policy.json
+
+oauth_connections/
+  {user_id}/{app_id}.json</pre>
+            <p class="mini-note">Conversation holds only the app state needed for future turns. Full internal app state stays with the app.</p>
+          </article>
+          <article class="mono-block">
+            <h3>What you are actually building</h3>
+            <pre>1. App registration contract
+2. Tool schema discovery layer
+3. Inline widget host in chat
+4. Structured invoke/event bridge
+5. App snapshot → model context path
+6. Completion/error lifecycle
+7. Platform-mediated auth for protected apps</pre>
+            <p class="mini-note">That is the minimum technical slice needed to satisfy the missing requirements.</p>
+          </article>
+        </div>
+
+        <div class="grid-2" style="margin-top: 18px">
+          <div class="matrix">
+            <h3>Recommended contract</h3>
+            <div class="matrix-row"><strong>Register</strong><div>App submits a manifest with capabilities, auth pattern, widget endpoint, and discoverable tool schemas.</div></div>
+            <div class="matrix-row"><strong>Discover</strong><div>The platform turns those schemas into callable tools the chatbot can choose during a conversation.</div></div>
+            <div class="matrix-row"><strong>Render</strong><div>When selected, the app UI mounts inline in the chat experience, not in a detached tab or separate product.</div></div>
+            <div class="matrix-row"><strong>Invoke</strong><div>The chatbot sends structured parameters to the app, never loose text-only guesses.</div></div>
+            <div class="matrix-row"><strong>Signal</strong><div>The app returns lifecycle events: <code>state.update</code>, <code>complete</code>, and <code>error</code>.</div></div>
+            <div class="matrix-row"><strong>State</strong><div>The app keeps its own internal state, while the platform stores summarized state needed for future turns.</div></div>
+          </div>
+          <div class="matrix">
+            <h3>How multi-turn context works</h3>
+            <div class="matrix-row"><strong>Turn 1</strong><div>User asks for an app task. The chatbot chooses a tool and mounts the matching app UI.</div></div>
+            <div class="matrix-row"><strong>Turn 2</strong><div>User interacts with the app. The app publishes a structured snapshot such as board state, playlist draft, or selected options.</div></div>
+            <div class="matrix-row"><strong>Turn 3</strong><div>User asks a follow-up like “what should I do here?” The chatbot answers using chat history plus the latest app snapshot.</div></div>
+            <div class="matrix-row"><strong>Turn 4</strong><div>The app emits completion. The chatbot treats the result as conversation context and continues naturally after the tool finishes.</div></div>
+            <div class="matrix-row"><strong>Rule</strong><div>The platform never assumes app state from pixels alone. The app must publish the state it wants the chatbot to understand.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="files">
+        <div class="section-head">
+          <p class="eyebrow">Requirements to product boundary</p>
+          <h2>How it connects to the app</h2>
+          <p class="lede">Only the required connection points: how third-party apps plug into the chat product and what crosses the boundary.</p>
+        </div>
+        <div class="filesystem-grid">
+          <div class="file-card">
+            <strong>1. Chat surface</strong>
+            <p>The app keeps its existing chat experience, but adds one new surface: an embedded app panel inside the conversation.</p>
+            <p>When the assistant selects a tool, the panel opens inline as part of the same conversation, not as a separate product area.</p>
+            <p>The chat transcript also shows app lifecycle messages: launched, waiting, connected, completed, failed.</p>
+          </div>
+          <div class="file-card">
+            <strong>2. App host boundary</strong>
+            <p>The host product loads the third-party UI in a sandboxed iframe and passes only minimal startup data: app id, session id, theme, and approved scopes.</p>
+            <p>All communication goes through a narrow event bridge: invoke tool, send state snapshot, emit completion, emit error.</p>
+            <p>The embedded app never gets direct control over the broader chat UI or unrestricted platform APIs.</p>
+          </div>
+          <div class="file-card">
+            <strong>3. Platform services</strong>
+            <p>The app needs a registry service for app manifests, a policy layer for safety checks, and a state service that stores app context alongside conversation context.</p>
+            <p>That is what lets the assistant answer follow-up questions like “what should I do here?” after the user has already interacted with the widget.</p>
+            <p>The model does not infer app state from UI alone. It receives structured state published back through the contract.</p>
+          </div>
+          <div class="file-card">
+            <strong>4. Auth and trust path</strong>
+            <p>For authenticated apps, the user authorizes through the platform, not inside an untrusted widget-controlled flow.</p>
+            <p>The platform stores and refreshes tokens, then gives the app only the minimum approved capability needed for that session.</p>
+            <p>This is the key connection between the requirements and the app: the chat remains the trusted control plane, while third-party apps stay isolated workers.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="wireframes">
+        <div class="section-head">
+          <p class="eyebrow">Presentation assets</p>
+          <h2>Wireframes</h2>
+          <p class="lede">Low-fidelity frames for the Tuesday video and architecture walkthrough.</p>
+        </div>
+        <div class="wireframes">
+          <article class="wireframe">
+            <p class="kicker">Wireframe 1</p>
+            <h3>Chat with active chess app</h3>
+            <div class="wf-bar"></div>
+            <div class="wf-layout">
+              <div class="wf-sidebar"></div>
+              <div class="wf-chat">
+                <div class="wf-card"></div>
+                <div class="wf-card tall"></div>
+                <div class="wf-card"></div>
+              </div>
+            </div>
+            <div class="wf-input"></div>
+            <p class="footer-note">Narrative: user starts chess, board mounts inline, assistant stays context aware.</p>
+          </article>
+          <article class="wireframe">
+            <p class="kicker">Wireframe 2</p>
+            <h3>OAuth connect flow for Spotify</h3>
+            <div class="wf-header"></div>
+            <div class="wf-grid">
+              <div class="wf-block wf-card tall"></div>
+              <div class="wf-block wf-card tall"></div>
+            </div>
+            <div class="wf-modal"></div>
+            <div class="wf-input"></div>
+            <p class="footer-note">Narrative: platform handles auth, app receives only scoped capability after consent.</p>
+          </article>
+          <article class="wireframe">
+            <p class="kicker">Wireframe 3</p>
+            <h3>App management and safety review</h3>
+            <div class="wf-header"></div>
+            <div class="wf-grid">
+              <div class="wf-list wf-card"></div>
+              <div class="wf-list wf-card"></div>
+            </div>
+            <div class="wf-grid">
+              <div class="wf-mini wf-card"></div>
+              <div class="wf-mini wf-card"></div>
+            </div>
+            <div class="wf-input"></div>
+            <p class="footer-note">Narrative: admin sees app scopes, origin, moderation state, and emergency disable controls.</p>
+          </article>
+        </div>
+      </section>
+
+      <section>
+        <div class="section-head">
+          <p class="eyebrow">Decision aid</p>
+          <h2>Why Solution B wins</h2>
+        </div>
+        <div class="grid-3">
+          <div class="card">
+            <h3>More credible than local-only</h3>
+            <p>It demonstrates the real safety boundary the assignment is asking about, not just a component composition trick.</p>
+          </div>
+          <div class="card">
+            <h3>Much cheaper than a marketplace</h3>
+            <p>Reviewed allowlist, manifest validation, and three sample apps are enough for the sprint and still production-shaped.</p>
+          </div>
+          <div class="card">
+            <h3>Clean video story</h3>
+            <p>The architecture is easy to narrate in 3 to 5 minutes: registry, policy, bridge, OAuth broker, state sync.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="sources">
+        <div class="section-head">
+          <p class="eyebrow">Web research</p>
+          <h2>Research sources used</h2>
+          <p class="lede">2024 to 2025 guidance used to justify sandboxing, messaging, tool contracts, and auth choices.</p>
+        </div>
+        <div class="sources">
+          <article class="source-card">
+            <strong>OpenAI Apps SDK Reference</strong>
+            <a href="https://developers.openai.com/apps-sdk/reference">developers.openai.com/apps-sdk/reference</a>
+            <p>Useful for tool descriptors, widget metadata, dedicated component origins, and JSON-RPC style UI bridge patterns.</p>
+          </article>
+          <article class="source-card">
+            <strong>OpenAI Apps Security &amp; Privacy</strong>
+            <a href="https://developers.openai.com/apps-sdk/guides/security-privacy">developers.openai.com/apps-sdk/guides/security-privacy</a>
+            <p>Supports the case for sandboxed iframes, strict CSP, and limiting widget capabilities by default.</p>
+          </article>
+          <article class="source-card">
+            <strong>MDN postMessage</strong>
+            <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage">developer.mozilla.org/.../Window/postMessage</a>
+            <p>Grounds secure cross-origin messaging. Critical point: always validate sender and target origins.</p>
+          </article>
+          <article class="source-card">
+            <strong>MDN iframe sandbox</strong>
+            <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLIFrameElement/sandbox">developer.mozilla.org/.../HTMLIFrameElement/sandbox</a>
+            <p>Supports app isolation by selectively granting only the smallest needed iframe capabilities.</p>
+          </article>
+          <article class="source-card">
+            <strong>MDN CSP directives</strong>
+            <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-ancestors">developer.mozilla.org/.../CSP/frame-ancestors</a>
+            <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/sandbox">developer.mozilla.org/.../CSP/sandbox</a>
+            <p>Explains both who may embed a page and what a sandboxed page is allowed to do once embedded.</p>
+          </article>
+          <article class="source-card">
+            <strong>RFC 9700 + Browser Apps draft</strong>
+            <a href="https://www.rfc-editor.org/rfc/rfc9700.html">rfc-editor.org/rfc/rfc9700.html</a>
+            <a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-browser-based-apps">datatracker.ietf.org/.../draft-ietf-oauth-browser-based-apps</a>
+            <p>Supports PKCE, secure in-browser messaging checks, and the choice to keep tokens away from untrusted widget code.</p>
+          </article>
+          <article class="source-card">
+            <strong>Model Context Protocol tools spec</strong>
+            <a href="https://modelcontextprotocol.io/specification/2025-06-18/server/tools">modelcontextprotocol.io/specification/2025-06-18/server/tools</a>
+            <p>Useful reference for tool discovery semantics and structured tool metadata design.</p>
+          </article>
+          <article class="source-card">
+            <strong>OWASP third-party JS cheat sheet</strong>
+            <a href="https://cheatsheetseries.owasp.org/cheatsheets/Third_Party_Javascript_Management_Cheat_Sheet.html">cheatsheetseries.owasp.org/.../Third_Party_Javascript_Management_Cheat_Sheet.html</a>
+            <p>Reinforces iframe sandboxing, CSP hardening, and the general danger of giving third-party code too much power.</p>
+          </article>
+          <article class="source-card">
+            <strong>How to use these sources in the video</strong>
+            <p>No need to cite all of them live. Mention three points: sandboxed iframes, origin-checked bridge, backend-mediated OAuth.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
