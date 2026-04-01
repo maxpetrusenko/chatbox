@@ -1,0 +1,1499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ChatBridge — Plugin Architecture Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #ffffff;
+  --bg-warm: #faf9f5;
+  --bg-sand: #f2f0e8;
+  --terra: #d4845a;
+  --terra-dark: #c06a3e;
+  --terra-light: rgba(212, 132, 90, 0.08);
+  --ink: #1a1a18;
+  --muted: #6b6a68;
+  --subtle: #b0aea5;
+  --line: #e8e6dc;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.03);
+  --shadow: 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.06);
+  --radius: 10px;
+  --radius-lg: 16px;
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ok: #16a34a; --ok-bg: #f0fdf4;
+  --warn: #d97706; --warn-bg: #fffbeb;
+  --err: #dc2626; --err-bg: #fef2f2;
+  --ac: #4f46e5; --ac-bg: #eef2ff;
+}
+
+/* Light mode only — no dark mode override */
+
+* { box-sizing: border-box; margin: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  color: var(--ink);
+  background: var(--bg);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.68;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none; opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  z-index: 9999;
+}
+
+::selection { background: rgba(212,132,90,0.18); color: var(--ink); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+.page { width: min(1040px, calc(100vw - 48px)); margin: 0 auto; padding: 0 0 120px; }
+
+.eyebrow {
+  font-family: var(--font-sans); letter-spacing: 0.1em; text-transform: uppercase;
+  font-size: 11px; font-weight: 600; color: var(--subtle);
+}
+
+h1,h2,h3,h4 { margin: 0; line-height: 1.12; }
+h1 { font-family: var(--font-serif); font-size: clamp(3.2rem,7vw,5.4rem); font-weight: 300; letter-spacing: -0.03em; }
+h2 { font-family: var(--font-serif); font-size: clamp(1.6rem,2.6vw,2.2rem); font-weight: 400; letter-spacing: -0.01em; margin-bottom: 10px; }
+h3 { font-family: var(--font-sans); font-size: 0.95rem; font-weight: 600; letter-spacing: -0.005em; }
+p { margin: 0; }
+
+a { color: var(--terra-dark); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a:hover { color: var(--terra); }
+
+/* Hero */
+.hero { padding: 80px 0 56px; border-bottom: 1px solid var(--line); }
+.hero-lockup { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 28px; align-items: start; }
+.hero-copy { min-width: 0; }
+.hero-mark { display: flex; justify-content: flex-end; align-items: center; padding-top: 4px; }
+.hero-mark svg { width: min(100%,320px); height: auto; }
+.hero-mark-panel { fill: rgba(242,240,232,0.78); stroke: var(--line); stroke-width: 1.2; }
+.hero-mark-panel-soft { fill: rgba(250,249,245,0.95); }
+.hero-mark-link { fill: none; stroke-linecap: round; stroke-width: 2.5; stroke: url(#plugGlow); }
+.hero-mark-link.cool { stroke: url(#plugCool); stroke-width: 2; opacity: 0.65; }
+.hero-mark-base { fill: none; stroke: rgba(26,26,24,0.18); stroke-width: 2; stroke-linecap: round; }
+.hero-mark-node { fill: var(--bg); stroke: var(--line); stroke-width: 1.4; }
+.hero-mark-node-solid { fill: var(--terra); stroke: rgba(212,132,90,0.28); }
+.hero-mark-node-accent { fill: rgba(212,132,90,0.12); stroke: rgba(212,132,90,0.38); }
+.hero-mark-spark { fill: rgba(212,132,90,0.14); stroke: rgba(212,132,90,0.45); stroke-width: 1.2; }
+.hero-mark-dash { fill: none; stroke: rgba(212,132,90,0.34); stroke-width: 1.4; stroke-linecap: round; stroke-dasharray: 6 8; }
+.hero .eyebrow { margin-bottom: 20px; display: inline-block; padding: 5px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg-warm); }
+.hero-sub { font-family: var(--font-serif); font-size: clamp(1rem,1.6vw,1.2rem); color: var(--muted); margin-top: 18px; max-width: 540px; line-height: 1.5; }
+
+.toc { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 28px; }
+.toc a {
+  font-size: 12px; font-weight: 500; text-decoration: none; padding: 5px 14px;
+  border: 1px solid var(--line); border-radius: 999px; color: var(--muted);
+  transition: all 0.2s var(--ease-smooth);
+}
+.toc a:hover { border-color: var(--terra); color: var(--terra); background: var(--terra-light); }
+
+/* Sections */
+section { margin-top: 64px; }
+.section-head { margin-bottom: 24px; }
+.section-head .eyebrow { margin-bottom: 10px; display: block; }
+.lede { font-size: 14px; color: var(--muted); max-width: 680px; line-height: 1.6; margin-top: 6px; }
+
+/* Cards */
+.card { background: var(--bg-warm); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 28px 32px; box-shadow: var(--shadow-sm); }
+.card p + p { margin-top: 14px; }
+.card strong { color: var(--ink); }
+
+/* Grid */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 700px) { .grid-2,.grid-3,.grid-4 { grid-template-columns: 1fr; } }
+
+/* Phase cards */
+.phase-card { background: var(--bg-warm); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+.phase-card .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--terra); display: block; margin-bottom: 8px; }
+.phase-card h3 { margin-bottom: 10px; }
+.phase-card ul { padding-left: 18px; font-size: 13px; color: var(--muted); }
+.phase-card li + li { margin-top: 4px; }
+.phase-card.picked { border-color: var(--terra); background: var(--terra-light); }
+
+/* Collapsible code blocks */
+details.code-toggle { margin: 12px 0; }
+details.code-toggle summary {
+  cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted);
+  padding: 10px 16px; background: var(--bg-warm); border: 1px solid var(--line);
+  border-radius: var(--radius); user-select: none; list-style: none;
+  display: flex; align-items: center; gap: 8px;
+  transition: all 0.15s var(--ease-smooth);
+}
+details.code-toggle summary:hover { border-color: var(--terra); color: var(--terra); }
+details.code-toggle summary::before {
+  content: '\25B6'; font-size: 9px; transition: transform 0.2s var(--ease-smooth);
+  display: inline-block; width: 12px;
+}
+details.code-toggle[open] summary::before { transform: rotate(90deg); }
+details.code-toggle[open] summary { border-radius: var(--radius) var(--radius) 0 0; border-bottom-color: transparent; }
+details.code-toggle pre { margin-top: 0; border-radius: 0 0 var(--radius) var(--radius); }
+details.code-toggle summary::-webkit-details-marker { display: none; }
+
+/* Inline code */
+pre { background: #1e1e2e; color: #cdd6f4; border-radius: var(--radius); padding: 18px 22px; font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; overflow-x: auto; margin: 12px 0; }
+code { font-family: var(--font-mono); font-size: 0.88em; }
+p code, li code, td code { background: var(--bg-sand); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+th { text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px 12px; border-bottom: 2px solid var(--line); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+
+/* Decision grid */
+.decision-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px; }
+.decision-col { display: flex; flex-direction: column; gap: 8px; }
+.decision-header { font-size: 14px; font-weight: 800; text-align: center; padding: 8px; border-radius: 8px; background: var(--bg-warm); border: 2px solid var(--ink); }
+.decision-header.dim { opacity: 0.4; border-color: var(--line); }
+.decision-col.picked .decision-header { background: var(--terra); color: #fff; border-color: var(--terra); }
+.decision-cell { background: var(--bg-warm); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 12px; }
+.decision-col.picked .decision-cell { border-color: var(--terra); background: var(--terra-light); }
+.decision-col.dim { opacity: 0.5; }
+.decision-phase { display: block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--subtle); margin-bottom: 2px; }
+.decision-name { display: block; font-weight: 700; font-size: 13px; }
+.decision-detail { display: block; color: var(--muted); margin-top: 2px; }
+.decision-summary { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.decision-summary-item { font-size: 12px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg-warm); }
+.decision-summary-item span { font-weight: 700; margin-right: 4px; }
+
+/* Callout */
+.callout { border-left: 3px solid var(--terra); padding: 14px 18px; background: var(--terra-light); border-radius: 0 var(--radius) var(--radius) 0; margin: 16px 0; font-size: 13px; }
+.callout strong { color: var(--terra-dark); }
+.callout.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.callout.warn strong { color: var(--warn); }
+.callout.err { border-left-color: var(--err); background: var(--err-bg); }
+.callout.err strong { color: var(--err); }
+
+/* Flow diagram */
+.flow-box { background: var(--bg-warm); border: 2px solid var(--ink); border-radius: 12px; padding: 24px; margin: 16px 0; overflow-x: auto; }
+.flow-box pre { background: transparent; color: var(--ink); padding: 0; margin: 0; font-size: 12px; line-height: 1.5; }
+
+/* SVG diagrams */
+.diagram { margin: 20px 0; text-align: center; }
+.diagram svg { max-width: 100%; height: auto; }
+
+/* File tree */
+.file-tree { font-family: var(--font-mono); font-size: 12px; line-height: 1.8; padding: 16px 20px; background: var(--bg-warm); border: 1px solid var(--line); border-radius: var(--radius); }
+.file-tree .new { color: var(--ok); font-weight: 500; }
+.file-tree .existing { color: var(--muted); }
+
+/* Badge */
+.badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
+.badge.green { background: var(--ok-bg); color: var(--ok); }
+.badge.orange { background: var(--warn-bg); color: var(--warn); }
+.badge.red { background: var(--err-bg); color: var(--err); }
+.badge.blue { background: var(--ac-bg); color: var(--ac); }
+
+/* Drop zone mock */
+.drop-zone-mock {
+  border: 2px dashed var(--terra);
+  border-radius: var(--radius-lg);
+  padding: 40px 32px;
+  text-align: center;
+  background: var(--terra-light);
+  margin: 16px 0;
+  transition: all 0.2s var(--ease-smooth);
+}
+.drop-zone-mock .icon { font-size: 36px; margin-bottom: 12px; display: block; color: var(--terra); }
+.drop-zone-mock .label { font-size: 14px; font-weight: 600; color: var(--ink); }
+.drop-zone-mock .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* Stat cards */
+.stat-card { background: var(--bg-warm); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; text-align: center; }
+.stat-card .num { font-size: 28px; font-weight: 800; color: var(--terra); letter-spacing: -0.02em; }
+.stat-card .desc { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+
+/* Timeline */
+.timeline { position: relative; padding-left: 28px; margin: 16px 0; }
+.timeline::before { content: ''; position: absolute; left: 8px; top: 4px; bottom: 4px; width: 2px; background: var(--line); }
+.timeline-item { position: relative; padding-bottom: 20px; }
+.timeline-item::before { content: ''; position: absolute; left: -24px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--terra); }
+.timeline-item.done::before { background: var(--terra); }
+.timeline-item .time-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--terra); }
+.timeline-item .time-desc { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+@media (max-width: 700px) {
+  .decision-grid { grid-template-columns: 1fr; }
+  .hero-lockup { grid-template-columns: 1fr; }
+  .hero-mark { display: none; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+  <!-- ══════════════════════════════════ HERO ══════════════════════════════════ -->
+  <header class="hero">
+    <div class="hero-lockup">
+      <div class="hero-copy">
+        <p class="eyebrow">G4 Week 7 &middot; Architecture Deep Dive</p>
+        <h1>Plugin System</h1>
+        <p class="hero-sub">How ChatBridge registers third-party apps, defines tool schemas, embeds UI, invokes tools, signals completion, and manages independent state.</p>
+        <nav class="toc">
+          <a href="#overview">Overview</a>
+          <a href="#install">Install UX</a>
+          <a href="#registration">Registration</a>
+          <a href="#tool-schemas">Tool schemas</a>
+          <a href="#ui-embedding">UI embedding</a>
+          <a href="#communication">Communication</a>
+          <a href="#completion">Completion</a>
+          <a href="#state">State</a>
+          <a href="#errors">Error handling</a>
+          <a href="#testing">Testing</a>
+          <a href="#integration">Integration</a>
+          <a href="#security">Security</a>
+          <a href="#sources">Sources</a>
+        </nav>
+      </div>
+      <div class="hero-mark" aria-hidden="true">
+        <svg viewBox="0 0 420 320" role="presentation" focusable="false">
+          <defs>
+            <linearGradient id="plugGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#d4845a"/>
+              <stop offset="100%" stop-color="#f1c7a8"/>
+            </linearGradient>
+            <linearGradient id="plugCool" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1a1a18" stop-opacity="0.9"/>
+              <stop offset="100%" stop-color="#d4845a" stop-opacity="0.22"/>
+            </linearGradient>
+          </defs>
+          <!-- Host app panel -->
+          <rect x="20" y="40" width="150" height="240" rx="20" class="hero-mark-panel"/>
+          <text x="95" y="30" text-anchor="middle" font-size="10" font-weight="700" fill="#b0aea5" letter-spacing="0.08em">HOST APP</text>
+          <!-- Chat node -->
+          <circle cx="95" cy="100" r="22" class="hero-mark-node hero-mark-node-solid"/>
+          <text x="95" y="104" text-anchor="middle" font-size="9" font-weight="600" fill="#fff">Chat</text>
+          <!-- ToolSet node -->
+          <circle cx="95" cy="170" r="22" class="hero-mark-node"/>
+          <text x="95" y="174" text-anchor="middle" font-size="8" font-weight="600" fill="#6b6a68">ToolSet</text>
+          <!-- Registry node -->
+          <circle cx="95" cy="238" r="18" class="hero-mark-node-accent" style="fill:rgba(212,132,90,0.12);stroke:rgba(212,132,90,0.38);stroke-width:1.4"/>
+          <text x="95" y="242" text-anchor="middle" font-size="7" font-weight="600" fill="#d4845a">Registry</text>
+          <!-- Connections inside host -->
+          <path d="M95 122V148" class="hero-mark-base"/>
+          <path d="M95 192V220" class="hero-mark-dash"/>
+          <!-- Plugin panels -->
+          <rect x="250" y="30" width="130" height="85" rx="16" class="hero-mark-panel hero-mark-panel-soft"/>
+          <text x="315" y="22" text-anchor="middle" font-size="9" font-weight="700" fill="#b0aea5" letter-spacing="0.06em">PLUGINS</text>
+          <rect x="250" y="130" width="130" height="85" rx="16" class="hero-mark-panel hero-mark-panel-soft"/>
+          <rect x="250" y="230" width="130" height="65" rx="16" class="hero-mark-panel hero-mark-panel-soft"/>
+          <!-- Plugin icons -->
+          <circle cx="290" cy="72" r="16" class="hero-mark-node hero-mark-node-solid"/>
+          <text x="290" y="76" text-anchor="middle" font-size="12" fill="#fff">&#9822;</text>
+          <text x="340" y="60" font-size="10" font-weight="600" fill="#6b6a68">Chess</text>
+          <text x="340" y="75" font-size="8" fill="#b0aea5">iframe</text>
+          <circle cx="290" cy="172" r="16" class="hero-mark-node hero-mark-node-accent"/>
+          <text x="290" y="176" text-anchor="middle" font-size="12" fill="#d4845a">&#9788;</text>
+          <text x="340" y="163" font-size="10" font-weight="600" fill="#6b6a68">Weather</text>
+          <text x="340" y="178" font-size="8" fill="#b0aea5">iframe</text>
+          <circle cx="290" cy="262" r="14" class="hero-mark-node"/>
+          <text x="290" y="266" text-anchor="middle" font-size="11" fill="#6b6a68">+</text>
+          <text x="340" y="266" font-size="9" font-weight="500" fill="#b0aea5">Your app</text>
+          <!-- Bridge connections -->
+          <path d="M170 100C210 100 210 72 250 72" class="hero-mark-link"/>
+          <path d="M170 170C210 170 210 172 250 172" class="hero-mark-link cool"/>
+          <path d="M170 238C210 238 210 262 250 262" class="hero-mark-dash"/>
+          <!-- postMessage label -->
+          <text x="210" y="88" text-anchor="middle" font-size="7" font-weight="600" fill="#d4845a" letter-spacing="0.04em">postMessage</text>
+          <text x="210" y="188" text-anchor="middle" font-size="7" font-weight="600" fill="#d4845a" letter-spacing="0.04em" opacity="0.6">postMessage</text>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════ OVERVIEW ═══════════════════════════════ -->
+  <section id="overview">
+    <div class="section-head">
+      <p class="eyebrow">Context</p>
+      <h2>What we're building and why</h2>
+    </div>
+
+    <div class="card" style="max-width:780px">
+      <p>
+        ChatBridge already has a working chat system (Vercel AI SDK streaming, TanStack Query session persistence, Zustand + Jotai state) and a standalone chess route. The missing piece is the <strong>programmatic interface that lets third-party apps plug into the chat experience</strong> &mdash; registration, tool invocation, inline UI, completion signaling, and independent state.
+      </p>
+      <p>
+        This document covers the concrete architecture for that plugin system, grounded in research across ChatGPT plugins, Anthropic MCP, Slack apps, VS Code extensions, and Figma plugins. Every pattern is mapped to our actual Electron + React + TanStack Router codebase.
+      </p>
+    </div>
+
+    <!-- Architecture overview diagram -->
+    <div class="diagram" style="margin-top:24px">
+      <svg viewBox="0 0 800 260" style="max-width:800px" role="img" aria-label="Plugin architecture overview">
+        <defs>
+          <linearGradient id="flowGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+            <stop offset="0%" stop-color="#d4845a" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="#d4845a" stop-opacity="0.03"/>
+          </linearGradient>
+        </defs>
+        <!-- Background flow -->
+        <rect x="0" y="20" width="800" height="220" rx="16" fill="url(#flowGrad)"/>
+        <!-- Stages -->
+        <rect x="20" y="50" width="120" height="80" rx="10" fill="var(--bg-warm)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="80" y="78" text-anchor="middle" font-size="10" font-weight="700" fill="var(--terra)">1. INSTALL</text>
+        <text x="80" y="96" text-anchor="middle" font-size="9" fill="var(--muted)">Drop .zip or</text>
+        <text x="80" y="108" text-anchor="middle" font-size="9" fill="var(--muted)">browse built-in</text>
+
+        <rect x="170" y="50" width="120" height="80" rx="10" fill="var(--bg-warm)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="230" y="78" text-anchor="middle" font-size="10" font-weight="700" fill="var(--terra)">2. REGISTER</text>
+        <text x="230" y="96" text-anchor="middle" font-size="9" fill="var(--muted)">Validate manifest</text>
+        <text x="230" y="108" text-anchor="middle" font-size="9" fill="var(--muted)">Inject into ToolSet</text>
+
+        <rect x="320" y="50" width="120" height="80" rx="10" fill="var(--bg-warm)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="380" y="78" text-anchor="middle" font-size="10" font-weight="700" fill="var(--terra)">3. INVOKE</text>
+        <text x="380" y="96" text-anchor="middle" font-size="9" fill="var(--muted)">LLM calls tool</text>
+        <text x="380" y="108" text-anchor="middle" font-size="9" fill="var(--muted)">Mount iframe</text>
+
+        <rect x="470" y="50" width="120" height="80" rx="10" fill="var(--bg-warm)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="530" y="78" text-anchor="middle" font-size="10" font-weight="700" fill="var(--terra)">4. INTERACT</text>
+        <text x="530" y="96" text-anchor="middle" font-size="9" fill="var(--muted)">User plays game</text>
+        <text x="530" y="108" text-anchor="middle" font-size="9" fill="var(--muted)">State updates flow</text>
+
+        <rect x="620" y="50" width="140" height="80" rx="10" fill="var(--bg-warm)" stroke="var(--line)" stroke-width="1.5"/>
+        <text x="690" y="78" text-anchor="middle" font-size="10" font-weight="700" fill="var(--terra)">5. COMPLETE</text>
+        <text x="690" y="96" text-anchor="middle" font-size="9" fill="var(--muted)">Plugin signals done</text>
+        <text x="690" y="108" text-anchor="middle" font-size="9" fill="var(--muted)">Result &rarr; LLM context</text>
+
+        <!-- Arrows -->
+        <path d="M142 90 L168 90" stroke="var(--terra)" stroke-width="1.5" fill="none" marker-end="url(#arrowT)"/>
+        <path d="M292 90 L318 90" stroke="var(--terra)" stroke-width="1.5" fill="none"/>
+        <path d="M442 90 L468 90" stroke="var(--terra)" stroke-width="1.5" fill="none"/>
+        <path d="M592 90 L618 90" stroke="var(--terra)" stroke-width="1.5" fill="none"/>
+
+        <!-- Bottom labels -->
+        <text x="80" y="160" text-anchor="middle" font-size="8" fill="var(--subtle)">User action</text>
+        <text x="230" y="160" text-anchor="middle" font-size="8" fill="var(--subtle)">App startup</text>
+        <text x="380" y="160" text-anchor="middle" font-size="8" fill="var(--subtle)">Chat message</text>
+        <text x="530" y="160" text-anchor="middle" font-size="8" fill="var(--subtle)">postMessage</text>
+        <text x="690" y="160" text-anchor="middle" font-size="8" fill="var(--subtle)">COMPLETION event</text>
+
+        <!-- Data flow row -->
+        <rect x="20" y="180" width="740" height="50" rx="8" fill="var(--bg-warm)" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+        <text x="400" y="202" text-anchor="middle" font-size="9" font-weight="600" fill="var(--muted)">plugin.json manifest &rarr; ToolSet entry &rarr; model.chat(tools) &rarr; iframe sandbox &rarr; STATE_UPDATE / COMPLETION &rarr; session history</text>
+      </svg>
+    </div>
+
+    <div class="callout" style="margin-top:20px; max-width:780px">
+      <strong>Current architecture snapshot:</strong> Messages flow through <code>submitNewUserMessage</code> &rarr; <code>generate</code> &rarr; <code>streamText</code> which already supports tool injection via <code>ToolSet</code> (MCP tools, web search, knowledge base). The plugin system hooks into this existing tool pipeline.
+    </div>
+
+    <div class="grid-4" style="margin-top:20px">
+      <div class="stat-card"><div class="num">5</div><div class="desc">Platforms surveyed</div></div>
+      <div class="stat-card"><div class="num">9</div><div class="desc">Security layers</div></div>
+      <div class="stat-card"><div class="num">2</div><div class="desc">Phase completion</div></div>
+      <div class="stat-card"><div class="num">0</div><div class="desc">New message roles</div></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ INSTALL UX ══════════════════════════════ -->
+  <section id="install">
+    <div class="section-head">
+      <p class="eyebrow">0 &middot; How users add plugins</p>
+      <h2>Plugin installation UX</h2>
+      <p class="lede">Users shouldn't need to clone a repo or edit config files. Three installation paths, from easiest to most flexible.</p>
+    </div>
+
+    <h3 style="margin-top:20px">Installation decision matrix</h3>
+    <div class="decision-grid">
+      <div class="decision-col picked">
+        <div class="decision-header">A &check;</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Method</span>
+          <span class="decision-name">Built-in gallery</span>
+          <span class="decision-detail">Curated list in Settings &rarr; Plugins. One-click enable. Ships with app.</span>
+        </div>
+      </div>
+      <div class="decision-col picked">
+        <div class="decision-header">B &check;</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Method</span>
+          <span class="decision-name">Drag-and-drop .zip</span>
+          <span class="decision-detail">Like Chrome extensions. Drop a .cbplugin file onto the app window.</span>
+        </div>
+      </div>
+      <div class="decision-col">
+        <div class="decision-header">C</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Method</span>
+          <span class="decision-name">URL import</span>
+          <span class="decision-detail">Paste a plugin URL. App fetches, validates, installs. Future v2.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:24px">Path A: Built-in plugin gallery</h3>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:12px">Bundled plugins (chess, weather, etc.) ship inside the app binary. Users see them in a new <strong>Settings &rarr; Plugins</strong> panel and toggle them on/off.</p>
+
+    <!-- Settings panel mockup -->
+    <div style="max-width:560px; margin:16px 0; border:2px solid var(--ink); border-radius:12px; overflow:hidden">
+      <div style="height:36px; background:var(--bg-sand); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:5px; padding:0 12px">
+        <span style="width:9px;height:9px;border-radius:50%;background:#fca5a5"></span>
+        <span style="width:9px;height:9px;border-radius:50%;background:#fde68a"></span>
+        <span style="width:9px;height:9px;border-radius:50%;background:#86efac"></span>
+        <span style="font-size:10px;color:var(--muted);margin-left:8px;font-weight:600">Settings &rarr; Plugins</span>
+      </div>
+      <div style="padding:16px 20px; background:var(--bg-warm)">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--line)">
+          <div>
+            <span style="font-size:20px; margin-right:8px">&#9822;</span>
+            <strong style="font-size:13px">Chess</strong>
+            <span style="font-size:11px; color:var(--muted); margin-left:8px">v1.0.0 &middot; Built-in</span>
+          </div>
+          <div style="width:40px;height:22px;border-radius:11px;background:var(--ok);position:relative">
+            <div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;right:2px;top:2px;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--line)">
+          <div>
+            <span style="font-size:20px; margin-right:8px">&#9788;</span>
+            <strong style="font-size:13px">Weather</strong>
+            <span style="font-size:11px; color:var(--muted); margin-left:8px">v1.0.0 &middot; Built-in</span>
+          </div>
+          <div style="width:40px;height:22px;border-radius:11px;background:var(--ok);position:relative">
+            <div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;right:2px;top:2px;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 0;">
+          <div>
+            <span style="font-size:20px; margin-right:8px">&#127912;</span>
+            <strong style="font-size:13px">Drawing Canvas</strong>
+            <span style="font-size:11px; color:var(--muted); margin-left:8px">v0.9.0 &middot; Built-in</span>
+          </div>
+          <div style="width:40px;height:22px;border-radius:11px;background:var(--subtle);position:relative">
+            <div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;left:2px;top:2px;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:24px">Path B: Drag-and-drop <code>.cbplugin</code> files</h3>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:12px">For community or custom plugins. A <code>.cbplugin</code> file is just a renamed <code>.zip</code> containing <code>plugin.json</code> + assets. Users drag it onto the app window or use a file picker.</p>
+
+    <div class="drop-zone-mock">
+      <span class="icon">&#128230;</span>
+      <div class="label">Drop .cbplugin file here to install</div>
+      <div class="hint">or click to browse &middot; plugins are sandboxed and cannot access your data</div>
+    </div>
+
+    <div class="timeline" style="margin-top:20px">
+      <div class="timeline-item done">
+        <div class="time-label">Step 1 &middot; Drop</div>
+        <div class="time-desc">User drops <code>my-plugin.cbplugin</code> onto app window</div>
+      </div>
+      <div class="timeline-item done">
+        <div class="time-label">Step 2 &middot; Validate</div>
+        <div class="time-desc">App extracts zip, validates <code>plugin.json</code> schema, checks no path traversal in entries</div>
+      </div>
+      <div class="timeline-item done">
+        <div class="time-label">Step 3 &middot; Confirm</div>
+        <div class="time-desc">Modal shows plugin name, tools, requested permissions. User clicks "Install"</div>
+      </div>
+      <div class="timeline-item done">
+        <div class="time-label">Step 4 &middot; Install</div>
+        <div class="time-desc">Files copied to <code>userData/plugins/{pluginId}/</code>, registry refreshed, tools available</div>
+      </div>
+    </div>
+
+    <details class="code-toggle">
+      <summary>Electron drag-and-drop handler</summary>
+<pre>// In renderer — listen for file drops on the app window
+document.addEventListener('drop', async (e) =&gt; {
+  e.preventDefault();
+  const file = [...e.dataTransfer.files].find(f =&gt; f.name.endsWith('.cbplugin'));
+  if (!file) return;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const result = await window.electronAPI.installPlugin(arrayBuffer, file.name);
+
+  if (result.success) {
+    pluginRegistry.refresh();
+    showToast(`Installed ${result.manifest.name}`);
+  } else {
+    showToast(`Failed: ${result.error}`, 'error');
+  }
+});
+
+// In main process — IPC handler
+ipcMain.handle('install-plugin', async (_event, buffer, filename) =&gt; {
+  const zip = new AdmZip(Buffer.from(buffer));
+  const manifestEntry = zip.getEntry('plugin.json');
+  if (!manifestEntry) return { success: false, error: 'No plugin.json found' };
+
+  const manifest = JSON.parse(manifestEntry.getData().toString('utf8'));
+  if (!isValidManifest(manifest)) return { success: false, error: 'Invalid manifest' };
+
+  // Check no entries escape plugin directory
+  for (const entry of zip.getEntries()) {
+    const resolved = path.resolve(pluginsDir, manifest.id, entry.entryName);
+    if (!resolved.startsWith(path.resolve(pluginsDir, manifest.id))) {
+      return { success: false, error: 'Path traversal detected' };
+    }
+  }
+
+  const installPath = path.join(pluginsDir, manifest.id);
+  zip.extractAllTo(installPath, true);
+  return { success: true, manifest };
+});</pre>
+    </details>
+
+    <details class="code-toggle">
+      <summary>Custom protocol registration for plugin:// URLs</summary>
+<pre>// In main process — register before app.whenReady()
+import { protocol } from 'electron';
+
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'plugin', privileges: { standard: true, secure: true, supportFetchAPI: true } }
+]);
+
+app.whenReady().then(() =&gt; {
+  protocol.registerFileProtocol('plugin', (request, callback) =&gt; {
+    const url = new URL(request.url);
+    const pluginId = url.hostname;                    // plugin://chess/dist/ui.html
+    const filePath = decodeURIComponent(url.pathname); // /dist/ui.html
+
+    const plugin = pluginRegistry.get(pluginId);
+    if (!plugin) return callback({ error: -6 });      // FILE_NOT_FOUND
+
+    const safeBase = path.resolve(plugin.installPath);
+    const resolved = path.resolve(safeBase, filePath.slice(1)); // remove leading /
+
+    // Prevent path traversal
+    if (!resolved.startsWith(safeBase)) return callback({ error: -10 }); // ACCESS_DENIED
+
+    callback({ path: resolved });
+  });
+});</pre>
+    </details>
+  </section>
+
+  <!-- ═══════════════════════════════ REGISTRATION ════════════════════════════ -->
+  <section id="registration">
+    <div class="section-head">
+      <p class="eyebrow">1 &middot; Plugin registration &amp; discovery</p>
+      <h2>How apps declare themselves</h2>
+      <p class="lede">Every plugin ships a <code>plugin.json</code> manifest. The platform scans for manifests at startup, validates them, and registers capabilities into the tool pipeline.</p>
+    </div>
+
+    <h3 style="margin-top:20px">Industry patterns surveyed</h3>
+    <table>
+      <thead><tr><th>Platform</th><th>Discovery method</th><th>Manifest format</th></tr></thead>
+      <tbody>
+        <tr><td>ChatGPT plugins</td><td><code>/.well-known/ai-plugin.json</code></td><td>JSON + OpenAPI spec URL</td></tr>
+        <tr><td>VS Code</td><td>Marketplace + local <code>package.json</code></td><td>JSON <code>contributes</code> block</td></tr>
+        <tr><td>Figma</td><td>Local <code>manifest.json</code></td><td>JSON with <code>main</code> + <code>ui</code> entries</td></tr>
+        <tr><td>Slack</td><td>App Directory + <code>app_manifest.yaml</code></td><td>YAML with features/scopes</td></tr>
+        <tr><td>MCP</td><td><code>mcp_servers.json</code></td><td>JSON-RPC <code>tools/list</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:24px">Our manifest: <code>plugin.json</code></h3>
+    <p class="lede">Hybrid of Figma (local entry points) + ChatGPT (LLM-facing descriptions) + MCP (tool schemas).</p>
+    <details class="code-toggle">
+      <summary>plugin.json &mdash; Chess example</summary>
+<pre>{
+  "schema_version": "1.0",
+  "id": "com.chatbridge.chess",
+  "name": "Chess",
+  "version": "1.0.0",
+  "description_for_human": "Play and analyze chess games inline in chat.",
+  "description_for_model": "Renders an interactive chess board. Use when the user wants to play chess, analyze a position, or review a game. The user interacts with the board UI directly.",
+  "entry": { "ui": "dist/ui.html" },
+  "tools": [
+    {
+      "name": "new_game",
+      "description": "Start a new chess game",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "playerColor": { "type": "string", "enum": ["white","black"], "default": "white" },
+          "difficulty": { "type": "string", "enum": ["easy","medium","hard"], "default": "medium" }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_state",
+      "description": "Get current board state as FEN string and move history",
+      "inputSchema": { "type": "object", "properties": {}, "additionalProperties": false }
+    },
+    {
+      "name": "suggest_move",
+      "description": "Analyze position and suggest best move for the current player",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "fen": { "type": "string", "description": "FEN string of current position" } },
+        "required": ["fen"],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "permissions": ["storage:plugin-namespace"],
+  "networkAccess": { "allowedDomains": [] },
+  "uiConfig": { "defaultWidth": 480, "defaultHeight": 520, "resizable": true }
+}</pre>
+    </details>
+
+    <h3 style="margin-top:24px">Validation rules</h3>
+    <table>
+      <thead><tr><th>Rule</th><th>Why</th><th>Failure mode</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code> globally unique</td><td>Storage + runtime isolation</td><td>Plugin skipped</td></tr>
+        <tr><td><code>entry.ui</code> resolves inside plugin folder</td><td>Prevent path traversal</td><td>Plugin skipped</td></tr>
+        <tr><td>Tool names unique within manifest</td><td>Stable activation</td><td>Plugin skipped</td></tr>
+        <tr><td><code>inputSchema.type === "object"</code></td><td>Matches provider adapters</td><td>Tool rejected</td></tr>
+      </tbody>
+    </table>
+
+    <details class="code-toggle">
+      <summary>Tool name normalization (mirrors MCP controller pattern)</summary>
+<pre>// Manifest tool names stay local; ToolSet names become global.
+function exposePluginToolName(pluginId: string, toolName: string) {
+  const slug = pluginId.split('.').at(-1)?.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase() ?? 'plugin';
+  return `plugin__${slug}__${toolName}`;
+  // "com.chatbridge.chess" + "new_game" => "plugin__chess__new_game"
+}</pre>
+    </details>
+
+    <div class="callout">
+      <strong>Key insight from ChatGPT:</strong> <code>description_for_model</code> is a system prompt fragment. Write it like a prompt &mdash; when to use, when NOT to use, what it returns &mdash; not a docstring.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ TOOL SCHEMAS ════════════════════════════ -->
+  <section id="tool-schemas">
+    <div class="section-head">
+      <p class="eyebrow">2 &middot; Tool schema definition</p>
+      <h2>How the chatbot discovers and invokes tools</h2>
+      <p class="lede">MCP's <code>inputSchema</code> format internally, translated to provider-specific formats at call time.</p>
+    </div>
+
+    <h3 style="margin-top:20px">Schema format decision</h3>
+    <div class="decision-grid">
+      <div class="decision-col dim">
+        <div class="decision-header dim">A</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Format</span>
+          <span class="decision-name">OpenAPI spec</span>
+          <span class="decision-detail">ChatGPT style. Heavyweight, requires HTTP endpoints per tool.</span>
+        </div>
+      </div>
+      <div class="decision-col picked">
+        <div class="decision-header">B &check;</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Format</span>
+          <span class="decision-name">MCP inputSchema</span>
+          <span class="decision-detail">JSON Schema per tool. Lightweight. Adapts to both OpenAI &amp; Anthropic.</span>
+        </div>
+      </div>
+      <div class="decision-col dim">
+        <div class="decision-header dim">C</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Format</span>
+          <span class="decision-name">Custom DSL</span>
+          <span class="decision-detail">Non-standard. Every plugin author has to learn it. No ecosystem.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:24px">Provider comparison</h3>
+    <div class="grid-3" style="margin-top:12px">
+      <div class="phase-card">
+        <span class="label">OpenAI</span>
+        <h3>Function calling</h3>
+        <ul>
+          <li><code>"strict": true</code> &rarr; guaranteed compliance</li>
+          <li>Needs <code>additionalProperties: false</code></li>
+          <li>Returns arguments as JSON string</li>
+        </ul>
+      </div>
+      <div class="phase-card">
+        <span class="label">Anthropic</span>
+        <h3>Tool use</h3>
+        <ul>
+          <li>JSON Schema draft-07 compatible</li>
+          <li>Returns parsed <code>input</code> object</li>
+          <li>Results via <code>tool_result</code> block</li>
+        </ul>
+      </div>
+      <div class="phase-card">
+        <span class="label">MCP</span>
+        <h3>JSON-RPC tools</h3>
+        <ul>
+          <li>Both input and output schemas</li>
+          <li>Annotations: readOnly, destructive</li>
+          <li>Dynamic tool list updates</li>
+        </ul>
+      </div>
+    </div>
+
+    <details class="code-toggle" style="margin-top:16px">
+      <summary>Provider adapter code</summary>
+<pre>// src/shared/plugin-types.ts
+
+interface PluginTool {
+  name: string;            // local: "new_game"
+  description: string;
+  inputSchema: JSONSchema7;
+}
+
+interface RegisteredPluginTool extends PluginTool {
+  pluginId: string;
+  exposedName: string;     // global: "plugin__chess__new_game"
+}
+
+// Adapter: PluginTool &rarr; OpenAI
+function toOpenAITool(tool: RegisteredPluginTool) {
+  return { type: 'function' as const, function: {
+    name: tool.exposedName, description: tool.description,
+    strict: true, parameters: tool.inputSchema,
+  }};
+}
+
+// Adapter: PluginTool &rarr; Anthropic
+function toAnthropicTool(tool: RegisteredPluginTool) {
+  return { name: tool.exposedName, description: tool.description,
+    input_schema: tool.inputSchema };
+}</pre>
+    </details>
+
+    <details class="code-toggle">
+      <summary>ToolSet entry factory (how plugins enter the existing pipeline)</summary>
+<pre>function toToolSetEntry(plugin: PluginManifest, tool: RegisteredPluginTool) {
+  return {
+    description: `${plugin.description_for_model}\n\nTool: ${tool.description}`,
+    inputSchema: tool.inputSchema,
+    execute: async (args: unknown) =&gt; {
+      const instanceId = pluginRuntime.activate({ pluginId: plugin.id, toolName: tool.exposedName, args });
+      return { status: 'accepted', pluginId: plugin.id, instanceId, summary: `${plugin.name} opened.`, keepAlive: true };
+    },
+  };
+}</pre>
+    </details>
+
+    <div class="callout">
+      <strong>Integration point:</strong> Plugin tools join the existing <code>ToolSet</code> in <code>stream-text.ts:296-313</code> alongside MCP tools, web search, and knowledge base. No separate execution path.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ UI EMBEDDING ════════════════════════════ -->
+  <section id="ui-embedding">
+    <div class="section-head">
+      <p class="eyebrow">3 &middot; Rendering plugin UI in chat</p>
+      <h2>Sandboxed iframes inside the conversation</h2>
+      <p class="lede">When the LLM invokes a plugin tool, the platform renders the plugin's UI as a sandboxed iframe inline in the chat message stream.</p>
+    </div>
+
+    <h3 style="margin-top:20px">Embedding mechanism decision</h3>
+    <div class="decision-grid">
+      <div class="decision-col dim">
+        <div class="decision-header dim">A</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Mechanism</span>
+          <span class="decision-name">Electron webview tag</span>
+          <span class="decision-detail">Deprecated by Electron team. Unstable. Security risk.</span>
+        </div>
+      </div>
+      <div class="decision-col picked">
+        <div class="decision-header">B &check;</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Mechanism</span>
+          <span class="decision-name">Sandboxed <code>&lt;iframe&gt;</code></span>
+          <span class="decision-detail">Standard web. Lives in React DOM. postMessage bridge.</span>
+        </div>
+      </div>
+      <div class="decision-col dim">
+        <div class="decision-header dim">C</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Mechanism</span>
+          <span class="decision-name">WebContentsView</span>
+          <span class="decision-detail">Main process OS overlay. Can't participate in React layout.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:24px">Sandbox attributes</h3>
+    <table>
+      <thead><tr><th>Attribute</th><th>Grants</th><th>Decision</th></tr></thead>
+      <tbody>
+        <tr><td><code>allow-scripts</code></td><td>JS execution</td><td><span class="badge green">Yes</span></td></tr>
+        <tr><td><code>allow-same-origin</code></td><td>Origin, cookies, storage</td><td><span class="badge red">No</span> &mdash; state goes through host bridge</td></tr>
+        <tr><td><code>allow-forms</code></td><td>Form submission</td><td><span class="badge red">No</span></td></tr>
+        <tr><td><code>allow-top-navigation</code></td><td>Navigate parent</td><td><span class="badge red">No</span></td></tr>
+        <tr><td><code>allow-popups</code></td><td><code>window.open()</code></td><td><span class="badge red">No</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout" style="margin-top:16px">
+      <strong>Design consequence:</strong> <code>allow-scripts</code> without <code>allow-same-origin</code> &rarr; opaque origin. The plugin has zero ambient storage. All durable state must flow through the host postMessage bridge. This is a feature, not a bug.
+    </div>
+
+    <!-- Chat mockup with embedded plugin -->
+    <h3 style="margin-top:24px">How it looks in the chat</h3>
+    <div style="max-width:580px; margin:16px 0; border:2px solid var(--ink); border-radius:12px; overflow:hidden">
+      <div style="height:32px; background:var(--bg-sand); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:5px; padding:0 10px">
+        <span style="width:9px;height:9px;border-radius:50%;background:#fca5a5"></span>
+        <span style="width:9px;height:9px;border-radius:50%;background:#fde68a"></span>
+        <span style="width:9px;height:9px;border-radius:50%;background:#86efac"></span>
+        <span style="font-size:10px;color:var(--muted);margin-left:6px;font-weight:600">ChatBridge &mdash; Session</span>
+      </div>
+      <div style="padding:16px 20px; display:flex; flex-direction:column; gap:8px; background:var(--bg)">
+        <!-- User bubble -->
+        <div style="padding:8px 14px; border-radius:12px 12px 3px 12px; background:var(--ac); color:#fff; align-self:flex-end; font-size:12px; max-width:70%">Let's play chess!</div>
+        <!-- Assistant bubble -->
+        <div style="padding:8px 14px; border-radius:12px 12px 12px 3px; background:var(--bg-sand); align-self:flex-start; font-size:12px; max-width:85%">
+          Starting a chess game for you! Here's your board:
+        </div>
+        <!-- Plugin frame mock -->
+        <div style="align-self:center; width:90%; max-width:400px; border:2px solid var(--ink); border-radius:10px; overflow:hidden">
+          <div style="padding:5px 10px; background:var(--bg-sand); border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between">
+            <span style="font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted)">&#9822; Chess &middot; plugin iframe</span>
+            <span style="width:6px; height:6px; border-radius:50%; background:var(--ok)"></span>
+          </div>
+          <div style="padding:20px; text-align:center; background:var(--bg-warm)">
+            <!-- Chessboard mini representation -->
+            <svg viewBox="0 0 200 200" width="180" height="180" style="display:block; margin:0 auto">
+              <!-- Board -->
+              <rect x="0" y="0" width="200" height="200" rx="4" fill="#f0d9b5"/>
+              <rect x="25" y="0" width="25" height="25" fill="#b58863"/><rect x="75" y="0" width="25" height="25" fill="#b58863"/><rect x="125" y="0" width="25" height="25" fill="#b58863"/><rect x="175" y="0" width="25" height="25" fill="#b58863"/>
+              <rect x="0" y="25" width="25" height="25" fill="#b58863"/><rect x="50" y="25" width="25" height="25" fill="#b58863"/><rect x="100" y="25" width="25" height="25" fill="#b58863"/><rect x="150" y="25" width="25" height="25" fill="#b58863"/>
+              <rect x="25" y="50" width="25" height="25" fill="#b58863"/><rect x="75" y="50" width="25" height="25" fill="#b58863"/><rect x="125" y="50" width="25" height="25" fill="#b58863"/><rect x="175" y="50" width="25" height="25" fill="#b58863"/>
+              <rect x="0" y="75" width="25" height="25" fill="#b58863"/><rect x="50" y="75" width="25" height="25" fill="#b58863"/><rect x="100" y="75" width="25" height="25" fill="#b58863"/><rect x="150" y="75" width="25" height="25" fill="#b58863"/>
+              <rect x="25" y="100" width="25" height="25" fill="#b58863"/><rect x="75" y="100" width="25" height="25" fill="#b58863"/><rect x="125" y="100" width="25" height="25" fill="#b58863"/><rect x="175" y="100" width="25" height="25" fill="#b58863"/>
+              <rect x="0" y="125" width="25" height="25" fill="#b58863"/><rect x="50" y="125" width="25" height="25" fill="#b58863"/><rect x="100" y="125" width="25" height="25" fill="#b58863"/><rect x="150" y="125" width="25" height="25" fill="#b58863"/>
+              <rect x="25" y="150" width="25" height="25" fill="#b58863"/><rect x="75" y="150" width="25" height="25" fill="#b58863"/><rect x="125" y="150" width="25" height="25" fill="#b58863"/><rect x="175" y="150" width="25" height="25" fill="#b58863"/>
+              <rect x="0" y="175" width="25" height="25" fill="#b58863"/><rect x="50" y="175" width="25" height="25" fill="#b58863"/><rect x="100" y="175" width="25" height="25" fill="#b58863"/><rect x="150" y="175" width="25" height="25" fill="#b58863"/>
+              <!-- Pieces (simplified) -->
+              <text x="12" y="18" text-anchor="middle" font-size="18">&#9820;</text><text x="37" y="18" text-anchor="middle" font-size="18">&#9822;</text><text x="62" y="18" text-anchor="middle" font-size="18">&#9821;</text><text x="87" y="18" text-anchor="middle" font-size="18">&#9819;</text>
+              <text x="112" y="18" text-anchor="middle" font-size="18">&#9818;</text><text x="137" y="18" text-anchor="middle" font-size="18">&#9821;</text><text x="162" y="18" text-anchor="middle" font-size="18">&#9822;</text><text x="187" y="18" text-anchor="middle" font-size="18">&#9820;</text>
+              <text x="12" y="43" text-anchor="middle" font-size="16">&#9823;</text><text x="37" y="43" text-anchor="middle" font-size="16">&#9823;</text><text x="62" y="43" text-anchor="middle" font-size="16">&#9823;</text><text x="87" y="43" text-anchor="middle" font-size="16">&#9823;</text>
+              <text x="112" y="43" text-anchor="middle" font-size="16">&#9823;</text><text x="137" y="43" text-anchor="middle" font-size="16">&#9823;</text><text x="162" y="43" text-anchor="middle" font-size="16">&#9823;</text><text x="187" y="43" text-anchor="middle" font-size="16">&#9823;</text>
+              <text x="12" y="168" text-anchor="middle" font-size="16">&#9817;</text><text x="37" y="168" text-anchor="middle" font-size="16">&#9817;</text><text x="62" y="168" text-anchor="middle" font-size="16">&#9817;</text><text x="87" y="168" text-anchor="middle" font-size="16">&#9817;</text>
+              <text x="112" y="168" text-anchor="middle" font-size="16">&#9817;</text><text x="137" y="168" text-anchor="middle" font-size="16">&#9817;</text><text x="162" y="168" text-anchor="middle" font-size="16">&#9817;</text><text x="187" y="168" text-anchor="middle" font-size="16">&#9817;</text>
+              <text x="12" y="193" text-anchor="middle" font-size="18">&#9814;</text><text x="37" y="193" text-anchor="middle" font-size="18">&#9816;</text><text x="62" y="193" text-anchor="middle" font-size="18">&#9815;</text><text x="87" y="193" text-anchor="middle" font-size="18">&#9813;</text>
+              <text x="112" y="193" text-anchor="middle" font-size="18">&#9812;</text><text x="137" y="193" text-anchor="middle" font-size="18">&#9815;</text><text x="162" y="193" text-anchor="middle" font-size="18">&#9816;</text><text x="187" y="193" text-anchor="middle" font-size="18">&#9814;</text>
+            </svg>
+            <div style="font-size:10px; color:var(--muted); margin-top:8px">White to move &middot; Medium difficulty</div>
+          </div>
+        </div>
+        <!-- Follow-up -->
+        <div style="padding:8px 14px; border-radius:12px 12px 3px 12px; background:var(--ac); color:#fff; align-self:flex-end; font-size:12px; max-width:70%">What should I do here?</div>
+        <div style="padding:8px 14px; border-radius:12px 12px 12px 3px; background:var(--bg-sand); align-self:flex-start; font-size:12px; max-width:85%">
+          Based on the current position, I'd recommend <strong>1. e4</strong> &mdash; controlling the center is key in the opening.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ COMMUNICATION ═══════════════════════════ -->
+  <section id="communication">
+    <div class="section-head">
+      <p class="eyebrow">4 &middot; Bidirectional communication</p>
+      <h2>Host &harr; plugin message protocol</h2>
+      <p class="lede">Typed postMessage protocol with handshake, nonce validation, rate limiting, and MessageChannel for RPC.</p>
+    </div>
+
+    <!-- Protocol diagram -->
+    <div class="diagram" style="margin-top:16px">
+      <svg viewBox="0 0 700 320" style="max-width:700px" role="img" aria-label="Message protocol sequence">
+        <!-- Lifelines -->
+        <text x="140" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">Host (PluginFrame)</text>
+        <text x="500" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">Plugin (iframe)</text>
+        <line x1="140" y1="30" x2="140" y2="310" stroke="var(--line)" stroke-width="2" stroke-dasharray="4 4"/>
+        <line x1="500" y1="30" x2="500" y2="310" stroke="var(--line)" stroke-width="2" stroke-dasharray="4 4"/>
+        <!-- Mount -->
+        <rect x="80" y="40" width="120" height="24" rx="4" fill="var(--bg-sand)" stroke="var(--line)" stroke-width="1"/>
+        <text x="140" y="56" text-anchor="middle" font-size="9" fill="var(--muted)">loads iframe</text>
+        <!-- PLUGIN_READY -->
+        <line x1="500" y1="80" x2="140" y2="100" stroke="var(--terra)" stroke-width="1.5" marker-end="url(#arrT)"/>
+        <rect x="240" y="78" width="140" height="18" rx="4" fill="var(--terra-light)" stroke="var(--terra)" stroke-width="1"/>
+        <text x="310" y="90" text-anchor="middle" font-size="8" font-weight="600" fill="var(--terra)">PLUGIN_READY + nonce</text>
+        <!-- PLUGIN_INIT -->
+        <line x1="140" y1="120" x2="500" y2="140" stroke="var(--ac)" stroke-width="1.5"/>
+        <rect x="240" y="118" width="160" height="18" rx="4" fill="var(--ac-bg)" stroke="var(--ac)" stroke-width="1"/>
+        <text x="320" y="130" text-anchor="middle" font-size="8" font-weight="600" fill="var(--ac)">PLUGIN_INIT + state + theme</text>
+        <!-- STATE_UPDATE -->
+        <line x1="500" y1="170" x2="140" y2="190" stroke="var(--terra)" stroke-width="1.5" stroke-dasharray="6 3"/>
+        <rect x="250" y="168" width="120" height="18" rx="4" fill="var(--terra-light)" stroke="var(--terra)" stroke-width="1" stroke-dasharray="4 2"/>
+        <text x="310" y="180" text-anchor="middle" font-size="8" font-weight="600" fill="var(--terra)">STATE_UPDATE (FEN)</text>
+        <!-- TOOL_INVOKE via MessageChannel -->
+        <line x1="140" y1="210" x2="500" y2="230" stroke="var(--ac)" stroke-width="1.5"/>
+        <rect x="215" y="208" width="200" height="18" rx="4" fill="var(--ac-bg)" stroke="var(--ac)" stroke-width="1"/>
+        <text x="315" y="220" text-anchor="middle" font-size="8" font-weight="600" fill="var(--ac)">TOOL_INVOKE via MessageChannel port</text>
+        <!-- TOOL_RESULT -->
+        <line x1="500" y1="250" x2="140" y2="270" stroke="var(--ok)" stroke-width="1.5"/>
+        <rect x="250" y="248" width="130" height="18" rx="4" fill="var(--ok-bg)" stroke="var(--ok)" stroke-width="1"/>
+        <text x="315" y="260" text-anchor="middle" font-size="8" font-weight="600" fill="var(--ok)">TOOL_RESULT via port</text>
+        <!-- COMPLETION -->
+        <line x1="500" y1="290" x2="140" y2="310" stroke="var(--terra)" stroke-width="2"/>
+        <rect x="240" y="288" width="150" height="18" rx="4" fill="var(--terra)" stroke="var(--terra-dark)" stroke-width="1"/>
+        <text x="315" y="300" text-anchor="middle" font-size="8" font-weight="700" fill="#fff">COMPLETION + PGN</text>
+      </svg>
+    </div>
+
+    <details class="code-toggle" style="margin-top:16px">
+      <summary>Message type definitions (src/shared/plugin-protocol.ts)</summary>
+<pre>// Host &rarr; Plugin
+type HostToPluginMessage =
+  | { type: 'PLUGIN_INIT'; instanceId: string; nonce: string;
+      payload: { pluginId: string; sessionId: string; toolCallId: string; theme: 'light'|'dark'; initialState: unknown } }
+  | { type: 'TOOL_INVOKE_PORT'; instanceId: string; nonce: string; callId: string; toolName: string; args: unknown }
+  | { type: 'STATE_PUSH'; instanceId: string; nonce: string; state: unknown }
+  | { type: 'THEME_CHANGE'; instanceId: string; nonce: string; theme: 'light' | 'dark' }
+  | { type: 'LIFECYCLE'; instanceId: string; nonce: string; event: 'mount' | 'unmount' | 'focus' | 'blur' };
+
+// Plugin &rarr; Host
+type PluginToHostMessage =
+  | { type: 'PLUGIN_READY'; instanceId: string; nonce: string; version: string }
+  | { type: 'TOOL_RESULT'; instanceId: string; nonce: string; callId: string; result: unknown }
+  | { type: 'TOOL_ERROR'; instanceId: string; nonce: string; callId: string; error: string }
+  | { type: 'STATE_UPDATE'; instanceId: string; nonce: string; state: unknown }
+  | { type: 'COMPLETION'; instanceId: string; nonce: string; payload: CompletionPayload }
+  | { type: 'RESIZE_REQUEST'; instanceId: string; nonce: string; width: number; height: number };</pre>
+    </details>
+
+    <details class="code-toggle">
+      <summary>Message handler with all security checks</summary>
+<pre>useEffect(() =&gt; {
+  const handler = (event: MessageEvent) =&gt; {
+    if (event.origin !== 'null') return;                     // opaque-origin sandbox
+    if (event.source !== iframeRef.current?.contentWindow) return; // our iframe only
+    if (!rateLimiter.current.consume()) return;               // 30 burst, 10/sec
+    if (!isPluginToHostMessage(event.data)) return;           // type guard
+    if (event.data.instanceId !== instanceId) return;         // instance binding
+    if (event.data.nonce !== nonceRef.current) return;        // session nonce
+
+    switch (event.data.type) {
+      case 'PLUGIN_READY': /* send PLUGIN_INIT */ break;
+      case 'TOOL_RESULT':  /* resolve pending tool call */ break;
+      case 'STATE_UPDATE': /* persist plugin state */ break;
+      case 'COMPLETION':   /* inject into chat context */ break;
+    }
+  };
+  window.addEventListener('message', handler);
+  return () =&gt; window.removeEventListener('message', handler);
+}, []);</pre>
+    </details>
+
+    <div class="callout">
+      <strong>Why nonce:</strong> Opaque-origin iframes report <code>event.origin === 'null'</code>, so origin pinning alone is insufficient. The per-instance nonce (passed via query param at iframe load) proves the message came from the iframe we mounted, not a rogue frame.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ COMPLETION ══════════════════════════════ -->
+  <section id="completion">
+    <div class="section-head">
+      <p class="eyebrow">5 &middot; Completion signaling</p>
+      <h2>How a plugin tells the chat "I'm done"</h2>
+      <p class="lede">The hardest problem. Short-lived tools complete immediately. Long-lived tools (chess) use a two-phase model.</p>
+    </div>
+
+    <h3 style="margin-top:20px">Completion strategy decision</h3>
+    <div class="decision-grid">
+      <div class="decision-col dim">
+        <div class="decision-header dim">A</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Strategy</span>
+          <span class="decision-name">Synchronous block</span>
+          <span class="decision-detail">LLM waits for plugin to finish. Blocks conversation. Bad for games.</span>
+        </div>
+      </div>
+      <div class="decision-col picked">
+        <div class="decision-header">B &check;</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Strategy</span>
+          <span class="decision-name">Two-phase ACK/Complete</span>
+          <span class="decision-detail">Immediate ACK unblocks chat. Final completion when done. Best of both.</span>
+        </div>
+      </div>
+      <div class="decision-col dim">
+        <div class="decision-header dim">C</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Strategy</span>
+          <span class="decision-name">Polling</span>
+          <span class="decision-detail">Host polls plugin on every user message. Wasteful. Race-prone.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:20px">
+      <div class="phase-card">
+        <span class="label">Phase 1 &middot; Task started</span>
+        <h3>Immediate ACK</h3>
+        <ul>
+          <li>Plugin sends <code>TOOL_RESULT</code> with initial state</li>
+          <li>LLM gets: "Chess game started. Board rendered."</li>
+          <li>Plugin UI stays mounted (<code>keepAlive: true</code>)</li>
+          <li>User can chat while plugin is active</li>
+        </ul>
+      </div>
+      <div class="phase-card">
+        <span class="label">Phase 2 &middot; Task done</span>
+        <h3>Final completion</h3>
+        <ul>
+          <li>Plugin sends <code>COMPLETION</code> with results</li>
+          <li>LLM gets: structured data (winner, PGN)</li>
+          <li>Plugin UI may unmount or stay for review</li>
+          <li>Context retained for follow-up questions</li>
+        </ul>
+      </div>
+    </div>
+
+    <details class="code-toggle" style="margin-top:16px">
+      <summary>CompletionPayload structure</summary>
+<pre>interface CompletionPayload {
+  summary: string;                  // "Game over. White won by checkmate in 32 moves."
+  structuredData?: unknown;         // { winner: 'white', moves: 32, pgn: "1. e4 e5 ..." }
+  continueConversation: boolean;    // true = LLM responds to result
+  keepAlive: boolean;               // true = don't unmount plugin UI
+  stateSnapshot?: unknown;          // full state for replay/review
+}</pre>
+    </details>
+
+    <div class="callout">
+      <strong>Chess lifecycle:</strong> "let's play chess" &rarr; LLM calls <code>plugin__chess__new_game</code> &rarr; Phase 1 ACK, board mounts &rarr; user plays, asks "what should I do?" &rarr; LLM calls <code>get_state</code> + <code>suggest_move</code> mid-game &rarr; checkmate &rarr; Phase 2 COMPLETION with PGN &rarr; "how did I do?" &rarr; LLM has full context.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ STATE ═══════════════════════════════════ -->
+  <section id="state">
+    <div class="section-head">
+      <p class="eyebrow">6 &middot; Independent state management</p>
+      <h2>How plugins own their state</h2>
+      <p class="lede">Two-tier model. Opaque-origin iframes have zero ambient storage &mdash; all persistence goes through the host bridge.</p>
+    </div>
+
+    <h3 style="margin-top:20px">State architecture decision</h3>
+    <div class="decision-grid">
+      <div class="decision-col dim">
+        <div class="decision-header dim">A</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Approach</span>
+          <span class="decision-name">allow-same-origin + IndexedDB</span>
+          <span class="decision-detail">Plugin manages own storage. Less secure. Cleanup burden on host.</span>
+        </div>
+      </div>
+      <div class="decision-col picked">
+        <div class="decision-header">B &check;</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Approach</span>
+          <span class="decision-name">Host-mediated persistence</span>
+          <span class="decision-detail">Plugin sends state via postMessage. Host stores in namespaced keys. Clean uninstall.</span>
+        </div>
+      </div>
+      <div class="decision-col dim">
+        <div class="decision-header dim">C</div>
+        <div class="decision-cell">
+          <span class="decision-phase">Approach</span>
+          <span class="decision-name">No persistence</span>
+          <span class="decision-detail">State lost on every remount. Unusable for games.</span>
+        </div>
+      </div>
+    </div>
+
+    <table style="margin-top:20px">
+      <thead><tr><th>Tier</th><th>Where</th><th>Persistence</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge blue">Tier 1</span></td><td>Inside iframe</td><td>None &mdash; lost on unmount</td><td>Hover, drag, animation state</td></tr>
+        <tr><td><span class="badge green">Tier 2</span></td><td>Host store</td><td>Survives restart</td><td>FEN, move history, difficulty</td></tr>
+      </tbody>
+    </table>
+
+    <details class="code-toggle" style="margin-top:16px">
+      <summary>State namespacing &amp; storage</summary>
+<pre>// Storage keys scoped by pluginId + sessionId + instanceId
+function getStateKey(pluginId: string, sessionId?: string, instanceId?: string): string {
+  if (instanceId &amp;&amp; sessionId) return `plugin:${pluginId}::session:${sessionId}::instance:${instanceId}`;
+  if (sessionId) return `plugin:${pluginId}::session:${sessionId}`;
+  return `plugin:${pluginId}::global`;
+}
+
+// On uninstall: clean up all keys for this plugin
+async function cleanupPluginState(pluginId: string) {
+  const allKeys = await storage.keys();
+  const pluginKeys = allKeys.filter(k =&gt; k.startsWith(`plugin:${pluginId}::`));
+  await Promise.all(pluginKeys.map(k =&gt; storage.removeItem(k)));
+}</pre>
+    </details>
+  </section>
+
+  <!-- ═══════════════════════════════ ERROR HANDLING ══════════════════════════ -->
+  <section id="errors">
+    <div class="section-head">
+      <p class="eyebrow">7 &middot; Error handling &amp; resilience</p>
+      <h2>What happens when things break</h2>
+      <p class="lede">Every failure mode has a defined recovery path. The chat must never hang or crash because of a plugin.</p>
+    </div>
+
+    <table style="margin-top:16px">
+      <thead><tr><th>Failure</th><th>Detection</th><th>Recovery</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>iframe fails to load</strong></td>
+          <td><code>PLUGIN_READY</code> not received within 10s of mount</td>
+          <td>Show inline error card: "Plugin failed to load." Inject <code>tool_result</code> with <code>is_error: true</code> so LLM can explain to user.</td>
+        </tr>
+        <tr>
+          <td><strong>Plugin crashes mid-game</strong></td>
+          <td>iframe <code>onerror</code> event, or heartbeat timeout (no message in 60s during active session)</td>
+          <td>Show "Plugin stopped responding" overlay with Retry button. Persist last known state. On retry, remount iframe with saved state.</td>
+        </tr>
+        <tr>
+          <td><strong>Tool call timeout</strong></td>
+          <td>MessageChannel response not received within 30s</td>
+          <td>Reject the promise. Host returns <code>TOOL_ERROR</code> to LLM: "Tool timed out." LLM apologizes and may retry.</td>
+        </tr>
+        <tr>
+          <td><strong>Malformed completion payload</strong></td>
+          <td>Type guard / schema validation fails on <code>COMPLETION</code> message</td>
+          <td>Log warning. Ignore the message. Plugin stays mounted. No chat context corrupted.</td>
+        </tr>
+        <tr>
+          <td><strong>Rate limit exceeded</strong></td>
+          <td>Token bucket exhausted (>30 burst or >10/sec sustained)</td>
+          <td>Drop excess messages silently. Log warning. Plugin continues but may miss state updates.</td>
+        </tr>
+        <tr>
+          <td><strong>Plugin sends during wrong lifecycle</strong></td>
+          <td>Messages arrive before <code>PLUGIN_READY</code> handshake or after <code>COMPLETION</code></td>
+          <td>Ignored. Type guard + state machine prevents acting on out-of-order messages.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <details class="code-toggle" style="margin-top:16px">
+      <summary>Timeout &amp; error boundary implementation</summary>
+<pre>// In PluginFrame.tsx
+const READY_TIMEOUT_MS = 10_000;
+const TOOL_TIMEOUT_MS = 30_000;
+
+useEffect(() =&gt; {
+  const timer = setTimeout(() =&gt; {
+    if (!isReady) {
+      setError('Plugin failed to load within 10 seconds.');
+      onCompletion?.({
+        summary: `Plugin "${pluginId}" failed to load.`,
+        continueConversation: true, keepAlive: false,
+      });
+    }
+  }, READY_TIMEOUT_MS);
+  return () =&gt; clearTimeout(timer);
+}, [isReady]);
+
+// Wrap in React ErrorBoundary
+&lt;ErrorBoundary fallback={&lt;PluginErrorCard pluginId={pluginId} onRetry={remount} /&gt;}&gt;
+  &lt;PluginFrameInner ... /&gt;
+&lt;/ErrorBoundary&gt;</pre>
+    </details>
+
+    <div class="callout warn">
+      <strong>Design principle:</strong> A broken plugin must never break the chat. Every error path results in either a visible error card or an <code>is_error: true</code> tool result that the LLM can respond to gracefully.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ TESTING ═════════════════════════════════ -->
+  <section id="testing">
+    <div class="section-head">
+      <p class="eyebrow">8 &middot; Testing strategy</p>
+      <h2>How we verify the plugin lifecycle</h2>
+      <p class="lede">Mapped to the 7 testing scenarios from the requirements spec.</p>
+    </div>
+
+    <table style="margin-top:16px">
+      <thead><tr><th>#</th><th>Scenario (from requirements)</th><th>Test approach</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>User asks chatbot to use a third-party app</td><td>Send "let's play chess" &rarr; assert <code>plugin__chess__new_game</code> in tool calls</td><td><span class="badge blue">Integration</span></td></tr>
+        <tr><td>2</td><td>Third-party app UI renders correctly</td><td>Assert <code>&lt;iframe&gt;</code> mounted with correct <code>sandbox</code> attributes, receives <code>PLUGIN_INIT</code></td><td><span class="badge blue">Integration</span></td></tr>
+        <tr><td>3</td><td>User interacts with app, returns to chatbot</td><td>Mock plugin sends <code>COMPLETION</code> &rarr; assert tool result injected into session messages</td><td><span class="badge blue">Integration</span></td></tr>
+        <tr><td>4</td><td>Chatbot answers about app results after completion</td><td>After completion, send follow-up &rarr; assert LLM prompt includes structured game data</td><td><span class="badge green">E2E</span></td></tr>
+        <tr><td>5</td><td>Switch between multiple apps in same conversation</td><td>Invoke chess then weather &rarr; assert both tool results in context, no state collision</td><td><span class="badge green">E2E</span></td></tr>
+        <tr><td>6</td><td>Ambiguous query mapping to multiple apps</td><td>"play a game" with chess + trivia installed &rarr; assert LLM picks one (not both)</td><td><span class="badge green">E2E</span></td></tr>
+        <tr><td>7</td><td>Chatbot refuses for unrelated queries</td><td>"What's 2+2?" with chess active &rarr; assert no plugin tool called</td><td><span class="badge blue">Integration</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:24px">Mock plugin for testing</h3>
+    <details class="code-toggle">
+      <summary>test-utils/mock-plugin.ts</summary>
+<pre>// A minimal plugin that completes immediately — for integration tests
+export const MOCK_MANIFEST: PluginManifest = {
+  schema_version: '1.0',
+  id: 'com.test.echo',
+  name: 'Echo',
+  version: '1.0.0',
+  description_for_human: 'Test plugin',
+  description_for_model: 'Echoes input back. Use for testing.',
+  entry: { ui: 'echo.html' },
+  tools: [{
+    name: 'echo',
+    description: 'Echoes the input',
+    inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
+  }],
+  permissions: [],
+  networkAccess: { allowedDomains: [] },
+  uiConfig: { defaultWidth: 300, defaultHeight: 200, resizable: false },
+};
+
+// The echo.html sends PLUGIN_READY immediately, then COMPLETION on first TOOL_INVOKE</pre>
+    </details>
+  </section>
+
+  <!-- ═══════════════════════════════ PLUGIN SDK (HELLO WORLD) ════════════════ -->
+  <section id="sdk">
+    <div class="section-head">
+      <p class="eyebrow">9 &middot; Developer experience</p>
+      <h2>Building a plugin: Hello World</h2>
+      <p class="lede">What a third-party developer needs to build and ship a ChatBridge plugin.</p>
+    </div>
+
+    <h3 style="margin-top:20px">Plugin file structure</h3>
+    <div class="file-tree">
+      my-plugin/<br/>
+      &nbsp;&nbsp;<span class="new">plugin.json</span> &mdash; manifest<br/>
+      &nbsp;&nbsp;<span class="new">dist/ui.html</span> &mdash; plugin UI (single HTML file or bundled app)<br/>
+      &nbsp;&nbsp;<span class="existing">package.json</span> &mdash; optional, for build tooling
+    </div>
+
+    <h3 style="margin-top:24px">The Plugin SDK</h3>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:12px">Plugin authors include a small SDK script. It wraps postMessage into a clean API inspired by VS Code's <code>acquireVsCodeApi()</code>.</p>
+
+    <details class="code-toggle">
+      <summary>plugin-sdk.js (bundled into plugin's ui.html)</summary>
+<pre>class ChatBridgePlugin {
+  #targetOrigin = '*';  // opaque-origin iframes must use '*'
+  #instanceId;
+  #nonce;
+  #onInit;
+  #onToolInvoke;
+
+  constructor() {
+    const params = new URLSearchParams(location.search);
+    this.#instanceId = params.get('instanceId');
+    this.#nonce = params.get('nonce');
+    window.addEventListener('message', this.#handleMessage.bind(this));
+  }
+
+  // Call when your UI is ready
+  ready(version = '1.0.0') {
+    window.parent.postMessage(
+      { type: 'PLUGIN_READY', instanceId: this.#instanceId, nonce: this.#nonce, version },
+      this.#targetOrigin
+    );
+  }
+
+  // Register handlers
+  onInit(handler)       { this.#onInit = handler; }
+  onToolInvoke(handler) { this.#onToolInvoke = handler; }
+
+  // Send state update to host (debounce in your code)
+  updateState(state) {
+    window.parent.postMessage(
+      { type: 'STATE_UPDATE', instanceId: this.#instanceId, nonce: this.#nonce, state },
+      this.#targetOrigin
+    );
+  }
+
+  // Signal task completion
+  complete(payload) {
+    window.parent.postMessage(
+      { type: 'COMPLETION', instanceId: this.#instanceId, nonce: this.#nonce, payload },
+      this.#targetOrigin
+    );
+  }
+
+  #handleMessage(event) {
+    const msg = event.data;
+    if (msg?.instanceId !== this.#instanceId || msg?.nonce !== this.#nonce) return;
+    if (msg.type === 'PLUGIN_INIT')       this.#onInit?.(msg.payload);
+    if (msg.type === 'TOOL_INVOKE_PORT')  this.#onToolInvoke?.(msg, event.ports[0]);
+  }
+}</pre>
+    </details>
+
+    <h3 style="margin-top:24px">Hello World plugin</h3>
+    <details class="code-toggle">
+      <summary>Complete working example &mdash; counter plugin</summary>
+<pre>&lt;!-- dist/ui.html --&gt;
+&lt;!doctype html&gt;
+&lt;html&gt;
+&lt;head&gt;&lt;style&gt;
+  body { font-family: system-ui; display: grid; place-items: center; height: 100vh; margin: 0; }
+  button { font-size: 24px; padding: 12px 32px; border-radius: 8px; border: 2px solid #333; cursor: pointer; }
+  .count { font-size: 48px; font-weight: 800; margin: 16px 0; }
+&lt;/style&gt;&lt;/head&gt;
+&lt;body&gt;
+  &lt;div style="text-align:center"&gt;
+    &lt;div class="count" id="count"&gt;0&lt;/div&gt;
+    &lt;button onclick="increment()"&gt;+1&lt;/button&gt;
+    &lt;button onclick="done()"&gt;Done&lt;/button&gt;
+  &lt;/div&gt;
+  &lt;script&gt;
+    // Inline the SDK or import it
+    const params = new URLSearchParams(location.search);
+    const instanceId = params.get('instanceId');
+    const nonce = params.get('nonce');
+    let count = 0;
+
+    window.addEventListener('message', (e) =&gt; {
+      if (e.data?.instanceId !== instanceId || e.data?.nonce !== nonce) return;
+      if (e.data.type === 'PLUGIN_INIT') {
+        count = e.data.payload.initialState?.count ?? 0;
+        render();
+      }
+    });
+
+    // Signal ready
+    window.parent.postMessage({ type: 'PLUGIN_READY', instanceId, nonce, version: '1.0.0' }, '*');
+
+    function render() { document.getElementById('count').textContent = count; }
+
+    function increment() {
+      count++;
+      render();
+      window.parent.postMessage({ type: 'STATE_UPDATE', instanceId, nonce, state: { count } }, '*');
+    }
+
+    function done() {
+      window.parent.postMessage({
+        type: 'COMPLETION', instanceId, nonce,
+        payload: { summary: `Counter reached ${count}.`, structuredData: { count },
+                   continueConversation: true, keepAlive: false }
+      }, '*');
+    }
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+    </details>
+  </section>
+
+  <!-- ═══════════════════════════════ INTEGRATION ═════════════════════════════ -->
+  <section id="integration">
+    <div class="section-head">
+      <p class="eyebrow">10 &middot; Codebase integration</p>
+      <h2>How it connects to the existing app</h2>
+    </div>
+
+    <h3 style="margin-top:20px">New files</h3>
+    <div class="file-tree">
+      <span class="new">src/shared/plugin-types.ts</span> &mdash; PluginManifest, PluginTool, CompletionPayload types<br/>
+      <span class="new">src/shared/plugin-protocol.ts</span> &mdash; HostToPlugin / PluginToHost message types + guards<br/>
+      <span class="new">src/renderer/stores/pluginRegistry.ts</span> &mdash; Zustand store: discovered plugins, active instances<br/>
+      <span class="new">src/renderer/components/PluginFrame.tsx</span> &mdash; Sandboxed iframe wrapper with postMessage bridge<br/>
+      <span class="new">src/renderer/hooks/usePluginChannel.ts</span> &mdash; Hook for host&harr;plugin communication<br/>
+      <span class="new">src/renderer/plugins/chess/plugin.json</span> &mdash; Chess plugin manifest<br/>
+      <span class="new">src/renderer/plugins/chess/dist/ui.html</span> &mdash; Chess UI (built from existing route)<br/>
+      <span class="new">src/renderer/plugins/plugin-sdk.ts</span> &mdash; SDK for plugin authors<br/>
+    </div>
+
+    <h3 style="margin-top:20px">Modified files</h3>
+    <div class="file-tree">
+      <span class="existing">src/renderer/packages/model-calls/stream-text.ts</span> &mdash; Add plugin tools to ToolSet (~L296-313)<br/>
+      <span class="existing">src/renderer/stores/session/generation.ts</span> &mdash; Handle plugin tool_use results<br/>
+      <span class="existing">src/renderer/routes/index.tsx</span> &mdash; Remove chess intent detection<br/>
+      <span class="existing">src/renderer/Sidebar.tsx</span> &mdash; Dynamic plugin nav items<br/>
+      <span class="existing">src/main/main.ts</span> &mdash; Register <code>plugin://</code> protocol + install IPC<br/>
+    </div>
+
+    <details class="code-toggle" style="margin-top:16px">
+      <summary>Tool injection into existing ToolSet</summary>
+<pre>// src/renderer/packages/model-calls/stream-text.ts
+
+// BEFORE:
+const tools: ToolSet = { ...mcpController.getAvailableTools(), ...webSearchTools, ...knowledgeBaseTools };
+
+// AFTER:
+const pluginTools = pluginRegistry.getToolSet();
+const tools: ToolSet = { ...mcpController.getAvailableTools(), ...webSearchTools, ...knowledgeBaseTools, ...pluginTools };</pre>
+    </details>
+  </section>
+
+  <!-- ═══════════════════════════════ SECURITY ════════════════════════════════ -->
+  <section id="security">
+    <div class="section-head">
+      <p class="eyebrow">11 &middot; Security model</p>
+      <h2>Defense in depth</h2>
+      <p class="lede">Nine layers of isolation between a plugin and the host application.</p>
+    </div>
+
+    <table style="margin-top:16px">
+      <thead><tr><th>#</th><th>Defense</th><th>Prevents</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><code>sandbox="allow-scripts"</code></td><td>DOM access to parent</td></tr>
+        <tr><td>2</td><td><code>event.source</code> + nonce validation</td><td>Spoofed messages</td></tr>
+        <tr><td>3</td><td><code>nodeIntegrationInSubFrames: false</code></td><td>Electron IPC / Node.js access</td></tr>
+        <tr><td>4</td><td>No <code>allow-top-navigation</code></td><td>Parent window hijacking</td></tr>
+        <tr><td>5</td><td><code>referrerPolicy="no-referrer"</code></td><td>Internal URL leaks</td></tr>
+        <tr><td>6</td><td>Rate limiter (30 burst, 10/sec)</td><td>Message flooding</td></tr>
+        <tr><td>7</td><td>Type guards on every message</td><td>Malformed payloads</td></tr>
+        <tr><td>8</td><td>CSP <code>frame-src</code> whitelist</td><td>Unauthorized plugin URLs</td></tr>
+        <tr><td>9</td><td>Namespaced storage + path traversal checks</td><td>Cross-plugin data access</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout err" style="margin-top:16px">
+      <strong>CVE-2022-23597 (Element Desktop RCE):</strong> Exploited <code>nodeIntegrationInSubFrames: true</code> to let an iframe call <code>ipcRenderer</code> directly. Our <code>false</code> setting blocks this entire attack class.
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ SOURCES ═════════════════════════════════ -->
+  <section id="sources">
+    <div class="section-head">
+      <p class="eyebrow">References</p>
+      <h2>Sources</h2>
+    </div>
+    <div class="card" style="font-size:13px">
+      <p><strong>Plugin architecture</strong></p>
+      <ul style="padding-left:18px; margin-top:8px">
+        <li>OpenAI Function Calling &mdash; <code>platform.openai.com/docs/guides/function-calling</code></li>
+        <li>Anthropic Tool Use &mdash; <code>platform.claude.com/docs/en/agents-and-tools/tool-use</code></li>
+        <li>MCP Specification (2025-11-25) &mdash; <code>modelcontextprotocol.io/specification</code></li>
+        <li>VS Code Webview API &mdash; <code>code.visualstudio.com/api/extension-guides/webview</code></li>
+        <li>VS Code Language Model Tools &mdash; <code>code.visualstudio.com/api/extension-guides/ai/tools</code></li>
+        <li>Figma Plugin Architecture &mdash; <code>figma.com/blog/how-we-built-the-figma-plugin-system</code></li>
+        <li>Figma Plugin Manifest &mdash; <code>developers.figma.com/docs/plugins/manifest</code></li>
+        <li>Slack App Manifest &mdash; <code>docs.slack.dev/reference/app-manifest</code></li>
+        <li>Discord Components &mdash; <code>docs.discord.com/developers/components/reference</code></li>
+      </ul>
+      <p style="margin-top:16px"><strong>Electron security &amp; embedding</strong></p>
+      <ul style="padding-left:18px; margin-top:8px">
+        <li>Electron Web Embeds &mdash; <code>electronjs.org/docs/latest/tutorial/web-embeds</code></li>
+        <li>Electron Security &mdash; <code>electronjs.org/docs/latest/tutorial/security</code></li>
+        <li>Electron Sandboxing &mdash; <code>electronjs.org/docs/latest/tutorial/sandbox</code></li>
+        <li>Electron Context Isolation &mdash; <code>electronjs.org/docs/latest/tutorial/context-isolation</code></li>
+        <li>WebContentsView Migration &mdash; <code>developer.mamezou-tech.com</code></li>
+        <li>CVE-2022-23597 (Element RCE) &mdash; <code>blog.electrovolt.io/posts/element-rce</code></li>
+        <li>Secure Electron Framework &mdash; Bishop Fox</li>
+      </ul>
+      <p style="margin-top:16px"><strong>iframe communication</strong></p>
+      <ul style="padding-left:18px; margin-top:8px">
+        <li>MDN: Window.postMessage() &mdash; <code>developer.mozilla.org</code></li>
+        <li>MDN: Channel Messaging API &mdash; <code>developer.mozilla.org</code></li>
+        <li>Sandboxed iFrames &mdash; <code>web.dev/articles/sandboxed-iframes</code></li>
+        <li>Penpal (iframe RPC) &mdash; <code>github.com/Aaronius/penpal</code></li>
+        <li>Typed IFrame Messaging &mdash; <code>nickwhite.cc/blog/strongly-typed-iframe-messaging</code></li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>

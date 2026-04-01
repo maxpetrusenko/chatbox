@@ -3,6 +3,7 @@ import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import {
   IconCirclePlus,
   IconCode,
+  IconDeviceGamepad2,
   IconInfoCircle,
   IconLayoutSidebarLeftCollapse,
   IconMessageChatbot,
@@ -111,6 +112,7 @@ export default function Sidebar() {
       onOpen={() => setShowSidebar(true)}
       ModalProps={{
         keepMounted: true, // Better open performance on mobile.
+        disableEnforceFocus: true,
       }}
       sx={{
         '& .MuiDrawer-paper': {
@@ -125,7 +127,6 @@ export default function Sidebar() {
         language === 'ar' ? { sx: { direction: 'rtl', overflowY: 'initial' } } : { sx: { overflowY: 'initial' } }
       }
       disableSwipeToOpen={CHATBOX_BUILD_PLATFORM !== 'ios'} // 只在iOS设备上启用SwipeToOpen
-      disableEnforceFocus={true} // 关闭 focus trap，避免在侧边栏打开时弹出的 modal 中 input 无法点击
     >
       <Stack
         h="100%"
@@ -172,6 +173,30 @@ export default function Sidebar() {
               {t('Create Image')}
             </Button>
           </Stack>
+          <NavLink
+            c="chatbox-secondary"
+            className="rounded"
+            label={t('Games')}
+            leftSection={<ScalableIcon icon={IconDeviceGamepad2} size={20} />}
+            childrenOffset={28}
+            variant="light"
+            p="xs"
+            defaultOpened={false}
+          >
+            <NavLink
+              c="chatbox-secondary"
+              className="rounded"
+              label={t('Chess')}
+              onClick={() => {
+                navigate({ to: '/chess' })
+                if (isSmallScreen) {
+                  setShowSidebar(false)
+                }
+              }}
+              variant="light"
+              p="xs"
+            />
+          </NavLink>
           <NavLink
             c="chatbox-secondary"
             className="rounded"

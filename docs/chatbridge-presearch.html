@@ -1,0 +1,2052 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChatBridge Pre-search</title>
+    <style>
+/* chatbridge-presearch.css */
+:root {
+  --bg: #ffffff;
+  --bg-warm: #faf9f5;
+  --bg-sand: #f2f0e8;
+  --terra: #d4845a;
+  --terra-dark: #c06a3e;
+  --terra-light: rgba(212, 132, 90, 0.08);
+  --ink: #1a1a18;
+  --muted: #6b6a68;
+  --subtle: #b0aea5;
+  --line: #e8e6dc;
+  --dark-bg: #1c1f26;
+  --dark-panel: #242830;
+  --dark-ink: #e8e6dc;
+  --dark-muted: #9a9890;
+  --dark-line: rgba(255, 255, 255, 0.08);
+  --dark-accent: #da7756;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.06);
+  --radius: 10px;
+  --radius-lg: 16px;
+  --font-serif: "Source Serif 4", Georgia, "Iowan Old Style", serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* { box-sizing: border-box; margin: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  color: var(--ink);
+  background: var(--bg);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.68;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Grain overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  z-index: 9999;
+}
+
+::selection {
+  background: rgba(212, 132, 90, 0.18);
+  color: var(--ink);
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--subtle); }
+
+/* ── Page loader ── */
+
+.page-loader {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s var(--ease-smooth), visibility 0.5s;
+}
+
+.page-loader.done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.loader-bar {
+  width: 48px;
+  height: 3px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.loader-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--terra);
+  animation: loaderSlide 0.8s var(--ease-out) infinite;
+  border-radius: 2px;
+}
+
+@keyframes loaderSlide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* ── Progress bar ── */
+
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--terra);
+  z-index: 9998;
+  width: 0%;
+  transition: width 0.15s linear;
+}
+
+/* ── Links ── */
+
+a {
+  color: var(--terra-dark);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color 0.2s ease, text-decoration-color 0.2s ease;
+}
+
+a:hover { color: var(--terra); }
+
+a:focus-visible {
+  outline: 2px solid var(--terra);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* ── Page ── */
+
+.page {
+  width: min(1040px, calc(100vw - 48px));
+  margin: 0 auto;
+  padding: 0 0 120px;
+}
+
+/* ── Eyebrow / kicker ── */
+
+.eyebrow, .kicker {
+  font-family: var(--font-sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--subtle);
+}
+
+/* ── Typography ── */
+
+h1, h2, h3, h4 { margin: 0; line-height: 1.12; }
+
+h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(3.2rem, 7vw, 5.4rem);
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+}
+
+h3 {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+p { margin: 0; }
+
+/* ── Hero ── */
+
+.hero {
+  padding: 80px 0 56px;
+  border-bottom: 1px solid var(--line);
+}
+
+.hero-lockup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 28px;
+  align-items: start;
+}
+
+.hero-copy {
+  min-width: 0;
+}
+
+.hero-mark {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.hero-mark svg {
+  width: min(100%, 320px);
+  height: auto;
+}
+
+.hero-mark-panel {
+  fill: rgba(242, 240, 232, 0.78);
+  stroke: var(--line);
+  stroke-width: 1.2;
+}
+
+.hero-mark-panel-soft {
+  fill: rgba(250, 249, 245, 0.95);
+}
+
+.hero-mark-link,
+.hero-mark-base {
+  fill: none;
+  stroke-linecap: round;
+  stroke-width: 3;
+}
+
+.hero-mark-link {
+  stroke: url(#bridgeGlow);
+}
+
+.hero-mark-link-light {
+  stroke-width: 2.6;
+  opacity: 0.62;
+}
+
+.hero-mark-link-dark {
+  stroke: url(#bridgeCool);
+}
+
+.hero-mark-node {
+  fill: var(--bg);
+  stroke: var(--line);
+  stroke-width: 1.4;
+}
+
+.hero-mark-node-solid {
+  fill: var(--terra);
+  stroke: rgba(212, 132, 90, 0.28);
+}
+
+.hero-mark-node-accent {
+  fill: rgba(212, 132, 90, 0.12);
+  stroke: rgba(212, 132, 90, 0.38);
+}
+
+.hero-mark-spark {
+  fill: rgba(212, 132, 90, 0.14);
+  stroke: rgba(212, 132, 90, 0.45);
+  stroke-width: 1.2;
+}
+
+.hero-mark-dash {
+  fill: none;
+  stroke: rgba(212, 132, 90, 0.34);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-dasharray: 6 8;
+}
+
+.hero-mark-base {
+  stroke: rgba(26, 26, 24, 0.18);
+  stroke-width: 2;
+}
+
+.hero .eyebrow {
+  margin-bottom: 20px;
+  display: inline-block;
+  padding: 5px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-warm);
+}
+
+.hero-sub {
+  font-family: var(--font-serif);
+  font-size: clamp(1.15rem, 2vw, 1.4rem);
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 400;
+  margin-top: 16px;
+  max-width: 32ch;
+}
+
+.toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 40px;
+}
+
+.toc a {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  text-decoration: none;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.25s var(--ease-smooth);
+  cursor: pointer;
+}
+
+.toc a:hover {
+  color: var(--ink);
+  border-color: var(--terra);
+  background: var(--terra-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.toc a:active { transform: scale(0.97); }
+
+.toc a.active {
+  color: #fff;
+  background: var(--terra);
+  border-color: var(--terra);
+  box-shadow: 0 2px 8px rgba(212, 132, 90, 0.25);
+}
+
+/* ── Grid systems ── */
+
+.hero-grid, .grid-2, .grid-3,
+.phase-solutions, .wireframes,
+.sources, .filesystem-grid, .apps-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.hero-grid, .grid-2, .filesystem-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-3, .phase-solutions, .wireframes,
+.apps-grid, .sources {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* ── Cards ── */
+
+.hero-note, .card, .wireframe, .phase-card,
+.source-card, .timeline, .diagram, .matrix, .file-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-warm);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.3s var(--ease-out),
+    box-shadow 0.3s var(--ease-out),
+    border-color 0.25s ease;
+}
+
+.hero-note, .card, .phase-card, .source-card,
+.timeline, .matrix, .file-card {
+  padding: 22px;
+}
+
+/* ── Sections ── */
+
+section {
+  margin-top: 24px;
+  padding: 36px;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+.section-head {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 24px;
+  max-width: 68ch;
+}
+
+.lede {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+/* ── Case study analysis — terracotta cover ── */
+
+#case-study-analysis {
+  margin-top: 0;
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 56px 48px;
+  position: relative;
+  overflow: hidden;
+}
+
+#case-study-analysis::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 60%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+#case-study-analysis .eyebrow { color: rgba(26, 26, 24, 0.45); }
+
+#case-study-analysis h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
+  font-weight: 300;
+  color: var(--ink);
+}
+
+#case-study-analysis .card {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: grid;
+  gap: 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+#case-study-analysis p { color: var(--ink); line-height: 1.75; }
+#case-study-analysis strong { color: var(--ink); }
+
+/* ── Lists ── */
+
+ul { margin: 0; padding-left: 20px; }
+li + li { margin-top: 5px; }
+li { line-height: 1.6; }
+
+/* ── Phase / decision cards ── */
+
+.phase-card { display: grid; gap: 12px; }
+
+.phase-card .label {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--bg);
+  letter-spacing: 0.02em;
+  transition: all 0.2s ease;
+}
+
+.phase-card.recommended {
+  border-color: var(--terra);
+  border-width: 2px;
+}
+
+.phase-card.recommended .label {
+  background: var(--terra);
+  color: #fff;
+  border-color: var(--terra);
+}
+
+/* ── Tags ── */
+
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.tag {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 500;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--bg);
+  transition: all 0.2s ease;
+}
+
+.tag.warm { color: var(--terra-dark); border-color: rgba(212, 132, 90, 0.3); background: rgba(212, 132, 90, 0.06); }
+.tag.cool { color: #4a7ab5; border-color: rgba(106, 155, 204, 0.3); background: rgba(106, 155, 204, 0.06); }
+.tag.hot { color: #a0392b; border-color: rgba(192, 57, 43, 0.2); background: rgba(192, 57, 43, 0.04); }
+
+/* ── Matrix ── */
+
+.matrix { display: grid; gap: 10px; }
+
+.matrix-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.matrix-row:first-child { border-top: 0; padding-top: 0; }
+
+/* ── Wireframes ── */
+
+.wireframe {
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+  min-height: 260px;
+  background: var(--bg-warm);
+}
+
+.wf-bar, .wf-block, .wf-sidebar, .wf-chat,
+.wf-card, .wf-input, .wf-header, .wf-modal,
+.wf-list, .wf-mini {
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.wf-bar, .wf-input, .wf-header { min-height: 32px; }
+.wf-layout { display: grid; grid-template-columns: 90px 1fr; gap: 8px; flex: 1; }
+.wf-sidebar { min-height: 190px; }
+.wf-chat { padding: 8px; display: grid; gap: 8px; }
+.wf-card { min-height: 72px; }
+.wf-card.tall { min-height: 110px; }
+.wf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.wf-modal { min-height: 130px; margin: auto 16px; }
+
+/* ── File cards ── */
+.file-card { display: grid; gap: 10px; }
+
+/* ── Inline code ── */
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--terra-dark);
+  background: var(--terra-light);
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+code:hover { background: rgba(212, 132, 90, 0.14); }
+
+/* ── Source cards ── */
+
+.source-card { display: grid; gap: 8px; padding: 22px; }
+.source-card p:last-child { color: var(--muted); font-size: 0.86rem; }
+.source-card strong { font-size: 0.92rem; }
+
+.source-card a {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--subtle);
+  text-decoration: none;
+  word-break: break-all;
+  transition: color 0.2s ease;
+}
+
+.source-card a:hover { color: var(--terra); }
+
+.footer-note { color: var(--muted); font-size: 0.84rem; }
+
+/* ── Verdict section ── */
+
+.verdict-section { background: var(--bg-warm); }
+
+.verdict-card {
+  position: relative;
+  padding-top: 52px;
+}
+
+.verdict-num {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  font-family: var(--font-serif);
+  font-size: 2.2rem;
+  font-weight: 300;
+  color: var(--line);
+  line-height: 1;
+  pointer-events: none;
+  transition: color 0.3s ease;
+}
+
+.verdict-card:hover .verdict-num { color: var(--terra); }
+
+/* ── Decision grid ── */
+
+.decision-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 12px;
+}
+
+.decision-col {
+  display: grid;
+  gap: 10px;
+}
+
+.decision-col.dim { opacity: 0.45; }
+.decision-col.dim:hover { opacity: 0.7; transition: opacity 0.3s ease; }
+
+.decision-col.picked { opacity: 1; }
+
+.decision-header {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 6px 0;
+  border-radius: 6px;
+  background: var(--terra);
+  color: #fff;
+  letter-spacing: 0.04em;
+}
+
+.decision-header.dim {
+  background: var(--bg-sand);
+  color: var(--muted);
+}
+
+.decision-cell {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--bg-warm);
+  border: 1px solid var(--line);
+}
+
+.picked .decision-cell {
+  border-color: var(--terra);
+  border-width: 2px;
+  background: rgba(212, 132, 90, 0.04);
+}
+
+.decision-phase {
+  font-family: var(--font-sans);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--subtle);
+}
+
+.decision-name {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.decision-detail {
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.decision-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.decision-summary-item {
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--bg-warm);
+  border: 1px solid var(--line);
+  font-size: 0.82rem;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.decision-summary-item span {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--terra-dark);
+  margin-bottom: 4px;
+}
+
+/* ── Moat section ── */
+
+#moat {
+  background: var(--bg-warm);
+  border-color: var(--line);
+}
+
+#moat .matrix {
+  background: var(--bg);
+}
+
+/* ── Decision aid ── */
+
+.grid-3 .card h3 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+
+/* ── Split heading word spans ── */
+
+.split-heading .word {
+  display: inline-block;
+  overflow: hidden;
+}
+
+.split-heading .word-inner {
+  display: inline-block;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 1000px) {
+  .hero-lockup,
+  .hero-grid, .grid-2, .grid-3, .phase-solutions,
+  .wireframes, .sources, .filesystem-grid, .apps-grid, .flow-row {
+    grid-template-columns: 1fr;
+  }
+  .matrix-row { grid-template-columns: 1fr; }
+  .decision-grid { grid-template-columns: 1fr; }
+  .decision-summary { grid-template-columns: repeat(2, 1fr); }
+  .page { width: min(100vw - 24px, 1040px); }
+  section { padding: 22px; }
+  #case-study-analysis { padding: 32px 22px; }
+  .hero { padding: 48px 0 36px; }
+  .hero-mark { justify-content: flex-start; max-width: 280px; }
+  .hero h1 { font-size: clamp(2.6rem, 10vw, 3.6rem); }
+  .toc { gap: 6px; }
+  .toc a { font-size: 0.74rem; padding: 5px 11px; }
+}
+
+/* chatbridge-tech.css */
+/* ── Dark architecture panels ── */
+
+#design {
+  background:
+    radial-gradient(ellipse at 15% 0%, rgba(218, 119, 86, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 100%, rgba(106, 155, 204, 0.04) 0%, transparent 50%),
+    var(--dark-bg);
+  border-color: var(--dark-bg);
+  color: var(--dark-ink);
+  border: none;
+}
+
+#design .eyebrow { color: var(--dark-muted); }
+#design h2 { color: var(--dark-ink); }
+#design .lede { color: var(--dark-muted); }
+#design h3 { color: var(--dark-ink); }
+#design p { color: var(--dark-muted); }
+#design li { color: var(--dark-ink); }
+#design strong { color: var(--dark-ink); }
+
+#design .phase-card,
+#design .matrix {
+  background: var(--dark-panel);
+  border-color: var(--dark-line);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+#design .phase-card .label {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--dark-line);
+  color: var(--dark-muted);
+}
+
+#design .phase-card.recommended {
+  border-color: var(--dark-accent);
+  background: linear-gradient(180deg, rgba(218, 119, 86, 0.06) 0%, var(--dark-panel) 100%);
+}
+
+#design .phase-card.recommended .label {
+  background: var(--dark-accent);
+  border-color: var(--dark-accent);
+  color: #fff;
+}
+
+#design .matrix-row { border-top-color: var(--dark-line); }
+
+#design code {
+  color: var(--dark-accent);
+  background: rgba(218, 119, 86, 0.1);
+}
+
+/* ── Dark auth + chess ── */
+
+#auth-matrix {
+  background:
+    radial-gradient(ellipse at 70% 20%, rgba(218, 119, 86, 0.05) 0%, transparent 50%),
+    var(--dark-bg);
+  border-color: var(--dark-bg);
+  border: none;
+  color: var(--dark-ink);
+}
+
+#chess-e2e {
+  background:
+    radial-gradient(ellipse at 30% 80%, rgba(120, 140, 93, 0.05) 0%, transparent 50%),
+    var(--dark-bg);
+  border-color: var(--dark-bg);
+  border: none;
+  color: var(--dark-ink);
+}
+
+#auth-matrix .eyebrow, #chess-e2e .eyebrow { color: var(--dark-muted); }
+#auth-matrix h2, #chess-e2e h2 { color: var(--dark-ink); }
+
+/* ── Tech grid ── */
+
+.tech-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 20px;
+}
+
+.tech-card {
+  border: 1px solid var(--dark-line);
+  border-radius: var(--radius);
+  background: var(--dark-panel);
+  padding: 22px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+}
+
+.tech-card h3 { color: var(--dark-ink); }
+.tech-card p { color: var(--dark-muted); font-size: 0.88rem; }
+
+/* ── Mono grid ── */
+
+.mono-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 20px;
+}
+
+.mono-block {
+  border: 1px solid var(--dark-line);
+  border-radius: var(--radius);
+  background: var(--dark-panel);
+  padding: 22px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+}
+
+.mono-block h3 {
+  margin-bottom: 14px;
+  color: var(--dark-ink);
+  font-size: 0.9rem;
+}
+
+.mono-block pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.75;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Syntax coloring via data attributes */
+.mono-block pre .syn-arrow { color: var(--dark-accent); }
+.mono-block pre .syn-key { color: #8bb8cc; }
+.mono-block pre .syn-val { color: #b8c990; }
+.mono-block pre .syn-str { color: #d4a373; }
+.mono-block pre .syn-dim { color: #666a72; }
+.mono-block pre .syn-check { color: #79d2b0; }
+.mono-block pre .syn-cross { color: #e07070; }
+.mono-block pre { color: #c0bcb0; }
+
+.mini-note {
+  margin-top: 12px;
+  color: var(--dark-muted);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+/* ── Decisions section (light) ── */
+
+#decisions .mono-block {
+  background: var(--bg-warm);
+  border-color: var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+#decisions .mono-block h3 { color: var(--ink); }
+
+#decisions .mono-block pre {
+  color: var(--ink);
+  background: var(--bg);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+#decisions .mono-block pre .syn-arrow { color: var(--terra); }
+#decisions .mono-block pre .syn-check { color: #5a8a5a; }
+#decisions .mono-block pre .syn-cross { color: #b04040; }
+
+#decisions .mini-note { color: var(--muted); }
+
+/* ── Dark section edge glow ── */
+
+#design, #auth-matrix, #chess-e2e {
+  position: relative;
+}
+
+#design::after,
+#auth-matrix::after,
+#chess-e2e::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 5%;
+  right: 5%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(218, 119, 86, 0.15), transparent);
+}
+
+@media (max-width: 1000px) {
+  .tech-grid, .mono-grid { grid-template-columns: 1fr; }
+}
+
+/* chatbridge-motion.css */
+/* ── Hero entrance ── */
+
+.hero {
+  animation: heroFade 0.8s var(--ease-out) 0.3s both;
+}
+
+.hero .eyebrow {
+  animation: fadeUp 0.5s var(--ease-out) 0.4s both;
+}
+
+.hero h1 {
+  opacity: 0;
+}
+
+.hero h1.revealed {
+  opacity: 1;
+}
+
+.hero h1 .word-inner {
+  display: inline-block;
+  transform: translateY(100%);
+  animation: wordReveal 0.7s var(--ease-out) both;
+}
+
+.hero-sub {
+  animation: fadeUp 0.6s var(--ease-out) 0.7s both;
+}
+
+.hero .toc {
+  animation: fadeUp 0.5s var(--ease-out) 0.85s both;
+}
+
+.hero .toc a {
+  animation: pillIn 0.35s var(--ease-out) both;
+}
+
+.hero .toc a:nth-child(1) { animation-delay: 0.9s; }
+.hero .toc a:nth-child(2) { animation-delay: 0.95s; }
+.hero .toc a:nth-child(3) { animation-delay: 1.0s; }
+.hero .toc a:nth-child(4) { animation-delay: 1.05s; }
+.hero .toc a:nth-child(5) { animation-delay: 1.1s; }
+.hero .toc a:nth-child(6) { animation-delay: 1.15s; }
+.hero .toc a:nth-child(7) { animation-delay: 1.2s; }
+.hero .toc a:nth-child(8) { animation-delay: 1.25s; }
+
+@keyframes heroFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes wordReveal {
+  from { transform: translateY(110%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pillIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Scroll-triggered entrance ── */
+
+section {
+  opacity: 0;
+  transform: translateY(36px);
+  transition:
+    opacity 0.75s var(--ease-out),
+    transform 0.75s var(--ease-out);
+}
+
+section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Dark section dramatic scale entrance ── */
+
+#design.visible,
+#auth-matrix.visible,
+#chess-e2e.visible {
+  animation: darkReveal 0.85s var(--ease-out) both;
+}
+
+@keyframes darkReveal {
+  from { opacity: 0; transform: translateY(44px) scale(0.997); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Staggered children ── */
+
+.phase-card, .card, .mono-block, .tech-card,
+.source-card, .file-card, .wireframe, .matrix,
+.decision-col, .decision-summary-item {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 0.55s var(--ease-out),
+    transform 0.55s var(--ease-out),
+    border-color 0.25s ease,
+    box-shadow 0.3s var(--ease-out);
+}
+
+.phase-card.visible, .card.visible, .mono-block.visible,
+.tech-card.visible, .source-card.visible, .file-card.visible,
+.wireframe.visible, .matrix.visible,
+.decision-col.visible, .decision-summary-item.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Case study stagger ── */
+
+#case-study-analysis .card {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.65s var(--ease-out), transform 0.65s var(--ease-out);
+}
+
+#case-study-analysis .card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#case-study-analysis .card p {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+}
+
+#case-study-analysis .card p.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Card hover ── */
+
+.phase-card:hover, .card:hover, .tech-card:hover,
+.source-card:hover, .file-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-3px);
+}
+
+#design .phase-card:hover, #design .tech-card:hover,
+#auth-matrix .mono-block:hover, #chess-e2e .mono-block:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  transform: translateY(-3px);
+}
+
+.mono-block:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+/* ── Pre block hover glow ── */
+
+.mono-block pre { transition: box-shadow 0.3s ease; }
+
+.mono-block:hover pre {
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(218, 119, 86, 0.12);
+}
+
+/* ── Section head animations ── */
+
+section.visible .section-head .eyebrow {
+  animation: slideInLeft 0.5s var(--ease-out) 0.1s both;
+}
+
+section.visible .section-head h2 {
+  animation: fadeUp 0.6s var(--ease-out) 0.18s both;
+}
+
+section.visible .section-head .lede {
+  animation: fadeUp 0.5s var(--ease-out) 0.28s both;
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Recommended card pulse ── */
+
+.phase-card.recommended.visible {
+  animation: recommendedPulse 2s ease 0.7s;
+}
+
+@keyframes recommendedPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(218, 119, 86, 0); }
+  25% { box-shadow: 0 0 0 5px rgba(218, 119, 86, 0.1); }
+  50% { box-shadow: 0 0 0 0 rgba(218, 119, 86, 0); }
+}
+
+/* ── Verdict number reveal ── */
+
+.verdict-num {
+  transition: color 0.3s ease;
+}
+
+.verdict-card.visible .verdict-num {
+  animation: numReveal 0.5s var(--ease-out) 0.35s both;
+}
+
+@keyframes numReveal {
+  from { opacity: 0; transform: translateY(-8px) scale(1.15); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Wireframe shimmer ── */
+
+.wireframe.visible .wf-card,
+.wireframe.visible .wf-sidebar,
+.wireframe.visible .wf-bar,
+.wireframe.visible .wf-input,
+.wireframe.visible .wf-header,
+.wireframe.visible .wf-modal {
+  animation: shimmer 3s ease-in-out infinite;
+  background: linear-gradient(110deg, var(--bg) 30%, var(--line) 50%, var(--bg) 70%);
+  background-size: 250% 100%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 250% 0; }
+  100% { background-position: -250% 0; }
+}
+
+/* ── Terracotta section gradient ── */
+
+#case-study-analysis {
+  background: linear-gradient(155deg, #d4845a 0%, #c87a52 35%, #d08e64 70%, #cc8058 100%);
+}
+
+/* ── Dark section top glow ── */
+
+#design::before, #auth-matrix::before, #chess-e2e::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(218, 119, 86, 0.25), transparent);
+}
+
+/* ── Focus ── */
+
+a:focus-visible {
+  outline: 2px solid var(--terra);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* ── Reduced motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  section, .phase-card, .card, .mono-block, .tech-card,
+  .source-card, .file-card, .wireframe, .matrix,
+  .decision-col, .decision-summary-item,
+  #case-study-analysis .card, #case-study-analysis .card p,
+  .hero, .hero h1, .hero .eyebrow, .hero-sub,
+  .hero .toc, .hero .toc a {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .hero h1 .word-inner {
+    transform: none !important;
+  }
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 1000px) {
+  .phase-card, .card, .mono-block, .tech-card,
+  .source-card, .file-card, .wireframe, .matrix {
+    transition-delay: 0ms !important;
+  }
+}
+
+    </style>
+  </head>
+  <body>
+    <div class="page-loader" aria-hidden="true">
+      <div class="loader-bar"></div>
+    </div>
+    <div class="progress-bar" aria-hidden="true"></div>
+    <main class="page">
+
+      <header class="hero">
+        <div class="hero-lockup">
+          <div class="hero-copy">
+            <p class="eyebrow">G4 Week 7 · Pre-search</p>
+            <h1 class="split-heading">ChatBridge</h1>
+            <p class="hero-sub">Building an AI chat platform with third-party app integration</p>
+            <nav class="toc">
+              <a href="#case-study-analysis">Analysis</a>
+              <a href="#decisions">Decisions</a>
+              <a href="#design">System design</a>
+              <a href="#auth-matrix">Auth</a>
+              <a href="#chess-e2e">Chess E2E</a>
+              <a href="#files">Connections</a>
+              <a href="#risks">Risks</a>
+              <a href="#moat">Why it wins</a>
+              <a href="#wireframes">Wireframes</a>
+              <a href="#sources">Sources</a>
+            </nav>
+          </div>
+          <div class="hero-mark" aria-hidden="true">
+            <svg viewBox="0 0 420 320" role="presentation" focusable="false">
+              <defs>
+                <linearGradient id="bridgeGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#d4845a" />
+                  <stop offset="100%" stop-color="#f1c7a8" />
+                </linearGradient>
+                <linearGradient id="bridgeCool" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#1a1a18" stop-opacity="0.9" />
+                  <stop offset="100%" stop-color="#d4845a" stop-opacity="0.22" />
+                </linearGradient>
+              </defs>
+              <rect x="38" y="62" width="134" height="196" rx="26" class="hero-mark-panel" />
+              <rect x="248" y="30" width="134" height="196" rx="26" class="hero-mark-panel hero-mark-panel-soft" />
+              <path d="M172 110C214 110 214 78 248 78" class="hero-mark-link hero-mark-link-light" />
+              <path d="M172 160C228 160 220 128 248 128" class="hero-mark-link" />
+              <path d="M172 208C224 208 228 176 248 176" class="hero-mark-link hero-mark-link-dark" />
+              <circle cx="105" cy="110" r="22" class="hero-mark-node hero-mark-node-solid" />
+              <circle cx="105" cy="160" r="22" class="hero-mark-node" />
+              <circle cx="105" cy="208" r="22" class="hero-mark-node" />
+              <circle cx="314" cy="78" r="22" class="hero-mark-node hero-mark-node-accent" />
+              <circle cx="314" cy="128" r="22" class="hero-mark-node hero-mark-node-solid" />
+              <circle cx="314" cy="176" r="22" class="hero-mark-node hero-mark-node-accent" />
+              <circle cx="365" cy="256" r="14" class="hero-mark-spark" />
+              <path d="M365 228V198" class="hero-mark-dash" />
+              <path d="M350 242H320" class="hero-mark-dash" />
+              <path d="M215 272C250 272 268 256 300 256" class="hero-mark-base" />
+            </svg>
+          </div>
+        </div>
+      </header>
+
+      <section id="case-study-analysis">
+        <div class="section-head">
+          <p class="eyebrow">Required pre-search section</p>
+          <h2>Case Study Analysis</h2>
+        </div>
+        <div class="card" style="max-width: 780px">
+          <p>
+            TutorMeAI's core challenge is turning a chat product into a platform — one where third-party apps run inside
+            the conversation while preserving the safety guarantees that 10,000 school districts depend on daily. The moment
+            outside code renders UI and exchanges data with a chatbot used by children, every design decision becomes a
+            trust decision.
+          </p>
+          <p>
+            The first key problem is the <strong>trust boundary between the platform and third-party apps</strong>. A
+            third-party app with access to the parent page's DOM, chat history, or student data represents the default risk
+            of embedding foreign code. The trade-off is between developer convenience and student safety. Full host access
+            makes integration trivial — and abuse equally trivial. We chose sandboxed iframes with origin-checked
+            postMessage as the communication bridge. Apps operate within their own frame. They receive only the scopes
+            approved for them, and all state they want the chatbot to understand must be explicitly published through a
+            structured event contract. This requires more work from app developers, but it means a broken or hostile app
+            stays contained within its sandbox.
+          </p>
+          <p>
+            The second problem is <strong>communication and state</strong>. The chatbot must stay aware of what is happening
+            inside an app — a chess board mid-game, a playlist being built, a weather result on screen — through structured
+            data rather than pixel-level inference. We decided that the app must publish structured state snapshots back to
+            the platform after each meaningful interaction. Those snapshots become part of the conversation context, so when
+            a student asks "what should I do here?" the model answers from real data. The trade-off is that apps carry the
+            responsibility of deciding what state to share, which adds complexity to the developer contract. But the
+            alternative — inferring state from rendered UI — is fragile, unreliable, and impractical at scale.
+          </p>
+          <p>
+            The third problem is <strong>authentication across trust boundaries</strong>. Some apps require user-level
+            credentials, like a Spotify integration that creates playlists on behalf of a student. Letting the embedded app
+            run its own OAuth flow inside an iframe introduces phishing risk, malicious redirects, and insecure token
+            storage. We chose platform-mediated authentication: the chat platform handles OAuth consent, stores and refreshes
+            tokens, and passes only scoped capabilities to the app at invocation time. The ethical weight here is significant
+            — these are children's accounts. The platform must be the single point of credential trust.
+          </p>
+          <p>
+            The ethical dimension runs through every layer. Content moderation for apps used by minors is a first-class
+            concern. We chose a reviewed allowlist model rather than an open marketplace — every app must be approved before
+            appearing in any classroom. App descriptions and capabilities are moderated. Emergency kill switches let
+            administrators disable an app instantly across all districts. This is more restrictive than an open ecosystem,
+            but for K-12 education the cost of a harmful app reaching students far exceeds the cost of slower developer
+            onboarding.
+          </p>
+          <p>
+            What we landed on is a manifest-based plugin architecture with sandboxed rendering, structured event
+            communication, platform-owned auth, and an admin-reviewed app registry. It prioritizes defensibility over
+            openness — the right posture for a product whose users are children and whose customers are school districts
+            that expect zero safety incidents.
+          </p>
+        </div>
+      </section>
+
+      <section id="decisions">
+        <div class="section-head">
+          <p class="eyebrow">Architecture decisions</p>
+          <h2>Decision matrix</h2>
+          <p class="lede">Three approaches per phase. B is the pick.</p>
+        </div>
+
+        <div class="decision-grid">
+          <div class="decision-col">
+            <div class="decision-header dim">A</div>
+            <div class="decision-cell">
+              <span class="decision-phase">Constraints</span>
+              <span class="decision-name">Demo-first</span>
+              <span class="decision-detail">Bundled apps, weak trust</span>
+            </div>
+            <div class="decision-cell">
+              <span class="decision-phase">Architecture</span>
+              <span class="decision-name">Local plugin</span>
+              <span class="decision-detail">Shared runtime, in-process</span>
+            </div>
+            <div class="decision-cell">
+              <span class="decision-phase">Hardening</span>
+              <span class="decision-name">Minimal</span>
+              <span class="decision-detail">Basic retries, manual list</span>
+            </div>
+          </div>
+          <div class="decision-col picked">
+            <div class="decision-header">B ✓</div>
+            <div class="decision-cell">
+              <span class="decision-phase">Constraints</span>
+              <span class="decision-name">Reviewed allowlist</span>
+              <span class="decision-detail">Per-origin isolation, scoped</span>
+            </div>
+            <div class="decision-cell">
+              <span class="decision-phase">Architecture</span>
+              <span class="decision-name">Iframe SDK</span>
+              <span class="decision-detail">postMessage bridge, BFF auth</span>
+            </div>
+            <div class="decision-cell">
+              <span class="decision-phase">Hardening</span>
+              <span class="decision-name">Zero-trust</span>
+              <span class="decision-detail">Scoped perms, audit logs</span>
+            </div>
+          </div>
+          <div class="decision-col dim">
+            <div class="decision-header dim">C</div>
+            <div class="decision-cell">
+              <span class="decision-phase">Constraints</span>
+              <span class="decision-name">Marketplace</span>
+              <span class="decision-detail">Full ecosystem, too much scope</span>
+            </div>
+            <div class="decision-cell">
+              <span class="decision-phase">Architecture</span>
+              <span class="decision-name">MCP protocol</span>
+              <span class="decision-detail">Remote servers, high build cost</span>
+            </div>
+            <div class="decision-cell">
+              <span class="decision-phase">Hardening</span>
+              <span class="decision-name">Platform-grade</span>
+              <span class="decision-detail">Policy engine, overbuilt</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="decision-summary">
+          <div class="decision-summary-item"><span>Boundary</span> Sandboxed iframe + postMessage</div>
+          <div class="decision-summary-item"><span>Auth</span> Platform-mediated OAuth via BFF</div>
+          <div class="decision-summary-item"><span>State</span> App snapshots → platform context</div>
+          <div class="decision-summary-item"><span>Safety</span> Reviewed apps, scoped perms, kill switches</div>
+        </div>
+      </section>
+
+      <section id="design">
+        <div class="section-head">
+          <p class="eyebrow">Recommended architecture</p>
+          <h2>System design</h2>
+          <p class="lede">
+            Messaging and history already exist in the product. This section covers the missing requirements only: app context,
+            multi-turn continuity, tool registration, tool schemas, embedded UI, structured invocation, completion signaling, and
+            independent app state.
+          </p>
+        </div>
+        <div class="phase-solutions" style="margin-top: 18px">
+          <article class="phase-card">
+            <span class="label">Idea 1 · Fastest</span>
+            <h3>Local plugin contract</h3>
+            <ul>
+              <li>Apps register capabilities directly with the host product.</li>
+              <li>Tool schemas live in the same platform runtime, so discovery is simple.</li>
+              <li>UI renders as trusted internal components inside the chat area.</li>
+              <li>Multi-turn context is easiest because app state and chat state share one store.</li>
+              <li>Focus: optimized for speed and a tightly coupled host boundary.</li>
+            </ul>
+            <p><strong>Best for:</strong> fastest prototype, lowest realism.</p>
+          </article>
+          <article class="phase-card recommended">
+            <span class="label">Idea 2 · Recommended</span>
+            <h3>Manifest + iframe bridge</h3>
+            <ul>
+              <li>Each app registers through a manifest: id, capabilities, tool schemas, widget URL, auth type, allowed origins.</li>
+              <li>The model discovers tools from manifest-derived schemas and invokes them with structured parameters.</li>
+              <li>The UI renders inside the chat as a sandboxed iframe, so the app can own its own interface and state.</li>
+              <li>Multi-turn works through state snapshots sent back to the platform after each meaningful user action.</li>
+              <li>The app signals <code>complete</code>, <code>error</code>, and <code>state.update</code>, so the chat stays aware while the app retains its internals.</li>
+            </ul>
+            <p><strong>Best for:</strong> strongest fit to the assignment.</p>
+          </article>
+          <article class="phase-card">
+            <span class="label">Idea 3 · Most extensible</span>
+            <h3>Remote tool server + widget shell</h3>
+            <ul>
+              <li>Apps expose capabilities through a remote tool server, while UI comes from a separate widget endpoint.</li>
+              <li>Tool discovery is clean and protocol-shaped, good for future ecosystem growth.</li>
+              <li>Multi-turn context still depends on structured state echo from the app back to the platform.</li>
+              <li>Completion and error signals are explicit lifecycle events driven by the app contract.</li>
+              <li>Weak point: bigger build cost and more integration pieces this week.</li>
+            </ul>
+            <p><strong>Best for:</strong> long-term platform story, highest complexity.</p>
+          </article>
+        </div>
+
+        <div class="tech-grid">
+          <article class="tech-card">
+            <p class="kicker">Web search finding 1</p>
+            <h3>Best UI boundary</h3>
+            <p>OpenAI Apps SDK patterns, MDN iframe sandbox guidance, and OWASP third-party JS guidance all point toward isolated embedded UI with a dedicated host boundary.</p>
+            <p><strong>Why:</strong> lets the app render rich UI in chat while keeping the host product in control.</p>
+          </article>
+          <article class="tech-card">
+            <p class="kicker">Web search finding 2</p>
+            <h3>Best communication model</h3>
+            <p>MDN <code>postMessage</code> plus OAuth browser-app guidance support a narrow, origin-checked message bridge with explicit event types.</p>
+            <p><strong>Why:</strong> the chatbot gets structured app state instead of guessing from visible UI.</p>
+          </article>
+          <article class="tech-card">
+            <p class="kicker">Web search finding 3</p>
+            <h3>Best auth model</h3>
+            <p>RFC 9700 and browser-app OAuth guidance favor platform-mediated auth with PKCE and token handling outside the widget.</p>
+            <p><strong>Why:</strong> authenticated apps connect safely with platform-held long-lived secrets and scoped session access.</p>
+          </article>
+        </div>
+
+        <div class="mono-grid">
+          <article class="mono-block">
+            <h3>Architecture</h3>
+            <pre>Chat App
+├── Conversation UI
+├── Tool Router
+├── App Registry
+├── Widget Host (sandboxed iframe)
+├── App Context Store
+├── Policy Guard
+└── OAuth Broker
+
+Third-Party App
+├── manifest.json
+├── tool schemas
+├── widget UI
+└── internal state</pre>
+            <p class="mini-note">Host owns trust, routing, and conversation context. App owns UI and its own working state.</p>
+          </article>
+          <article class="mono-block">
+            <h3>Signal chain</h3>
+            <pre>User asks for task
+  → model selects tool from registered schemas
+    → platform validates app + scope + auth
+      → widget mounts inline in chat
+        → structured invoke sent to app
+          → app emits state.update snapshots
+            → snapshots appended to chat context
+              → user asks follow-up
+                → model answers from chat + app state
+                  → app emits complete or error
+                    → chat continues naturally</pre>
+            <p class="mini-note">Key rule: published state becomes model context through the structured bridge.</p>
+          </article>
+        </div>
+
+        <div class="mono-grid">
+          <article class="mono-block">
+            <h3>Data model</h3>
+            <pre>conversation/
+  {conversation_id}/
+    messages/
+    active_apps/
+      {app_instance_id}/
+        app_id
+        status
+        approved_scopes.json
+        last_tool_call.json
+        latest_state_snapshot.json
+        completion.json
+
+app_registry/
+  {app_id}/manifest.json
+  {app_id}/policy.json
+
+oauth_connections/
+  {user_id}/{app_id}.json</pre>
+            <p class="mini-note">Conversation holds only the app state needed for future turns. Full internal app state stays with the app.</p>
+          </article>
+          <article class="mono-block">
+            <h3>What you are actually building</h3>
+            <pre>1. App registration contract
+2. Tool schema discovery layer
+3. Inline widget host in chat
+4. Structured invoke/event bridge
+5. App snapshot → model context path
+6. Completion/error lifecycle
+7. Platform-mediated auth for protected apps</pre>
+            <p class="mini-note">That is the minimum technical slice needed to satisfy the missing requirements.</p>
+          </article>
+        </div>
+
+        <div class="grid-2" style="margin-top: 18px">
+          <div class="matrix">
+            <h3>Recommended contract</h3>
+            <div class="matrix-row"><strong>Register</strong><div>App submits a manifest with capabilities, auth pattern, widget endpoint, and discoverable tool schemas.</div></div>
+            <div class="matrix-row"><strong>Discover</strong><div>The platform turns those schemas into callable tools the chatbot can choose during a conversation.</div></div>
+            <div class="matrix-row"><strong>Render</strong><div>When selected, the app UI mounts inline in the chat experience as part of the same conversation surface.</div></div>
+            <div class="matrix-row"><strong>Invoke</strong><div>The chatbot sends structured parameters to the app through explicit typed inputs.</div></div>
+            <div class="matrix-row"><strong>Signal</strong><div>The app returns lifecycle events: <code>state.update</code>, <code>complete</code>, and <code>error</code>.</div></div>
+            <div class="matrix-row"><strong>State</strong><div>The app keeps its own internal state, while the platform stores summarized state needed for future turns.</div></div>
+          </div>
+          <div class="matrix">
+            <h3>How multi-turn context works</h3>
+            <div class="matrix-row"><strong>Turn 1</strong><div>User asks for an app task. The chatbot chooses a tool and mounts the matching app UI.</div></div>
+            <div class="matrix-row"><strong>Turn 2</strong><div>User interacts with the app. The app publishes a structured snapshot such as board state, playlist draft, or selected options.</div></div>
+            <div class="matrix-row"><strong>Turn 3</strong><div>User asks a follow-up like “what should I do here?” The chatbot answers using chat history plus the latest app snapshot.</div></div>
+            <div class="matrix-row"><strong>Turn 4</strong><div>The app emits completion. The chatbot treats the result as conversation context and continues naturally after the tool finishes.</div></div>
+            <div class="matrix-row"><strong>Rule</strong><div>The platform uses published app state as the source of truth for chatbot understanding.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="auth-matrix">
+        <div class="section-head">
+          <p class="eyebrow">Auth by app type</p>
+          <h2>Authentication matrix</h2>
+        </div>
+        <div class="mono-grid">
+          <article class="mono-block">
+            <h3>Auth flow by app category</h3>
+            <pre>App Type         Auth Pattern         Token Owner    Example
+─────────────    ──────────────────   ────────────   ──────────────────
+Internal         None                 Platform       Chess, calculator
+External Public  API key (server)     Platform       Weather, dictionary
+External Auth    OAuth2 + PKCE        Platform BFF   Spotify, GitHub</pre>
+            <p class="mini-note">The platform always owns credentials. Apps receive scoped capabilities per session.</p>
+          </article>
+          <article class="mono-block">
+            <h3>OAuth flow for authenticated apps</h3>
+            <pre>User clicks "Connect Spotify"
+  → platform opens OAuth consent in popup (owned origin)
+    → user approves scopes on provider site
+      → provider redirects to platform callback
+        → platform stores encrypted refresh token
+          → platform mints scoped session token
+            → session token passed to app via bridge
+              → app calls provider API with session token
+                → platform auto-refreshes on expiry</pre>
+            <p class="mini-note">The app widget never handles raw refresh tokens or redirect flows.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="chess-e2e">
+        <div class="section-head">
+          <p class="eyebrow">Reference implementation</p>
+          <h2>Chess: end-to-end sequence</h2>
+        </div>
+        <div class="mono-grid">
+          <article class="mono-block">
+            <h3>Full lifecycle</h3>
+            <pre>1. User: "let's play chess"
+2. Model: selects chess.start_game tool
+3. Platform: validates chess app → approved, internal, scope ok
+4. Platform: mounts chess widget iframe inline in chat
+5. Platform: sends invoke { tool: "start_game", params: { color: "white" } }
+6. Chess app: initializes board, emits state.update
+   → { fen: "rnbqkbnr/...", turn: "w", move_count: 0 }
+7. Platform: appends snapshot to conversation context
+8. User: drags e2 → e4 on board UI
+9. Chess app: validates move, updates board, emits state.update
+   → { fen: "rnbqkbnr/.../P.../...", turn: "b", last_move: "e2e4" }
+10. User: "what should I do here?"
+11. Model: reads chat + latest chess snapshot → suggests strategy
+12. User: plays several more moves via board UI
+13. Chess app: detects checkmate, emits complete
+    → { result: "checkmate", winner: "white", moves: 24 }
+14. Platform: closes widget, adds result to conversation context
+15. Model: "Great game! You won in 24 moves. Want to analyze it?"</pre>
+            <p class="mini-note">Every step maps to a specific contract primitive: invoke, state.update, complete.</p>
+          </article>
+          <article class="mono-block">
+            <h3>Chess manifest</h3>
+            <pre>{
+  "id": "chess",
+  "name": "Chess",
+  "version": "1.0.0",
+  "description": "Interactive chess with move validation",
+  "auth": { "type": "none" },
+  "widget": {
+    "url": "https://apps.chatbridge.dev/chess",
+    "sandbox": ["allow-scripts"],
+    "dimensions": { "width": 400, "height": 440 }
+  },
+  "tools": [
+    {
+      "name": "start_game",
+      "description": "Start a new chess game",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "color": { "type": "string", "enum": ["white","black"] }
+        }
+      }
+    },
+    {
+      "name": "get_board_state",
+      "description": "Get the current board position and game status",
+      "parameters": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "suggest_move",
+      "description": "Analyze the board and suggest the best move",
+      "parameters": { "type": "object", "properties": {} }
+    }
+  ],
+  "events": ["state.update", "complete", "error"],
+  "scopes": ["chat.context.read"]
+}</pre>
+            <p class="mini-note">This is the contract a third-party developer submits to register with the platform.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="files">
+        <div class="section-head">
+          <p class="eyebrow">Requirements to product boundary</p>
+          <h2>How it connects to the app</h2>
+          <p class="lede">Only the required connection points: how third-party apps plug into the chat product and what crosses the boundary.</p>
+        </div>
+        <div class="filesystem-grid">
+          <div class="file-card">
+            <strong>1. Chat surface</strong>
+            <p>The app keeps its existing chat experience, but adds one new surface: an embedded app panel inside the conversation.</p>
+            <p>When the assistant selects a tool, the panel opens inline as part of the same conversation surface.</p>
+            <p>The chat transcript also shows app lifecycle messages: launched, waiting, connected, completed, and recovery states.</p>
+          </div>
+          <div class="file-card">
+            <strong>2. App host boundary</strong>
+            <p>The host product loads the third-party UI in a sandboxed iframe and passes only minimal startup data: app id, session id, theme, and approved scopes.</p>
+            <p>All communication goes through a narrow event bridge: invoke tool, send state snapshot, emit completion, emit error.</p>
+            <p>The embedded app operates through a scoped bridge into the broader chat UI and approved platform APIs.</p>
+          </div>
+          <div class="file-card">
+            <strong>3. Platform services</strong>
+            <p>The app needs a registry service for app manifests, a policy layer for safety checks, and a state service that stores app context alongside conversation context.</p>
+            <p>That is what lets the assistant answer follow-up questions like “what should I do here?” after the user has already interacted with the widget.</p>
+            <p>The model reads structured state published back through the contract as the primary app-context channel.</p>
+          </div>
+          <div class="file-card">
+            <strong>4. Auth and trust path</strong>
+            <p>For authenticated apps, the user authorizes through the platform in a platform-owned consent flow.</p>
+            <p>The platform stores and refreshes tokens, then gives the app only the minimum approved capability needed for that session.</p>
+            <p>This is the key connection between the requirements and the app: the chat remains the trusted control plane, while third-party apps stay isolated workers.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="wireframes">
+        <div class="section-head">
+          <p class="eyebrow">Presentation assets</p>
+          <h2>Wireframes</h2>
+          <p class="lede">Two high-signal frames for the architecture walkthrough: one stateful app flow, one authenticated app flow.</p>
+        </div>
+        <div class="wireframes">
+          <article class="wireframe">
+            <p class="kicker">Wireframe 1</p>
+            <h3>Chat with active chess app</h3>
+            <div class="wf-bar"></div>
+            <div class="wf-layout">
+              <div class="wf-sidebar"></div>
+              <div class="wf-chat">
+                <div class="wf-card"></div>
+                <div class="wf-card tall"></div>
+                <div class="wf-card"></div>
+              </div>
+            </div>
+            <div class="wf-input"></div>
+            <p class="footer-note">Narrative: user starts chess, board mounts inline, assistant stays context aware.</p>
+          </article>
+          <article class="wireframe">
+            <p class="kicker">Wireframe 2</p>
+            <h3>OAuth connect flow for Spotify</h3>
+            <div class="wf-header"></div>
+            <div class="wf-grid">
+              <div class="wf-block wf-card tall"></div>
+              <div class="wf-block wf-card tall"></div>
+            </div>
+            <div class="wf-modal"></div>
+            <div class="wf-input"></div>
+            <p class="footer-note">Narrative: platform handles auth, app receives only scoped capability after consent.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="risks">
+        <div class="section-head">
+          <p class="eyebrow">Adjacent problems</p>
+          <h2>Risks that still need answers</h2>
+          <p class="lede">These sit next to the core plugin problem and shape whether districts trust the platform enough to buy and expand it.</p>
+        </div>
+        <div class="grid-3">
+          <div class="card verdict-card">
+            <span class="verdict-num">01</span>
+            <h3>District policy controls</h3>
+            <p>Each district will want its own app allowlist, scope rules, moderation posture, and emergency disable controls.</p>
+          </div>
+          <div class="card verdict-card">
+            <span class="verdict-num">02</span>
+            <h3>Student privacy records</h3>
+            <p>App snapshots, auth events, and tool outputs may become part of regulated student records and need retention rules.</p>
+          </div>
+          <div class="card verdict-card">
+            <span class="verdict-num">03</span>
+            <h3>Prompt injection path</h3>
+            <p>Tool descriptions, app metadata, and state payloads can shape model behavior and need validation plus policy filtering.</p>
+          </div>
+          <div class="card verdict-card">
+            <span class="verdict-num">04</span>
+            <h3>Embed compatibility</h3>
+            <p>Many third-party products ship CSP and frame policies that shape which apps qualify for the platform contract.</p>
+          </div>
+          <div class="card verdict-card">
+            <span class="verdict-num">05</span>
+            <h3>Accessibility quality</h3>
+            <p>Embedded apps need keyboard support, readable semantics, and classroom-grade accessibility to fit district procurement.</p>
+          </div>
+          <div class="card verdict-card">
+            <span class="verdict-num">06</span>
+            <h3>Cost and observability</h3>
+            <p>State snapshots, repeated tool loops, and multi-turn analysis increase model cost and raise the need for strong tracing.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="moat">
+        <div class="section-head">
+          <p class="eyebrow">Business importance</p>
+          <h2>Why this matters and why TutorMeAI wins</h2>
+          <p class="lede">The strategic value comes from becoming the trusted orchestration layer between student chat, teacher control, and approved classroom tools.</p>
+        </div>
+        <div class="grid-2">
+          <div class="matrix">
+            <h3>Why this matters</h3>
+            <div class="matrix-row"><strong>Product shift</strong><div>The product moves from answering questions to orchestrating classroom workflows inside one conversation surface.</div></div>
+            <div class="matrix-row"><strong>Retention</strong><div>Once chat history, app state, teacher settings, and district policies live together, switching costs rise sharply.</div></div>
+            <div class="matrix-row"><strong>Trust</strong><div>K-12 buyers reward platforms that combine utility with privacy, moderation, auditability, and strong policy controls.</div></div>
+            <div class="matrix-row"><strong>Expansion</strong><div>A safe app layer creates room for more subjects, more districts, and deeper teacher workflows over time.</div></div>
+          </div>
+          <div class="matrix">
+            <h3>Why TutorMeAI wins</h3>
+            <div class="matrix-row"><strong>Current edge</strong><div>The case study already says teachers can shape chatbot behavior, tone, and focus better than competitors.</div></div>
+            <div class="matrix-row"><strong>Next edge</strong><div>That configurability extends naturally into approved app selection, app routing, and context-aware orchestration.</div></div>
+            <div class="matrix-row"><strong>Hard to copy</strong><div>Competitors can copy chat UI quickly; district trust, policy controls, reviewed integrations, and context-linked app state take longer.</div></div>
+            <div class="matrix-row"><strong>Winning thesis</strong><div>TutorMeAI wins by becoming the trusted operating layer between classroom chat, district guardrails, and third-party learning tools.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="sources">
+        <div class="section-head">
+          <p class="eyebrow">Web research</p>
+          <h2>Research sources used</h2>
+          <p class="lede">Grouped for fast reading: security boundary, privacy policy, interoperability, and education adoption context.</p>
+        </div>
+        <div class="sources">
+          <article class="source-card">
+            <strong>Security · OpenAI Apps SDK Reference</strong>
+            <a href="https://developers.openai.com/apps-sdk/reference">developers.openai.com/apps-sdk/reference</a>
+            <p>Useful for tool descriptors, widget metadata, dedicated component origins, and JSON-RPC style UI bridge patterns.</p>
+          </article>
+          <article class="source-card">
+            <strong>Security · OpenAI Apps Security &amp; Privacy</strong>
+            <a href="https://developers.openai.com/apps-sdk/guides/security-privacy">developers.openai.com/apps-sdk/guides/security-privacy</a>
+            <p>Supports the case for sandboxed iframes, strict CSP, and limiting widget capabilities by default.</p>
+          </article>
+          <article class="source-card">
+            <strong>Security · MDN postMessage</strong>
+            <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage">developer.mozilla.org/.../Window/postMessage</a>
+            <p>Grounds secure cross-origin messaging. Critical point: always validate sender and target origins.</p>
+          </article>
+          <article class="source-card">
+            <strong>Security · MDN iframe sandbox</strong>
+            <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLIFrameElement/sandbox">developer.mozilla.org/.../HTMLIFrameElement/sandbox</a>
+            <p>Supports app isolation by selectively granting only the smallest needed iframe capabilities.</p>
+          </article>
+          <article class="source-card">
+            <strong>Security · MDN CSP directives</strong>
+            <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-ancestors">developer.mozilla.org/.../CSP/frame-ancestors</a>
+            <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/sandbox">developer.mozilla.org/.../CSP/sandbox</a>
+            <p>Explains both who may embed a page and what a sandboxed page is allowed to do once embedded.</p>
+          </article>
+          <article class="source-card">
+            <strong>Security · RFC 9700 + Browser Apps</strong>
+            <a href="https://www.rfc-editor.org/rfc/rfc9700.html">rfc-editor.org/rfc/rfc9700.html</a>
+            <a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-browser-based-apps">datatracker.ietf.org/.../draft-ietf-oauth-browser-based-apps</a>
+            <p>Supports PKCE, secure in-browser messaging checks, and the choice to keep tokens away from untrusted widget code.</p>
+          </article>
+          <article class="source-card">
+            <strong>Interoperability · MCP tools spec</strong>
+            <a href="https://modelcontextprotocol.io/specification/2025-06-18/server/tools">modelcontextprotocol.io/specification/2025-06-18/server/tools</a>
+            <p>Useful reference for tool discovery semantics and structured tool metadata design.</p>
+          </article>
+          <article class="source-card">
+            <strong>Security · OWASP third-party JS</strong>
+            <a href="https://cheatsheetseries.owasp.org/cheatsheets/Third_Party_Javascript_Management_Cheat_Sheet.html">cheatsheetseries.owasp.org/.../Third_Party_Javascript_Management_Cheat_Sheet.html</a>
+            <p>Reinforces iframe sandboxing, CSP hardening, and the general danger of giving third-party code too much power.</p>
+          </article>
+          <article class="source-card">
+            <strong>Education policy · UNESCO GenAI guidance</strong>
+            <a href="https://www.unesco.org/en/articles/guidance-generative-ai-education-and-research">unesco.org/en/articles/guidance-generative-ai-education-and-research</a>
+            <p>Useful for the importance of governance, safe adoption, and institution-level controls around AI in education.</p>
+          </article>
+          <article class="source-card">
+            <strong>Privacy policy · FERPA</strong>
+            <a href="https://studentprivacy.ed.gov/ferpa">studentprivacy.ed.gov/ferpa</a>
+            <p>Grounds why conversation state, app outputs, and student-linked records need strong privacy and retention design.</p>
+          </article>
+          <article class="source-card">
+            <strong>Privacy policy · COPPA</strong>
+            <a href="https://www.ftc.gov/legal-library/browse/rules/childrens-online-privacy-protection-rule-coppa">ftc.gov/legal-library/browse/rules/childrens-online-privacy-protection-rule-coppa</a>
+            <p>Important for any platform used by children where third-party tools may touch identifiers, content, or account-linked behavior.</p>
+          </article>
+          <article class="source-card">
+            <strong>Interoperability · 1EdTech LTI</strong>
+            <a href="https://www.1edtech.org/standards/lti">1edtech.org/standards/lti</a>
+            <p>Useful reading for why interoperability matters in education and how platform standards shape long-term integration strategy.</p>
+          </article>
+          <article class="source-card">
+            <strong>Education policy · U.S. AI toolkit</strong>
+            <a href="https://files.eric.ed.gov/fulltext/ED661924.pdf">files.eric.ed.gov/fulltext/ED661924.pdf</a>
+            <p>Helpful for district-facing implementation framing: policy, governance, safety, and operational readiness.</p>
+          </article>
+          <article class="source-card">
+            <strong>Presentation summary</strong>
+            <p>Strong live summary: sandboxed iframe boundary, origin-checked state bridge, platform-mediated OAuth, district-grade privacy posture.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+    <script>
+    (() => {
+      'use strict';
+
+      // ── Page loader ──
+      const loader = document.querySelector('.page-loader');
+      window.addEventListener('load', () => {
+        setTimeout(() => loader && loader.classList.add('done'), 400);
+      });
+
+      // ── Progress bar ──
+      const progressBar = document.querySelector('.progress-bar');
+      let ticking = false;
+      window.addEventListener('scroll', () => {
+        if (!ticking) {
+          requestAnimationFrame(() => {
+            const h = document.documentElement.scrollHeight - window.innerHeight;
+            const pct = h > 0 ? (window.scrollY / h) * 100 : 0;
+            if (progressBar) progressBar.style.width = pct + '%';
+            ticking = false;
+          });
+          ticking = true;
+        }
+      }, { passive: true });
+
+      // ── Word-by-word heading reveal ──
+      document.querySelectorAll('.split-heading').forEach((el) => {
+        const text = el.textContent;
+        el.textContent = '';
+        text.split('').forEach((char, i) => {
+          const word = document.createElement('span');
+          word.className = 'word';
+          const inner = document.createElement('span');
+          inner.className = 'word-inner';
+          inner.textContent = char === ' ' ? '\u00A0' : char;
+          inner.style.animationDelay = `${0.35 + i * 0.045}s`;
+          word.appendChild(inner);
+          el.appendChild(word);
+        });
+        el.classList.add('revealed');
+      });
+
+      // ── Syntax coloring in pre blocks ──
+      document.querySelectorAll('.mono-block pre').forEach((pre) => {
+        let html = pre.innerHTML;
+        // Arrows
+        html = html.replace(/(→|←)/g, '<span class="syn-arrow">$1</span>');
+        html = html.replace(/(├──|└──|│)/g, '<span class="syn-dim">$1</span>');
+        // Checkmarks and crosses
+        html = html.replace(/(✓✓✓|✓)/g, '<span class="syn-check">$1</span>');
+        html = html.replace(/(✗)/g, '<span class="syn-cross">$1</span>');
+        // JSON keys
+        html = html.replace(/"([^"]+)":/g, '<span class="syn-key">"$1"</span>:');
+        // JSON string values
+        html = html.replace(/: "([^"]+)"/g, ': <span class="syn-str">"$1"</span>');
+        // Horizontal rules in pre
+        html = html.replace(/(─+)/g, '<span class="syn-dim">$1</span>');
+        // Numbers at start of line (step numbers)
+        html = html.replace(/^(\d+\.)/gm, '<span class="syn-arrow">$1</span>');
+        pre.innerHTML = html;
+      });
+
+      // ── Scroll-triggered entrance ──
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            const kids = entry.target.querySelectorAll(
+              '.phase-card, .card, .mono-block, .tech-card, .source-card, .file-card, .wireframe, .matrix, .decision-col, .decision-summary-item'
+            );
+            kids.forEach((child, i) => {
+              child.style.transitionDelay = `${i * 75}ms`;
+              requestAnimationFrame(() => child.classList.add('visible'));
+            });
+            obs.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.05, rootMargin: '0px 0px -50px 0px' });
+
+      document.querySelectorAll('section').forEach((el) => obs.observe(el));
+
+      // ── Case study paragraph stagger ──
+      const caseCard = document.querySelector('#case-study-analysis .card');
+      if (caseCard) {
+        const co = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              entry.target.querySelectorAll('p').forEach((p, i) => {
+                p.style.transitionDelay = `${180 + i * 110}ms`;
+                requestAnimationFrame(() => p.classList.add('visible'));
+              });
+              co.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.1 });
+        co.observe(caseCard);
+      }
+
+      // ── Active nav tracking ──
+      const sects = document.querySelectorAll('section[id]');
+      const links = document.querySelectorAll('.toc a');
+
+      const navObs = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            links.forEach((l) => {
+              l.classList.toggle('active',
+                l.getAttribute('href') === `#${entry.target.id}`
+              );
+            });
+          }
+        });
+      }, { threshold: 0.25, rootMargin: '-60px 0px -35% 0px' });
+
+      sects.forEach((s) => navObs.observe(s));
+
+      // ── Smooth scroll nav ──
+      links.forEach((link) => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const t = document.querySelector(link.getAttribute('href'));
+          if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+    })();
+    </script>
+  </body>
+</html>

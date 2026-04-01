@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ChatBridge — Planning Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#fafafa;--panel:#fff;--ink:#111;--mid:#555;--muted:#888;--faint:#bbb;
+  --line:#ddd;--line2:#ccc;
+  --ac:#4f46e5;--ac-bg:#eef2ff;--ac-light:#e0e7ff;
+  --ok:#16a34a;--ok-bg:#f0fdf4;
+  --warn:#d97706;--warn-bg:#fffbeb;
+  --err:#dc2626;--err-bg:#fef2f2;
+  --font:"Inter",system-ui,sans-serif;--mono:"JetBrains Mono",monospace;
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:var(--font);font-size:13px;color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.page{max-width:1060px;margin:0 auto;padding:24px 20px 80px}
+
+/* ── HEADER (minimal) ── */
+.hdr{padding:20px 0 16px;border-bottom:3px solid var(--ink)}
+.hdr h1{font-size:24px;font-weight:800;letter-spacing:-.03em}
+.hdr p{font-size:13px;color:var(--muted);margin-top:4px}
+
+.sec-title{
+  margin-top:40px;margin-bottom:14px;
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);
+  display:flex;align-items:center;gap:8px;
+}
+.sec-title::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ══════════════════════════════════════
+   1. BUILD MAP — dominant, langgraph nodes
+   ══════════════════════════════════════ */
+.buildmap{
+  background:var(--panel);border:2px solid var(--ink);border-radius:12px;
+  padding:28px 20px 24px;position:relative;overflow-x:auto;
+}
+.buildmap-label{
+  position:absolute;top:-11px;left:20px;background:var(--panel);padding:0 8px;
+  font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--ink);
+}
+
+/* SVG node graph */
+.buildmap svg{display:block;margin:0 auto}
+
+/* ══════════════════════════════════════
+   2. SEQUENCE — tall numbered swim lanes
+   ══════════════════════════════════════ */
+.seq-wrap{
+  background:var(--panel);border:2px solid var(--ink);border-radius:12px;
+  padding:20px 12px 16px;position:relative;overflow-x:auto;
+}
+.seq-wrap-label{
+  position:absolute;top:-11px;left:20px;background:var(--panel);padding:0 8px;
+  font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--ink);
+}
+
+/* ══════════════════════════════════════
+   3. CHESS MOCK — annotated with callouts
+   ══════════════════════════════════════ */
+.mock-wrap{
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+}
+.mock-bar{
+  height:32px;background:#f3f4f6;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:5px;padding:0 10px;
+}
+.dot{width:9px;height:9px;border-radius:50%}
+.dot.r{background:#fca5a5}.dot.y{background:#fde68a}.dot.g{background:#86efac}
+.mock-bar span{font-size:10px;color:var(--muted);margin-left:6px;font-weight:600}
+
+.mock-body{display:grid;grid-template-columns:160px 1fr;min-height:440px}
+
+.m-side{background:#f8f9fa;border-right:1px solid var(--line);padding:8px;display:flex;flex-direction:column;gap:4px}
+.m-nav{height:24px;border-radius:5px;border:1px solid var(--line);background:#fff;padding:0 8px;display:flex;align-items:center;font-size:9px;color:var(--muted)}
+.m-nav.on{border-color:var(--ac);background:var(--ac-bg);color:var(--ac);font-weight:600}
+
+.m-chat{padding:14px 16px;display:flex;flex-direction:column;gap:7px;max-width:660px;position:relative}
+
+.bub{padding:8px 12px;border-radius:10px;font-size:11px;line-height:1.45;max-width:82%}
+.bub.u{background:var(--ac);color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+.bub.a{background:#f1f5f9;align-self:flex-start;border-bottom-left-radius:3px}
+.bub.s{background:var(--warn-bg);color:#92400e;align-self:center;font-size:10px;font-weight:500;border-radius:5px;padding:4px 10px}
+
+/* inline widget */
+.iw{
+  align-self:center;width:100%;max-width:380px;
+  border:2px solid var(--ink);border-radius:10px;overflow:hidden;
+  background:#fafbff;position:relative;
+}
+.iw-head{
+  padding:5px 10px;background:#f1f5f9;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+}
+.iw-dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.iw-body{padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px}
+
+.cb{display:grid;grid-template-columns:repeat(8,1fr);width:180px;height:180px;border:2px solid var(--ink);border-radius:4px;overflow:hidden}
+.cb .s{display:grid;place-items:center;font-size:14px;line-height:1}
+.cb .l{background:#f0d9b5}.cb .d{background:#b58863}.cb .h{background:#aad576}
+
+.iw-status{font-size:9px;color:var(--muted);font-family:var(--mono)}
+
+/* callout markers */
+.co{
+  position:absolute;display:flex;align-items:center;gap:4px;z-index:3;
+}
+.co-num{
+  width:22px;height:22px;border-radius:50%;background:var(--ac);color:#fff;
+  font-size:10px;font-weight:800;display:grid;place-items:center;flex-shrink:0;
+}
+.co-line{height:2px;background:var(--ac);width:24px}
+.co-text{font-size:10px;font-weight:600;color:var(--ac);white-space:nowrap}
+
+/* done card inline */
+.done-card{
+  align-self:center;width:100%;max-width:320px;
+  border:2px solid var(--ok);border-radius:10px;overflow:hidden;background:#fff;
+}
+.done-head{padding:6px 10px;background:var(--ok-bg);border-bottom:1px solid #bbf7d0;display:flex;align-items:center;gap:6px}
+.done-head svg{width:14px;height:14px;color:var(--ok)}
+.done-head span{font-size:11px;font-weight:700;color:var(--ok)}
+.done-body{padding:10px;display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;gap:6px}
+.done-val{font-size:15px;font-weight:800;font-family:var(--mono)}
+.done-lbl{font-size:9px;color:var(--muted)}
+
+.m-input{margin-top:auto;height:30px;border-radius:8px;border:1px solid var(--line);background:#f9fafb}
+
+/* ══════════════════════════════════════
+   4. STATES STRIP
+   ══════════════════════════════════════ */
+.states-strip{
+  display:flex;gap:0;border:2px solid var(--ink);border-radius:10px;overflow:hidden;background:var(--panel);
+}
+.st{
+  flex:1;padding:12px 8px;text-align:center;border-right:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;
+}
+.st:last-child{border-right:0}
+.st:not(:last-child)::after{
+  content:"→";position:absolute;right:-7px;top:50%;transform:translateY(-50%);
+  font-size:12px;font-weight:700;color:var(--faint);z-index:1;background:var(--panel);padding:2px;
+}
+.st-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--faint)}
+.st-dot.on{border-color:var(--ac);background:var(--ac)}
+.st-name{font-size:10px;font-weight:700}
+.st-desc{font-size:9px;color:var(--muted);line-height:1.3}
+
+/* ══════════════════════════════════════
+   5+6. SUPPORT PANELS (smaller)
+   ══════════════════════════════════════ */
+.support-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+.sp{
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:14px;font-size:12px;
+}
+.sp-title{font-size:11px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.sp-title svg{width:14px;height:14px;opacity:.5}
+
+.sp-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f3f4f6;font-size:11px}
+.sp-row:last-child{border-bottom:0}
+.sp-row .k{color:var(--mid);font-family:var(--mono);font-size:10px}
+.sp-row .v{color:var(--muted);font-size:10px}
+
+.sp-item{
+  display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f5f5f5;font-size:11px;
+}
+.sp-item:last-child{border-bottom:0}
+.sp-item .sp-arrow{color:var(--faint);font-size:10px}
+
+@media(max-width:700px){
+  .mock-body{grid-template-columns:1fr}
+  .m-side{display:none}
+  .support-grid{grid-template-columns:1fr}
+  .states-strip{flex-wrap:wrap}
+  .st::after{display:none}
+}
+</style>
+</head>
+<body>
+<main class="page">
+
+<header class="hdr">
+  <h1>ChatBridge</h1>
+  <p>Components. Flows. Screens. Build order.</p>
+</header>
+
+<!-- ══════════════════════════════════════════
+     1. BUILD MAP (dominant, langgraph-style)
+     ══════════════════════════════════════════ -->
+<div class="sec-title">1 &middot; Build map</div>
+<div class="buildmap">
+  <span class="buildmap-label">What exists</span>
+  <svg viewBox="0 0 960 340" width="960" height="340" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+    <defs>
+      <marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7Z" fill="#111"/></marker>
+      <marker id="a-ac" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7Z" fill="#4f46e5"/></marker>
+      <marker id="a-ok" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,1 L7,4 L0,7Z" fill="#16a34a"/></marker>
+    </defs>
+
+    <!-- ── NODES ── -->
+    <!-- Chat UI -->
+    <rect x="30" y="60" width="140" height="70" rx="10" fill="#fff" stroke="#111" stroke-width="2.5"/>
+    <text x="100" y="88" text-anchor="middle" font-size="14" font-weight="800">Chat UI</text>
+    <text x="100" y="106" text-anchor="middle" font-size="10" fill="#888">Messages + host</text>
+    <text x="100" y="120" text-anchor="middle" font-size="9" fill="#bbb">exists</text>
+
+    <!-- Tool Router -->
+    <rect x="260" y="60" width="140" height="70" rx="10" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"/>
+    <text x="330" y="88" text-anchor="middle" font-size="14" font-weight="800" fill="#4f46e5">Tool Router</text>
+    <text x="330" y="106" text-anchor="middle" font-size="10" fill="#888">Schema → invoke</text>
+    <text x="330" y="120" text-anchor="middle" font-size="9" fill="#4f46e5" font-weight="600">BUILD</text>
+
+    <!-- Widget Host -->
+    <rect x="490" y="60" width="140" height="70" rx="10" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"/>
+    <text x="560" y="88" text-anchor="middle" font-size="14" font-weight="800" fill="#4f46e5">Widget Host</text>
+    <text x="560" y="106" text-anchor="middle" font-size="10" fill="#888">iframe + bridge</text>
+    <text x="560" y="120" text-anchor="middle" font-size="9" fill="#4f46e5" font-weight="600">BUILD</text>
+
+    <!-- State Bridge -->
+    <rect x="490" y="200" width="140" height="70" rx="10" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"/>
+    <text x="560" y="228" text-anchor="middle" font-size="14" font-weight="800" fill="#4f46e5">State Bridge</text>
+    <text x="560" y="246" text-anchor="middle" font-size="10" fill="#888">snapshot → ctx</text>
+    <text x="560" y="260" text-anchor="middle" font-size="9" fill="#4f46e5" font-weight="600">BUILD</text>
+
+    <!-- Auth Broker -->
+    <rect x="260" y="200" width="140" height="70" rx="10" fill="#eef2ff" stroke="#4f46e5" stroke-width="2.5"/>
+    <text x="330" y="228" text-anchor="middle" font-size="14" font-weight="800" fill="#4f46e5">Auth Broker</text>
+    <text x="330" y="246" text-anchor="middle" font-size="10" fill="#888">OAuth + tokens</text>
+    <text x="330" y="260" text-anchor="middle" font-size="9" fill="#4f46e5" font-weight="600">BUILD</text>
+
+    <!-- LLM (external) -->
+    <rect x="720" y="60" width="120" height="70" rx="10" fill="#fff" stroke="#bbb" stroke-width="1.5" stroke-dasharray="5 3"/>
+    <text x="780" y="88" text-anchor="middle" font-size="14" font-weight="700" fill="#888">LLM</text>
+    <text x="780" y="106" text-anchor="middle" font-size="10" fill="#bbb">Function calling</text>
+    <text x="780" y="120" text-anchor="middle" font-size="9" fill="#bbb">external</text>
+
+    <!-- App (external) -->
+    <rect x="720" y="200" width="120" height="70" rx="10" fill="#fff" stroke="#bbb" stroke-width="1.5" stroke-dasharray="5 3"/>
+    <text x="780" y="228" text-anchor="middle" font-size="14" font-weight="700" fill="#888">3P App</text>
+    <text x="780" y="246" text-anchor="middle" font-size="10" fill="#bbb">Chess, Spotify…</text>
+    <text x="780" y="260" text-anchor="middle" font-size="9" fill="#bbb">sandboxed</text>
+
+    <!-- ── ARROWS (thick, labeled) ── -->
+    <!-- Chat UI → Tool Router -->
+    <line x1="170" y1="95" x2="255" y2="95" stroke="#111" stroke-width="2.5" marker-end="url(#a)"/>
+    <text x="212" y="88" text-anchor="middle" font-size="9" fill="#888">message</text>
+
+    <!-- Tool Router → Widget Host -->
+    <line x1="400" y1="95" x2="485" y2="95" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#a-ac)"/>
+    <text x="442" y="88" text-anchor="middle" font-size="9" fill="#4f46e5">mount</text>
+
+    <!-- Widget Host → LLM -->
+    <line x1="630" y1="80" x2="715" y2="80" stroke="#111" stroke-width="1.5" marker-end="url(#a)"/>
+    <text x="672" y="73" text-anchor="middle" font-size="9" fill="#888">schemas</text>
+
+    <!-- LLM → Tool Router (back) -->
+    <line x1="715" y1="110" x2="405" y2="110" stroke="#111" stroke-width="1.5" marker-end="url(#a)"/>
+    <text x="555" y="123" text-anchor="middle" font-size="9" fill="#888">tool_call</text>
+
+    <!-- Widget Host → 3P App -->
+    <line x1="630" y1="120" x2="680" y2="200" stroke="#4f46e5" stroke-width="2" marker-end="url(#a-ac)"/>
+    <text x="670" y="156" font-size="9" fill="#4f46e5">invoke</text>
+
+    <!-- 3P App → State Bridge -->
+    <line x1="720" y1="235" x2="635" y2="235" stroke="#16a34a" stroke-width="2" marker-end="url(#a-ok)"/>
+    <text x="677" y="228" text-anchor="middle" font-size="9" fill="#16a34a">state.update</text>
+
+    <!-- State Bridge → Chat UI -->
+    <path d="M490,235 L100,235 L100,135" fill="none" stroke="#16a34a" stroke-width="2" marker-end="url(#a-ok)"/>
+    <text x="300" y="228" text-anchor="middle" font-size="9" fill="#16a34a">snapshot → context</text>
+
+    <!-- Widget Host ↔ State Bridge (vertical) -->
+    <line x1="560" y1="130" x2="560" y2="195" stroke="#4f46e5" stroke-width="2" marker-end="url(#a-ac)"/>
+
+    <!-- Auth Broker → Widget Host -->
+    <line x1="400" y1="220" x2="485" y2="220" stroke="#111" stroke-width="1.5" marker-end="url(#a)"/>
+    <text x="442" y="214" text-anchor="middle" font-size="9" fill="#888">creds</text>
+
+    <!-- Chat UI → Auth Broker -->
+    <path d="M100,135 L100,235 L255,235" fill="none" stroke="#111" stroke-width="1.5" marker-end="url(#a)"/>
+    <text x="155" y="228" text-anchor="middle" font-size="9" fill="#888">consent</text>
+
+    <!-- ── BUILD ORDER (bottom) ── -->
+    <text x="30" y="310" font-size="10" font-weight="700" fill="#888">BUILD ORDER:</text>
+    <rect x="150" y="296" width="24" height="20" rx="4" fill="#4f46e5"/><text x="162" y="310" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">1</text>
+    <text x="180" y="310" font-size="10" fill="#555">Tool Router</text>
+    <rect x="280" y="296" width="24" height="20" rx="4" fill="#4f46e5"/><text x="292" y="310" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">2</text>
+    <text x="310" y="310" font-size="10" fill="#555">Widget Host</text>
+    <rect x="420" y="296" width="24" height="20" rx="4" fill="#4f46e5"/><text x="432" y="310" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">3</text>
+    <text x="450" y="310" font-size="10" fill="#555">State Bridge</text>
+    <rect x="560" y="296" width="24" height="20" rx="4" fill="#4f46e5"/><text x="572" y="310" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">4</text>
+    <text x="590" y="310" font-size="10" fill="#555">Auth Broker</text>
+    <rect x="690" y="296" width="24" height="20" rx="4" fill="#4f46e5"/><text x="702" y="310" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">5</text>
+    <text x="720" y="310" font-size="10" fill="#555">Polish + docs</text>
+
+    <!-- ── LEGEND ── -->
+    <rect x="830" y="290" width="12" height="12" rx="2" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.5"/>
+    <text x="848" y="300" font-size="9" fill="#888">Build</text>
+    <rect x="830" y="308" width="12" height="12" rx="2" fill="#fff" stroke="#bbb" stroke-width="1" stroke-dasharray="3 2"/>
+    <text x="848" y="318" font-size="9" fill="#888">External</text>
+  </svg>
+</div>
+
+<!-- ══════════════════════════════════════════
+     2. END-TO-END SEQUENCE
+     ══════════════════════════════════════════ -->
+<div class="sec-title">2 &middot; End-to-end sequence</div>
+<div class="seq-wrap">
+  <span class="seq-wrap-label">One chess game</span>
+  <svg viewBox="0 0 960 520" width="960" height="520" xmlns="http://www.w3.org/2000/svg" font-family="Inter,sans-serif">
+    <defs>
+      <marker id="s" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#4f46e5"/></marker>
+      <marker id="sg" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6Z" fill="#16a34a"/></marker>
+    </defs>
+
+    <!-- Column headers -->
+    <rect x="20" y="10" width="130" height="36" rx="6" fill="#f8f9fa" stroke="#ddd"/><text x="85" y="33" text-anchor="middle" font-size="11" font-weight="700">User</text>
+    <rect x="180" y="10" width="130" height="36" rx="6" fill="#f8f9fa" stroke="#ddd"/><text x="245" y="33" text-anchor="middle" font-size="11" font-weight="700">Chat UI</text>
+    <rect x="340" y="10" width="130" height="36" rx="6" fill="#eef2ff" stroke="#4f46e5"/><text x="405" y="33" text-anchor="middle" font-size="11" font-weight="700" fill="#4f46e5">Tool Router</text>
+    <rect x="500" y="10" width="130" height="36" rx="6" fill="#eef2ff" stroke="#4f46e5"/><text x="565" y="33" text-anchor="middle" font-size="11" font-weight="700" fill="#4f46e5">Widget Host</text>
+    <rect x="660" y="10" width="130" height="36" rx="6" fill="#f8f9fa" stroke="#ddd"/><text x="725" y="33" text-anchor="middle" font-size="11" font-weight="700">Chess App</text>
+    <rect x="820" y="10" width="120" height="36" rx="6" fill="#eef2ff" stroke="#4f46e5"/><text x="880" y="33" text-anchor="middle" font-size="11" font-weight="700" fill="#4f46e5">State Bridge</text>
+
+    <!-- Lifelines -->
+    <line x1="85" y1="50" x2="85" y2="510" stroke="#eee" stroke-width="1.5"/>
+    <line x1="245" y1="50" x2="245" y2="510" stroke="#eee" stroke-width="1.5"/>
+    <line x1="405" y1="50" x2="405" y2="510" stroke="#e0e7ff" stroke-width="1.5"/>
+    <line x1="565" y1="50" x2="565" y2="510" stroke="#e0e7ff" stroke-width="1.5"/>
+    <line x1="725" y1="50" x2="725" y2="510" stroke="#eee" stroke-width="1.5"/>
+    <line x1="880" y1="50" x2="880" y2="510" stroke="#e0e7ff" stroke-width="1.5"/>
+
+    <!-- Step numbers + arrows -->
+    <!-- 1 -->
+    <circle cx="20" cy="80" r="11" fill="#4f46e5"/><text x="20" y="84" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">1</text>
+    <rect x="40" y="68" width="115" height="24" rx="5" fill="#fff" stroke="#ddd"/><text x="97" y="84" text-anchor="middle" font-size="10">"let's play chess"</text>
+    <line x1="155" y1="80" x2="235" y2="80" stroke="#4f46e5" stroke-width="2" marker-end="url(#s)"/>
+
+    <!-- 2 -->
+    <circle cx="20" cy="120" r="11" fill="#4f46e5"/><text x="20" y="124" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">2</text>
+    <line x1="245" y1="120" x2="395" y2="120" stroke="#4f46e5" stroke-width="2" marker-end="url(#s)"/>
+    <text x="320" y="114" text-anchor="middle" font-size="9" fill="#888">route to LLM</text>
+
+    <!-- 3 -->
+    <circle cx="20" cy="160" r="11" fill="#4f46e5"/><text x="20" y="164" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">3</text>
+    <line x1="405" y1="160" x2="555" y2="160" stroke="#4f46e5" stroke-width="2" marker-end="url(#s)"/>
+    <text x="480" y="154" text-anchor="middle" font-size="9" fill="#4f46e5" font-weight="600">mount iframe</text>
+
+    <!-- 4 -->
+    <circle cx="20" cy="200" r="11" fill="#4f46e5"/><text x="20" y="204" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">4</text>
+    <line x1="565" y1="200" x2="715" y2="200" stroke="#4f46e5" stroke-width="2" marker-end="url(#s)"/>
+    <text x="640" y="194" text-anchor="middle" font-size="9" fill="#4f46e5" font-weight="600">invoke start_game</text>
+
+    <!-- 5 -->
+    <circle cx="20" cy="240" r="11" fill="#16a34a"/><text x="20" y="244" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">5</text>
+    <line x1="725" y1="240" x2="575" y2="240" stroke="#16a34a" stroke-width="2" marker-end="url(#sg)"/>
+    <text x="650" y="234" text-anchor="middle" font-size="9" fill="#16a34a" font-weight="600">state.update {fen}</text>
+
+    <!-- 6 -->
+    <circle cx="20" cy="275" r="11" fill="#16a34a"/><text x="20" y="279" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">6</text>
+    <line x1="565" y1="275" x2="870" y2="275" stroke="#16a34a" stroke-width="2" marker-end="url(#sg)"/>
+    <text x="717" y="268" text-anchor="middle" font-size="9" fill="#16a34a">store snapshot</text>
+
+    <!-- 7 -->
+    <circle cx="20" cy="315" r="11" fill="#4f46e5"/><text x="20" y="319" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">7</text>
+    <rect x="40" y="303" width="115" height="24" rx="5" fill="#fff" stroke="#ddd"/><text x="97" y="319" text-anchor="middle" font-size="10">drags e2→e4</text>
+    <line x1="155" y1="315" x2="555" y2="315" stroke="#4f46e5" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#s)"/>
+    <text x="350" y="308" text-anchor="middle" font-size="9" fill="#888">via board UI</text>
+
+    <!-- 8 (repeat 5-6: state.update loop) -->
+    <circle cx="20" cy="350" r="11" fill="#16a34a"/><text x="20" y="354" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">8</text>
+    <rect x="575" y="338" width="310" height="24" rx="5" fill="#f0fdf4" stroke="#bbf7d0"/>
+    <text x="730" y="354" text-anchor="middle" font-size="9" fill="#16a34a" font-weight="600">state.update + store (repeats per move)</text>
+
+    <!-- 9 -->
+    <circle cx="20" cy="390" r="11" fill="#4f46e5"/><text x="20" y="394" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">9</text>
+    <rect x="40" y="378" width="115" height="24" rx="5" fill="#fff" stroke="#ddd"/><text x="97" y="394" text-anchor="middle" font-size="10">"what should I do?"</text>
+    <line x1="155" y1="390" x2="235" y2="390" stroke="#4f46e5" stroke-width="2" marker-end="url(#s)"/>
+
+    <!-- 10 -->
+    <circle cx="20" cy="425" r="11" fill="#4f46e5"/><text x="20" y="429" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">10</text>
+    <line x1="245" y1="425" x2="395" y2="425" stroke="#4f46e5" stroke-width="2" marker-end="url(#s)"/>
+    <text x="320" y="418" text-anchor="middle" font-size="9" fill="#888">LLM reads FEN</text>
+    <line x1="405" y1="430" x2="245" y2="445" stroke="#4f46e5" stroke-width="1.5" marker-end="url(#s)"/>
+    <text x="330" y="445" text-anchor="middle" font-size="9" fill="#4f46e5">"try Nf3..."</text>
+
+    <!-- 11 -->
+    <circle cx="20" cy="475" r="11" fill="#16a34a"/><text x="20" y="479" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">11</text>
+    <line x1="725" y1="475" x2="575" y2="475" stroke="#16a34a" stroke-width="2.5" marker-end="url(#sg)"/>
+    <text x="650" y="468" text-anchor="middle" font-size="10" fill="#16a34a" font-weight="700">complete {checkmate}</text>
+
+    <!-- 12 -->
+    <circle cx="20" cy="502" r="11" fill="#4f46e5"/><text x="20" y="506" text-anchor="middle" font-size="10" font-weight="800" fill="#fff">12</text>
+    <line x1="565" y1="502" x2="255" y2="502" stroke="#4f46e5" stroke-width="2" marker-end="url(#s)"/>
+    <text x="410" y="496" text-anchor="middle" font-size="9" fill="#4f46e5">close widget → result card → "great game!"</text>
+  </svg>
+</div>
+
+<!-- ══════════════════════════════════════════
+     3. CHESS MOCK — annotated
+     ══════════════════════════════════════════ -->
+<div class="sec-title">3 &middot; Main screen (annotated)</div>
+<div class="mock-wrap">
+  <div class="mock-bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span>ChatBridge</span></div>
+  <div class="mock-body">
+    <div class="m-side">
+      <div class="m-nav on">Chess game</div>
+      <div class="m-nav">Morning chat</div>
+      <div class="m-nav">History hw</div>
+      <div style="flex:1"></div>
+      <div class="m-nav">Settings</div>
+    </div>
+    <div class="m-chat">
+      <!-- Callout 1 -->
+      <div class="co" style="top:10px;right:16px"><div class="co-num">1</div><div class="co-text">User asks</div></div>
+      <div class="bub u">Let's play chess!</div>
+
+      <div class="bub a">Started a new game. You're white — make your opening move.</div>
+
+      <!-- Callout 2 -->
+      <div style="position:relative">
+        <div class="co" style="top:-4px;right:-6px"><div class="co-num">2</div><div class="co-text">App mounts inline</div></div>
+        <div class="iw">
+          <div class="iw-head"><span>Chess &middot; iframe</span><span style="display:flex;align-items:center;gap:4px"><span class="iw-dot"></span> Active</span></div>
+          <div class="iw-body">
+            <div class="cb">
+              <div class="s l">&#9820;</div><div class="s d">&#9822;</div><div class="s l">&#9821;</div><div class="s d">&#9819;</div><div class="s l">&#9818;</div><div class="s d">&#9821;</div><div class="s l">&#9822;</div><div class="s d">&#9820;</div>
+              <div class="s d">&#9823;</div><div class="s l">&#9823;</div><div class="s d">&#9823;</div><div class="s l">&#9823;</div><div class="s d">&#9823;</div><div class="s l">&#9823;</div><div class="s d">&#9823;</div><div class="s l">&#9823;</div>
+              <div class="s l"></div><div class="s d"></div><div class="s l"></div><div class="s d"></div><div class="s l"></div><div class="s d"></div><div class="s l"></div><div class="s d"></div>
+              <div class="s d"></div><div class="s l"></div><div class="s d"></div><div class="s l"></div><div class="s d"></div><div class="s l"></div><div class="s d"></div><div class="s l"></div>
+              <div class="s l"></div><div class="s d"></div><div class="s l"></div><div class="s d"></div><div class="s h">&#9817;</div><div class="s d"></div><div class="s l"></div><div class="s d"></div>
+              <div class="s d"></div><div class="s l"></div><div class="s d"></div><div class="s l"></div><div class="s d"></div><div class="s l"></div><div class="s d"></div><div class="s l"></div>
+              <div class="s l">&#9817;</div><div class="s d">&#9817;</div><div class="s l">&#9817;</div><div class="s d">&#9817;</div><div class="s l"></div><div class="s d">&#9817;</div><div class="s l">&#9817;</div><div class="s d">&#9817;</div>
+              <div class="s d">&#9814;</div><div class="s l">&#9816;</div><div class="s d">&#9815;</div><div class="s l">&#9813;</div><div class="s d">&#9812;</div><div class="s l">&#9815;</div><div class="s d">&#9816;</div><div class="s l">&#9814;</div>
+            </div>
+            <span class="iw-status">White to move &middot; 1. e4</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Callout 3 -->
+      <div style="position:relative">
+        <div class="co" style="top:0;right:-6px"><div class="co-num">3</div><div class="co-text">Move updates state</div></div>
+        <div class="bub s">state.update → fen stored in context</div>
+      </div>
+
+      <!-- Callout 4 -->
+      <div class="bub u">What should I do here?</div>
+      <div style="position:relative">
+        <div class="co" style="top:0;right:-6px"><div class="co-num">4</div><div class="co-text">Chat uses snapshot</div></div>
+        <div class="bub a">Looking at the position — try Nf3. It develops your knight and prepares to castle.</div>
+      </div>
+
+      <!-- Callout 5 -->
+      <div style="position:relative">
+        <div class="co" style="top:0;right:-6px"><div class="co-num">5</div><div class="co-text">Complete card</div></div>
+        <div class="done-card">
+          <div class="done-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span>Game complete</span>
+          </div>
+          <div class="done-body">
+            <div><div class="done-val">&#9812;</div><div class="done-lbl">White wins</div></div>
+            <div><div class="done-val">24</div><div class="done-lbl">Moves</div></div>
+            <div><div class="done-val">&#35;</div><div class="done-lbl">Checkmate</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bub a">Great game! You won in 24 moves. Want to analyze your opening?</div>
+      <div class="m-input"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     4. STATES STRIP
+     ══════════════════════════════════════════ -->
+<div class="sec-title">4 &middot; Widget states</div>
+<div class="states-strip">
+  <div class="st"><div class="st-dot"></div><div class="st-name">Idle</div><div class="st-desc">Normal chat, no app</div></div>
+  <div class="st"><div class="st-dot" style="border-color:var(--warn);background:var(--warn)"></div><div class="st-name">Launching</div><div class="st-desc">iframe mounting</div></div>
+  <div class="st"><div class="st-dot on"></div><div class="st-name">Active</div><div class="st-desc">User interacting</div></div>
+  <div class="st"><div class="st-dot" style="border-color:var(--warn);background:var(--warn)"></div><div class="st-name">Auth needed</div><div class="st-desc">OAuth consent</div></div>
+  <div class="st"><div class="st-dot" style="border-color:var(--ok);background:var(--ok)"></div><div class="st-name">Completed</div><div class="st-desc">Result in transcript</div></div>
+  <div class="st"><div class="st-dot" style="border-color:var(--err);background:var(--err)"></div><div class="st-name">Error</div><div class="st-desc">Retry / fallback</div></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     5. BUILD ORDER STRIP
+     ══════════════════════════════════════════ -->
+<div class="sec-title">5 &middot; Build checklist</div>
+<div style="background:var(--panel);border:2px solid var(--ac);border-radius:10px;padding:14px 18px;display:flex;flex-direction:column;gap:6px">
+  <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0f0">
+    <span style="width:24px;height:24px;border-radius:6px;background:var(--ac);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex-shrink:0">1</span>
+    <span style="font-size:13px;font-weight:700;flex:1">Widget Host</span>
+    <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">iframe mount + postMessage bridge</span>
+    <span style="font-size:9px;color:var(--ac);font-weight:700;background:var(--ac-bg);padding:2px 8px;border-radius:4px">Day 1</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0f0">
+    <span style="width:24px;height:24px;border-radius:6px;background:var(--ac);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex-shrink:0">2</span>
+    <span style="font-size:13px;font-weight:700;flex:1">Event Bridge</span>
+    <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">state.update / complete / error signals</span>
+    <span style="font-size:9px;color:var(--ac);font-weight:700;background:var(--ac-bg);padding:2px 8px;border-radius:4px">Day 1-2</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0f0">
+    <span style="width:24px;height:24px;border-radius:6px;background:var(--ac);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex-shrink:0">3</span>
+    <span style="font-size:13px;font-weight:700;flex:1">Chess Widget</span>
+    <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">first app — proves the full contract</span>
+    <span style="font-size:9px;color:var(--ac);font-weight:700;background:var(--ac-bg);padding:2px 8px;border-radius:4px">Day 2-3</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f0f0f0">
+    <span style="width:24px;height:24px;border-radius:6px;background:var(--ac);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex-shrink:0">4</span>
+    <span style="font-size:13px;font-weight:700;flex:1">Snapshot Store</span>
+    <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">FEN → conversation context for LLM</span>
+    <span style="font-size:9px;color:var(--ac);font-weight:700;background:var(--ac-bg);padding:2px 8px;border-radius:4px">Day 3-4</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;padding:6px 0">
+    <span style="width:24px;height:24px;border-radius:6px;background:var(--ac);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;flex-shrink:0">5</span>
+    <span style="font-size:13px;font-weight:700;flex:1">OAuth Broker</span>
+    <span style="font-size:10px;color:var(--muted);font-family:var(--mono)">platform-mediated auth for Spotify etc.</span>
+    <span style="font-size:9px;color:var(--ac);font-weight:700;background:var(--ac-bg);padding:2px 8px;border-radius:4px">Day 4-5</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     6. REFERENCE (minimal, low weight)
+     ══════════════════════════════════════════ -->
+<div class="sec-title">6 &middot; Reference</div>
+<div class="support-grid">
+
+  <!-- Iframe + Auth (merged) -->
+  <div class="sp" style="font-size:10px;padding:10px">
+    <div class="sp-title" style="font-size:10px;margin-bottom:5px">Iframe + Auth</div>
+    <div class="sp-item" style="padding:2px 0"><span class="sp-arrow" style="color:var(--ac)">→</span> Host sends: invoke, theme, session_id</div>
+    <div class="sp-item" style="padding:2px 0"><span class="sp-arrow" style="color:var(--ok)">←</span> App sends: state.update, complete, error</div>
+    <div class="sp-item" style="padding:2px 0"><span class="sp-arrow" style="color:var(--err)">✕</span> App cannot read DOM or store tokens</div>
+    <div style="height:1px;background:var(--line);margin:3px 0"></div>
+    <div class="sp-item" style="padding:2px 0"><span class="sp-arrow">1</span> Manifest declares auth type</div>
+    <div class="sp-item" style="padding:2px 0"><span class="sp-arrow">2</span> Platform consent → BFF → PKCE</div>
+    <div class="sp-item" style="padding:2px 0"><span class="sp-arrow">3</span> Widget gets scoped cap, never raw token</div>
+  </div>
+
+  <!-- Data shapes -->
+  <div class="sp" style="font-size:10px;padding:10px">
+    <div class="sp-title" style="font-size:10px;margin-bottom:5px">Data shapes</div>
+    <div style="padding:5px 7px;background:#f8f9fa;border-radius:4px;border:1px solid var(--line);font-family:var(--mono);font-size:8.5px;line-height:1.45;color:var(--mid);white-space:pre">// snapshot
+{ "fen":"rnbqkbnr/.../5N2/...",
+  "turn":"b","last_move":"g1f3" }</div>
+    <div style="padding:5px 7px;background:#f8f9fa;border-radius:4px;border:1px solid var(--line);font-family:var(--mono);font-size:8.5px;line-height:1.45;color:var(--mid);white-space:pre;margin-top:5px">// manifest
+{ "id":"chess",
+  "widget":{"url":"/.../chess"},
+  "tools":[{"name":"start_game"}],
+  "events":["state.update","complete"] }</div>
+  </div>
+
+</div>
+
+</main>
+</body>
+</html>

@@ -224,7 +224,6 @@ export default defineConfig(({ mode }) => {
       },
       server: {
         port: 1212,
-        strictPort: true,
       },
       define: {
         'process.type': '"renderer"',

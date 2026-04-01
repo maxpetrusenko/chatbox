@@ -74,6 +74,8 @@ console.log(`📱 URL Scheme registered: ${PROTOCOL_SCHEME}://`)
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
+const DEV_SERVER_RETRY_LIMIT = 8
+const DEV_SERVER_RETRY_DELAY_MS = 500
 
 // --------- 快捷键 ---------
 
@@ -271,13 +273,97 @@ async function createWindow() {
     },
   })
 
+  const devServerUrl = !app.isPackaged ? process.env['ELECTRON_RENDERER_URL'] : undefined
+  let devServerRetryCount = 0
+
+  const loadRendererFallback = () => {
+    const fallbackHtml = `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Chatbox renderer failed</title>
+          <style>
+            :root { color-scheme: dark; }
+            body {
+              margin: 0;
+              min-height: 100vh;
+              display: grid;
+              place-items: center;
+              background: #0f1115;
+              color: #f3f4f6;
+              font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            }
+            main {
+              width: min(680px, calc(100vw - 48px));
+              padding: 24px;
+              border: 1px solid rgba(255,255,255,0.08);
+              border-radius: 16px;
+              background: rgba(255,255,255,0.03);
+              box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+            }
+            h1 { margin: 0 0 12px; font-size: 20px; }
+            p { margin: 8px 0; line-height: 1.5; color: #d1d5db; }
+            code {
+              display: block;
+              margin-top: 12px;
+              padding: 12px;
+              border-radius: 10px;
+              background: #05070a;
+              color: #93c5fd;
+              overflow-wrap: anywhere;
+            }
+          </style>
+        </head>
+        <body>
+          <main>
+            <h1>Renderer dev server unavailable</h1>
+            <p>Chatbox started, but the renderer dev server did not answer.</p>
+            <p>Restart the dev command. If this happened after adding a route, check route generation and renderer compile errors.</p>
+            <code>${devServerUrl ?? 'No ELECTRON_RENDERER_URL set'}</code>
+          </main>
+        </body>
+      </html>
+    `
+
+    void mainWindow?.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(fallbackHtml)}`)
+    mainWindow?.show()
+  }
+
+  const loadRenderer = () => {
+    if (devServerUrl) {
+      log.info(`[window] Loading renderer dev server (attempt ${devServerRetryCount + 1}/${DEV_SERVER_RETRY_LIMIT + 1}): ${devServerUrl}`)
+      void mainWindow?.loadURL(devServerUrl).catch((error) => {
+        log.error('[window] Failed to load renderer dev server:', error)
+      })
+      return
+    }
+
+    void mainWindow?.loadFile(path.join(__dirname, '../renderer/index.html'))
+  }
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    if (!isMainFrame || !devServerUrl || validatedURL !== devServerUrl) return
+
+    log.error(
+      `[window] Renderer failed to load: ${errorDescription} (${errorCode}) ${validatedURL}`,
+    )
+
+    if (devServerRetryCount >= DEV_SERVER_RETRY_LIMIT) {
+      loadRendererFallback()
+      return
+    }
+
+    devServerRetryCount += 1
+    setTimeout(() => {
+      if (!mainWindow?.isDestroyed()) {
+        loadRenderer()
+      }
+    }, DEV_SERVER_RETRY_DELAY_MS)
+  })
+
   // Load the local URL for development or the local
   // html file for production
-  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
-  }
+  loadRenderer()
 
   mainWindow.on('ready-to-show', () => {
     if (!mainWindow) {

@@ -1,9 +1,8 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Avatar, Box, Button, Divider, Flex, Paper, ScrollArea, Space, Stack, Text } from '@mantine/core'
 import type { CopilotDetail, Session } from '@shared/types'
-import { ModelProviderEnum } from '@shared/types'
 import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
-import { createFileRoute, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useRouterState } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -17,6 +16,7 @@ import Page from '@/components/layout/Page'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { isChessLaunchRequest } from '@/lib/chess/intents'
 import { router } from '@/router'
 import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
@@ -32,9 +32,10 @@ export const Route = createFileRoute('/')({
   ),
 })
 
-function Index() {
+export function Index() {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
+  const navigate = useNavigate()
 
   const newSessionState = useUIStore((s) => s.newSessionState)
   const setNewSessionState = useUIStore((s) => s.setNewSessionState)
@@ -99,6 +100,16 @@ function Index() {
 
   const handleSubmit = useCallback(
     async ({ constructedMessage, needGenerating = true, onUserMessageReady }: InputBoxPayload) => {
+      // Check for chess launch intent before creating a chat session
+      const plainText = constructedMessage.contentParts
+        ?.filter((p) => p.type === 'text')
+        .map((p) => p.text)
+        .join(' ') ?? ''
+      if (isChessLaunchRequest(plainText)) {
+        navigate({ to: '/chess', search: { prompt: plainText, autostart: true } })
+        return
+      }
+
       const newSession = await createSessionStore({
         name: session.name,
         type: 'chat',
@@ -117,7 +128,7 @@ function Index() {
       }
 
       // Transfer web browsing setting from "new" session to the actual session
-      const newSessionWebBrowsing = sessionWebBrowsingMap['new']
+      const newSessionWebBrowsing = sessionWebBrowsingMap.new
       if (newSessionWebBrowsing !== undefined) {
         setSessionWebBrowsing(newSession.id, newSessionWebBrowsing)
         clearSessionWebBrowsing('new')
@@ -139,6 +150,7 @@ function Index() {
       sessionWebBrowsingMap,
       setSessionWebBrowsing,
       clearSessionWebBrowsing,
+      navigate,
     ]
   )
 
