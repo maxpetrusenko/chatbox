@@ -52,10 +52,16 @@ import platform from '@/platform'
 import { router } from '@/router'
 import Sidebar from '@/Sidebar'
 import * as atoms from '@/stores/atoms'
+import { initPlugins } from '@/plugins'
+import { pluginRegistryStore } from '@/stores/pluginRegistry'
 import * as premiumActions from '@/stores/premiumActions'
 import * as settingActions from '@/stores/settingActions'
 import { settingsStore, useLanguage, useSettingsStore, useTheme } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
+
+// Initialize plugins at module load time (before first render)
+initPlugins()
+pluginRegistryStore.getState().loadBuiltins()
 
 function Root() {
   const location = useLocation()

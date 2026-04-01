@@ -6,12 +6,20 @@
  */
 
 import type { PluginManifest } from '@shared/plugin-types'
+import { chessManifest } from './chess/manifest'
+import { registerChessPlugin } from './chess'
 
-// Manifests will be added as plugins are built (chess, weather, spotify, etc.)
-// Each plugin folder will also have its own plugin.json; these literals are the
-// authoritative runtime source until we add dynamic loading.
+const builtinManifests: PluginManifest[] = [
+  chessManifest,
+]
 
-const builtinManifests: PluginManifest[] = []
+let initialized = false
+
+export function initPlugins(): void {
+  if (initialized) return
+  initialized = true
+  registerChessPlugin()
+}
 
 export function getBuiltinManifests(): PluginManifest[] {
   return builtinManifests

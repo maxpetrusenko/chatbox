@@ -1,24 +1,40 @@
 /**
  * Resolve plugin entrypoint URLs.
  *
- * For bundled plugins, the entrypoint is a static asset served from the
- * renderer's public directory. For remote plugins (future), this would
- * return a sandboxed URL.
+ * For bundled plugins we build a blob URL from the raw HTML source.
+ * This works in sandboxed iframes without needing a custom protocol
+ * or static file serving configuration.
+ *
+ * For remote plugins (future), this would return a sandboxed URL.
  */
 
-// Map of pluginId → base URL for bundled plugins.
-// Populated at registration time or derived from conventions.
-const pluginBaseUrls = new Map<string, string>()
+// Cache blob URLs so we don't recreate them on every render
+const blobUrlCache = new Map<string, string>()
 
-export function registerPluginBaseUrl(pluginId: string, baseUrl: string): void {
-  pluginBaseUrls.set(pluginId, baseUrl)
+// Map of pluginId → raw HTML source string for bundled plugins.
+const pluginHtmlSources = new Map<string, string>()
+
+export function registerPluginHtml(pluginId: string, html: string): void {
+  pluginHtmlSources.set(pluginId, html)
+  // Invalidate cached blob URL
+  const old = blobUrlCache.get(pluginId)
+  if (old) {
+    URL.revokeObjectURL(old)
+    blobUrlCache.delete(pluginId)
+  }
 }
 
-export function resolvePluginEntrypoint(pluginId: string, entrypoint: string): string | null {
-  const base = pluginBaseUrls.get(pluginId)
-  if (base) {
-    return `${base}/${entrypoint}`
+export function resolvePluginEntrypoint(pluginId: string, _entrypoint: string): string | null {
+  // Check for registered HTML source
+  const html = pluginHtmlSources.get(pluginId)
+  if (html) {
+    let url = blobUrlCache.get(pluginId)
+    if (!url) {
+      const blob = new Blob([html], { type: 'text/html' })
+      url = URL.createObjectURL(blob)
+      blobUrlCache.set(pluginId, url)
+    }
+    return url
   }
-  // Convention: bundled plugins are served from /plugins/<pluginId>/
-  return `/plugins/${pluginId}/${entrypoint}`
+  return null
 }
