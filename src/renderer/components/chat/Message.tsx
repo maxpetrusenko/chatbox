@@ -48,6 +48,7 @@ import { AssistantAvatar, SystemAvatar, UserAvatar } from '../common/Avatar'
 import { ScalableIcon } from '../common/ScalableIcon'
 import Loading from '../icons/Loading'
 import { ReasoningContentUI, ToolCallPartUI } from '../message-parts/ToolCallPartUI'
+import PluginFrameInline from '../PluginFrameInline'
 import { MessageAttachmentGrid } from './MessageAttachmentGrid'
 import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
@@ -502,6 +503,12 @@ const _Message: FC<Props> = (props) => {
                         )
                       ) : item.type === 'tool-call' ? (
                         <ToolCallPartUI key={item.toolCallId} part={item as MessageToolCallPart} />
+                      ) : item.type === 'plugin' ? (
+                        <PluginFrameInline
+                          key={`plugin-${item.instanceId}`}
+                          pluginId={item.pluginId}
+                          instanceId={item.instanceId}
+                        />
                       ) : null
                     )}
                   </div>
