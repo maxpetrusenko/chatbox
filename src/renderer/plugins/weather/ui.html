@@ -1,0 +1,292 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Weather Lab</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --panel: rgba(15, 23, 42, 0.84);
+      --card: rgba(30, 41, 59, 0.95);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --line: rgba(148, 163, 184, 0.18);
+      --font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: radial-gradient(circle at top left, rgba(56,189,248,0.18), transparent 32%), linear-gradient(160deg, #020617, #0f172a 55%, #1e293b);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .shell { padding: 14px; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+    }
+    .top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+    h1 { margin: 0; font-size: 16px; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .city { font-size: 22px; font-weight: 700; margin-top: 8px; }
+    .summary { display:flex; align-items:flex-end; gap:10px; margin-top: 12px; }
+    .temp { font-size: 36px; font-weight: 800; line-height: 1; }
+    .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top: 12px; }
+    .chip {
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--text);
+      font-size: 12px;
+      background: rgba(255,255,255,0.04);
+    }
+    .grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; margin-top: 14px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      min-height: 78px;
+    }
+    .card .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .card .v { margin-top: 6px; font-size: 18px; font-weight: 700; }
+    .hourly { margin-top: 14px; display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px; }
+    .hour {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      background: rgba(255,255,255,0.03);
+      text-align: center;
+    }
+    .status { margin-top: 12px; font-size: 12px; color: var(--muted); min-height: 18px; }
+    .error { color: var(--danger); }
+    .success { color: var(--ok); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="panel">
+      <div class="top">
+        <div>
+          <div class="muted">Public app · no auth</div>
+          <h1>Weather Lab</h1>
+          <div id="city" class="city">Waiting for a city</div>
+        </div>
+        <div class="muted" id="updated">No data yet</div>
+      </div>
+      <div class="summary">
+        <div id="temp" class="temp">--°</div>
+        <div>
+          <div id="condition" class="muted">Run a weather tool to load forecast</div>
+          <div class="chips">
+            <div class="chip" id="latlng">Lat/Lng --</div>
+            <div class="chip" id="aqi">AQI --</div>
+          </div>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="card"><div class="k">Wind</div><div class="v" id="wind">--</div></div>
+        <div class="card"><div class="k">Rain %</div><div class="v" id="rain">--</div></div>
+        <div class="card"><div class="k">Humidity</div><div class="v" id="humidity">--</div></div>
+      </div>
+      <div id="hourly" class="hourly"></div>
+      <div id="status" class="status">Widget ready</div>
+    </div>
+  </div>
+  <script>
+    let nonce = '';
+    let instanceId = '';
+    let weatherState = {
+      city: '',
+      latitude: null,
+      longitude: null,
+      timezone: null,
+      current: null,
+      hourly: [],
+      airQuality: null,
+      summary: '',
+      updatedAt: null,
+    };
+
+    function sendMsg(msg) {
+      if (!nonce) return;
+      msg.nonce = nonce;
+      window.parent.postMessage(msg, '*');
+    }
+
+    function setStatus(text, cls) {
+      const el = document.getElementById('status');
+      el.textContent = text;
+      el.className = 'status' + (cls ? ' ' + cls : '');
+    }
+
+    function sendStateUpdate() {
+      sendMsg({ type: 'STATE_UPDATE', state: { ...weatherState } });
+    }
+
+    function sendCompletion(summary) {
+      sendMsg({
+        type: 'COMPLETION',
+        payload: {
+          pluginId: 'weather',
+          instanceId,
+          summary: summary || weatherState.summary || `Finished weather lookup for ${weatherState.city}`,
+          data: { ...weatherState },
+        },
+      });
+    }
+
+    function weatherCodeToLabel(code) {
+      const map = {
+        0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Overcast',
+        45: 'Fog', 48: 'Rime fog', 51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
+        61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 71: 'Light snow', 73: 'Snow', 75: 'Heavy snow',
+        80: 'Rain showers', 81: 'Rain showers', 82: 'Heavy showers', 95: 'Thunderstorm'
+      };
+      return map[code] || `Code ${code}`;
+    }
+
+    function render() {
+      document.getElementById('city').textContent = weatherState.city || 'Waiting for a city';
+      document.getElementById('updated').textContent = weatherState.updatedAt ? `Updated ${weatherState.updatedAt}` : 'No data yet';
+      document.getElementById('temp').textContent = weatherState.current?.temperature != null ? `${Math.round(weatherState.current.temperature)}°` : '--°';
+      document.getElementById('condition').textContent = weatherState.current ? weatherCodeToLabel(weatherState.current.weatherCode) : 'Run a weather tool to load forecast';
+      document.getElementById('latlng').textContent = weatherState.latitude != null ? `Lat/Lng ${weatherState.latitude.toFixed(2)}, ${weatherState.longitude.toFixed(2)}` : 'Lat/Lng --';
+      document.getElementById('aqi').textContent = weatherState.airQuality != null ? `AQI ${Math.round(weatherState.airQuality)}` : 'AQI --';
+      document.getElementById('wind').textContent = weatherState.current?.windSpeed != null ? `${Math.round(weatherState.current.windSpeed)} km/h` : '--';
+      document.getElementById('rain').textContent = weatherState.current?.precipitationProbability != null ? `${Math.round(weatherState.current.precipitationProbability)}%` : '--';
+      document.getElementById('humidity').textContent = weatherState.current?.humidity != null ? `${Math.round(weatherState.current.humidity)}%` : '--';
+      const hourlyEl = document.getElementById('hourly');
+      hourlyEl.innerHTML = '';
+      for (const hour of weatherState.hourly.slice(0, 4)) {
+        const div = document.createElement('div');
+        div.className = 'hour';
+        div.innerHTML = `<div class="muted">${hour.time}</div><div style="margin-top:6px;font-size:18px;font-weight:700;">${Math.round(hour.temperature)}°</div><div class="muted">${hour.precipitationProbability ?? 0}% rain</div>`;
+        hourlyEl.appendChild(div);
+      }
+    }
+
+    async function geocode(city) {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`);
+      if (!res.ok) throw new Error('Failed to geocode city');
+      const data = await res.json();
+      const result = data?.results?.[0];
+      if (!result) throw new Error(`Could not find city: ${city}`);
+      return result;
+    }
+
+    async function loadForecast(city) {
+      const geo = await geocode(city);
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${geo.latitude}&longitude=${geo.longitude}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m,precipitation_probability&hourly=temperature_2m,precipitation_probability&forecast_days=1&timezone=auto`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch forecast');
+      const data = await res.json();
+      weatherState.city = `${geo.name}${geo.country ? ', ' + geo.country : ''}`;
+      weatherState.latitude = geo.latitude;
+      weatherState.longitude = geo.longitude;
+      weatherState.timezone = data.timezone;
+      weatherState.current = {
+        temperature: data.current?.temperature_2m,
+        weatherCode: data.current?.weather_code,
+        windSpeed: data.current?.wind_speed_10m,
+        humidity: data.current?.relative_humidity_2m,
+        precipitationProbability: data.current?.precipitation_probability,
+      };
+      weatherState.hourly = (data.hourly?.time || []).slice(0, 8).map((time, index) => ({
+        time: String(time).split('T')[1] || String(time),
+        temperature: data.hourly.temperature_2m?.[index],
+        precipitationProbability: data.hourly.precipitation_probability?.[index],
+      }));
+      weatherState.updatedAt = new Date().toLocaleTimeString();
+      weatherState.summary = `${weatherState.city}: ${Math.round(weatherState.current.temperature)}°, ${weatherCodeToLabel(weatherState.current.weatherCode)}.`;
+      render();
+      sendStateUpdate();
+      return {
+        city: weatherState.city,
+        summary: weatherState.summary,
+        current: weatherState.current,
+        hourly: weatherState.hourly,
+      };
+    }
+
+    async function loadAirQuality(city) {
+      const geo = await geocode(city);
+      const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${geo.latitude}&longitude=${geo.longitude}&current=us_aqi&timezone=auto`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch air quality');
+      const data = await res.json();
+      weatherState.city = `${geo.name}${geo.country ? ', ' + geo.country : ''}`;
+      weatherState.latitude = geo.latitude;
+      weatherState.longitude = geo.longitude;
+      weatherState.airQuality = data.current?.us_aqi ?? null;
+      weatherState.updatedAt = new Date().toLocaleTimeString();
+      render();
+      sendStateUpdate();
+      return {
+        city: weatherState.city,
+        usAqi: weatherState.airQuality,
+      };
+    }
+
+    async function handleToolInvoke(callId, toolName, parameters) {
+      try {
+        setStatus(`Running ${toolName}...`);
+        let result = null;
+        switch (toolName) {
+          case 'lookup_forecast':
+            result = await loadForecast(parameters.city);
+            setStatus('Forecast loaded', 'success');
+            break;
+          case 'lookup_air_quality':
+            result = await loadAirQuality(parameters.city);
+            setStatus('Air quality loaded', 'success');
+            break;
+          case 'finish':
+            setStatus('Weather task complete', 'success');
+            sendCompletion(parameters.summary);
+            result = { summary: parameters.summary || weatherState.summary || `Finished weather lookup for ${weatherState.city}` };
+            break;
+          default:
+            throw new Error(`Unknown tool: ${toolName}`);
+        }
+        sendMsg({ type: 'TOOL_RESULT', callId, result });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setStatus(message, 'error');
+        sendMsg({ type: 'TOOL_RESULT', callId, result: null, error: message });
+      }
+    }
+
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object' || !data.type) return;
+      switch (data.type) {
+        case 'PLUGIN_INIT':
+          nonce = data.nonce;
+          instanceId = data.instanceId;
+          render();
+          sendStateUpdate();
+          break;
+        case 'TOOL_INVOKE':
+          if (data.nonce !== nonce) return;
+          handleToolInvoke(data.callId, data.toolName, data.parameters || {});
+          break;
+      }
+    });
+
+    render();
+    window.parent.postMessage({ type: 'PLUGIN_READY', nonce: '' }, '*');
+  </script>
+</body>
+</html>

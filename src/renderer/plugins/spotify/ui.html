@@ -1,0 +1,276 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spotify Study DJ</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --panel: #111827;
+      --panel-2: #182133;
+      --line: rgba(255,255,255,0.08);
+      --text: #f5f7fb;
+      --muted: #97a4bd;
+      --accent: #1ed760;
+      --accent-2: #12a845;
+      --danger: #ff7b7b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Georgia, 'Iowan Old Style', serif; background: radial-gradient(circle at top, #1b2a18, var(--bg) 40%); color: var(--text); }
+    .wrap { padding: 16px; }
+    .panel { border: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border-radius: 18px; overflow: hidden; }
+    .hero { padding: 18px; border-bottom: 1px solid var(--line); }
+    .eyebrow { color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; }
+    h1 { margin: 6px 0; font-size: 28px; }
+    .muted { color: var(--muted); }
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+    button { border: 0; border-radius: 999px; padding: 10px 14px; cursor: pointer; background: var(--accent); color: #06280f; font-weight: 700; }
+    button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+    .grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; padding: 16px; }
+    .card { background: rgba(255,255,255,0.02); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+    .list { display: grid; gap: 10px; }
+    .item { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,0.02); }
+    .status { margin-top: 12px; font-size: 13px; color: var(--muted); }
+    .status.error { color: var(--danger); }
+    .status.success { color: var(--accent); }
+    .mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+    @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <div class="hero">
+        <div class="eyebrow">Authenticated app</div>
+        <h1>Spotify Study DJ</h1>
+        <div class="muted" id="subtitle">Connect Spotify to search playlists or create a study mix.</div>
+        <div class="toolbar">
+          <button id="connect">Connect Spotify</button>
+          <button id="disconnect" class="secondary">Forget connection</button>
+          <button id="finish" class="secondary">Finish</button>
+          <div class="muted mono" id="auth-meta">Not connected</div>
+        </div>
+        <div id="status" class="status">Widget ready</div>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <div class="muted">Playlists</div>
+          <div id="playlists" class="list"></div>
+        </div>
+        <div class="card">
+          <div class="muted">Current playback</div>
+          <div id="playback" class="list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    let nonce = '';
+    let instanceId = '';
+    let auth = { status: 'required', accessToken: '', expiresAt: null };
+    let spotifyState = { connected: false, playlists: [], currentPlayback: null, summary: '' };
+
+    function sendMsg(msg) {
+      if (!nonce) return;
+      msg.nonce = nonce;
+      window.parent.postMessage(msg, '*');
+    }
+    function setStatus(text, cls) {
+      const el = document.getElementById('status');
+      el.textContent = text;
+      el.className = 'status' + (cls ? ' ' + cls : '');
+    }
+    function requestAuth() {
+      setStatus('Waiting for Spotify connection...', '');
+      window.parent.postMessage({ type: 'AUTH_REQUEST', nonce }, '*');
+    }
+    function sendState() {
+      sendMsg({ type: 'STATE_UPDATE', state: { ...spotifyState, authStatus: auth.status } });
+    }
+    function sendCompletion(summary) {
+      sendMsg({ type: 'COMPLETION', payload: { pluginId: 'spotify', instanceId, summary, data: { ...spotifyState } } });
+    }
+    function renderAuth() {
+      const meta = document.getElementById('auth-meta');
+      if (auth.status === 'connected') {
+        meta.textContent = auth.expiresAt ? `Connected • expires ${new Date(auth.expiresAt).toLocaleTimeString()}` : 'Connected';
+      } else if (auth.status === 'expired') {
+        meta.textContent = 'Token expired';
+      } else {
+        meta.textContent = 'Not connected';
+      }
+    }
+    function render() {
+      renderAuth();
+      const playlistsEl = document.getElementById('playlists');
+      playlistsEl.innerHTML = '';
+      if (!spotifyState.playlists.length) {
+        playlistsEl.innerHTML = '<div class="muted">No playlist data yet</div>';
+      }
+      spotifyState.playlists.forEach((playlist) => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<div style="font-weight:700;">${playlist.name}</div><div class="muted">${playlist.owner || 'Unknown owner'} • ${playlist.trackCount || 0} tracks</div><div class="muted">${playlist.url || ''}</div>`;
+        playlistsEl.appendChild(div);
+      });
+      const playbackEl = document.getElementById('playback');
+      playbackEl.innerHTML = '';
+      if (!spotifyState.currentPlayback) {
+        playbackEl.innerHTML = '<div class="muted">No playback data yet</div>';
+        return;
+      }
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML = `<div style="font-weight:700;">${spotifyState.currentPlayback.title}</div><div class="muted">${spotifyState.currentPlayback.artist}</div><div class="muted">${spotifyState.currentPlayback.device || 'No device'} • ${spotifyState.currentPlayback.isPlaying ? 'playing' : 'paused'}</div>`;
+      playbackEl.appendChild(div);
+    }
+    async function spotifyFetch(path, options) {
+      if (!auth.accessToken) {
+        requestAuth();
+        throw new Error('Spotify auth required');
+      }
+      const res = await fetch(`https://api.spotify.com/v1${path}`, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${auth.accessToken}`,
+          'Content-Type': 'application/json',
+          ...(options && options.headers ? options.headers : {}),
+        },
+      });
+      if (res.status === 401) {
+        requestAuth();
+        throw new Error('Spotify token expired');
+      }
+      if (res.status === 204) return null;
+      if (!res.ok) throw new Error(`Spotify request failed: ${res.status}`);
+      return res.json();
+    }
+    async function searchPlaylists(query) {
+      const data = await spotifyFetch(`/search?type=playlist&limit=5&q=${encodeURIComponent(query)}`);
+      spotifyState.playlists = (data.playlists?.items || []).map((item) => ({
+        name: item.name,
+        owner: item.owner?.display_name,
+        trackCount: item.tracks?.total,
+        url: item.external_urls?.spotify,
+      }));
+      spotifyState.summary = `Found ${spotifyState.playlists.length} playlists for ${query}.`;
+      sendState();
+      render();
+      return { summary: spotifyState.summary, playlists: spotifyState.playlists };
+    }
+    async function getCurrentPlayback() {
+      const data = await spotifyFetch('/me/player/currently-playing');
+      spotifyState.currentPlayback = data?.item ? {
+        title: data.item.name,
+        artist: (data.item.artists || []).map((artist) => artist.name).join(', '),
+        device: data.device?.name,
+        isPlaying: data.is_playing,
+      } : null;
+      spotifyState.summary = spotifyState.currentPlayback ? `Current playback: ${spotifyState.currentPlayback.title} by ${spotifyState.currentPlayback.artist}.` : 'No active playback.';
+      sendState();
+      render();
+      return { summary: spotifyState.summary, currentPlayback: spotifyState.currentPlayback };
+    }
+    async function createStudyPlaylist(name, description) {
+      const me = await spotifyFetch('/me');
+      const playlist = await spotifyFetch(`/users/${me.id}/playlists`, {
+        method: 'POST',
+        body: JSON.stringify({ name, description: description || 'Study playlist from ChatBridge', public: false }),
+      });
+      spotifyState.playlists = [{
+        name: playlist.name,
+        owner: me.display_name || me.id,
+        trackCount: playlist.tracks?.total || 0,
+        url: playlist.external_urls?.spotify,
+      }, ...spotifyState.playlists];
+      spotifyState.summary = `Created playlist ${playlist.name}.`;
+      sendState();
+      render();
+      return { summary: spotifyState.summary, playlist: spotifyState.playlists[0] };
+    }
+    async function handleToolInvoke(callId, toolName, parameters) {
+      try {
+        let result = null;
+        setStatus(`Running ${toolName}...`);
+        if (toolName === 'search_playlists') {
+          result = await searchPlaylists(parameters.query);
+        } else if (toolName === 'get_current_playback') {
+          result = await getCurrentPlayback();
+        } else if (toolName === 'create_study_playlist') {
+          result = await createStudyPlaylist(parameters.name, parameters.description);
+        } else if (toolName === 'finish') {
+          const summary = parameters.summary || spotifyState.summary || 'Finished Spotify task';
+          sendCompletion(summary);
+          setStatus(summary, 'success');
+          result = { summary };
+        } else {
+          throw new Error(`Unknown tool: ${toolName}`);
+        }
+        sendMsg({ type: 'TOOL_RESULT', callId, result });
+        if (toolName !== 'finish') setStatus('Spotify task updated', 'success');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setStatus(message, 'error');
+        sendMsg({ type: 'TOOL_RESULT', callId, result: null, error: message });
+      }
+    }
+    document.getElementById('connect').addEventListener('click', requestAuth);
+    document.getElementById('disconnect').addEventListener('click', () => {
+      auth = { status: 'required', accessToken: '', expiresAt: null };
+      spotifyState.connected = false;
+      render();
+      requestAuth();
+    });
+    document.getElementById('finish').addEventListener('click', () => {
+      const summary = spotifyState.summary || 'Finished Spotify task';
+      sendCompletion(summary);
+      setStatus(summary, 'success');
+    });
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object' || !data.type) return;
+      if (data.type === 'PLUGIN_INIT') {
+        nonce = data.nonce;
+        instanceId = data.instanceId;
+        if (data.config?.auth) {
+          auth = {
+            status: data.config.auth.status || 'required',
+            accessToken: data.config.auth.accessToken || '',
+            expiresAt: data.config.auth.expiresAt || null,
+          };
+          spotifyState.connected = auth.status === 'connected';
+        }
+        render();
+        sendState();
+        return;
+      }
+      if (data.type === 'AUTH_STATUS' && data.nonce === nonce) {
+        auth = {
+          status: data.status,
+          accessToken: data.accessToken || '',
+          expiresAt: data.expiresAt || null,
+        };
+        spotifyState.connected = data.status === 'connected';
+        render();
+        sendState();
+        setStatus(
+          data.status === 'connected'
+            ? 'Spotify connected'
+            : data.status === 'authorizing'
+              ? 'Waiting for Spotify approval'
+              : 'Spotify auth expired',
+          data.status === 'connected' ? 'success' : data.status === 'authorizing' ? '' : 'error'
+        );
+        return;
+      }
+      if (data.type === 'TOOL_INVOKE' && data.nonce === nonce) {
+        handleToolInvoke(data.callId, data.toolName, data.parameters || {});
+      }
+    });
+    render();
+    window.parent.postMessage({ type: 'PLUGIN_READY', nonce: '' }, '*');
+  </script>
+</body>
+</html>

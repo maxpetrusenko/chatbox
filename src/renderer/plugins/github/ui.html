@@ -1,0 +1,199 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GitHub Repo Coach</title>
+  <style>
+    :root { color-scheme: dark; --bg: #0b1220; --panel: #131c31; --line: rgba(255,255,255,0.08); --text: #edf2ff; --muted: #9aa8c7; --accent: #7dd3fc; --danger: #ff7b7b; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Georgia, serif; background: radial-gradient(circle at top left, #10243e, var(--bg) 50%); color: var(--text); }
+    .wrap { padding: 16px; }
+    .panel { border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)); }
+    .hero, .body { padding: 16px; }
+    .hero { border-bottom: 1px solid var(--line); }
+    .eyebrow { font-size: 12px; text-transform: uppercase; color: var(--accent); letter-spacing: 0.14em; }
+    h1 { margin: 6px 0; font-size: 28px; }
+    .muted { color: var(--muted); }
+    .toolbar { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    button { border: 0; border-radius: 999px; padding: 10px 14px; cursor: pointer; font-weight: 700; background: var(--accent); color: #07101b; }
+    button.secondary { background: #1d2742; color: var(--text); border: 1px solid var(--line); }
+    .list { display: grid; gap: 10px; margin-top: 14px; }
+    .item { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: rgba(255,255,255,0.02); }
+    .status { margin-top: 12px; font-size: 13px; color: var(--muted); }
+    .status.error { color: var(--danger); }
+    .status.success { color: var(--accent); }
+    .mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <div class="hero">
+        <div class="eyebrow">Device flow app</div>
+        <h1>GitHub Repo Coach</h1>
+        <div id="summary" class="muted">Connect GitHub to inspect your repos.</div>
+        <div class="toolbar">
+          <button id="connect">Connect GitHub</button>
+          <button id="finish" class="secondary">Finish</button>
+          <div id="auth-meta" class="mono muted">Not connected</div>
+        </div>
+        <div id="status" class="status">Widget ready</div>
+      </div>
+      <div class="body">
+        <div id="repos" class="list"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    let nonce = '';
+    let instanceId = '';
+    let auth = { status: 'required', accessToken: '', verificationUri: '', userCode: '' };
+    let githubState = { profile: null, repos: [], summary: '', authStatus: 'required' };
+    function sendMsg(msg) {
+      if (!nonce) return;
+      msg.nonce = nonce;
+      window.parent.postMessage(msg, '*');
+    }
+    function setStatus(text, cls) {
+      const el = document.getElementById('status');
+      el.textContent = text;
+      el.className = 'status' + (cls ? ' ' + cls : '');
+    }
+    function requestAuth() {
+      window.parent.postMessage({ type: 'AUTH_REQUEST', nonce }, '*');
+      setStatus('Waiting for GitHub device approval...', '');
+    }
+    function sendState() {
+      sendMsg({ type: 'STATE_UPDATE', state: { ...githubState } });
+    }
+    function render() {
+      const meta = document.getElementById('auth-meta');
+      meta.textContent = auth.status === 'connected'
+        ? 'Connected'
+        : auth.userCode
+          ? `Code ${auth.userCode} at ${auth.verificationUri}`
+          : 'Not connected';
+      document.getElementById('summary').textContent = githubState.summary || 'Connect GitHub to inspect your repos.';
+      const reposEl = document.getElementById('repos');
+      reposEl.innerHTML = '';
+      if (!githubState.repos.length) {
+        reposEl.innerHTML = '<div class="muted">No repo data yet</div>';
+      }
+      githubState.repos.forEach((repo) => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `<div style="font-weight:700;">${repo.fullName}</div><div class="muted">${repo.description || 'No description'}</div><div class="muted">${repo.url}</div>`;
+        reposEl.appendChild(div);
+      });
+    }
+    async function githubFetch(path) {
+      if (!auth.accessToken) {
+        requestAuth();
+        throw new Error('GitHub auth required');
+      }
+      const res = await fetch(`https://api.github.com${path}`, {
+        headers: {
+          Authorization: `Bearer ${auth.accessToken}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      });
+      if (!res.ok) throw new Error(`GitHub request failed: ${res.status}`);
+      return res.json();
+    }
+    async function getProfile() {
+      const profile = await githubFetch('/user');
+      githubState.profile = { login: profile.login, name: profile.name, url: profile.html_url };
+      githubState.summary = `Connected as ${profile.login}.`;
+      sendState();
+      render();
+      return githubState.profile;
+    }
+    async function listRepos(query) {
+      const repos = await githubFetch('/user/repos?sort=updated&per_page=8');
+      githubState.repos = repos
+        .filter((repo) => !query || repo.name.toLowerCase().includes(String(query).toLowerCase()))
+        .map((repo) => ({ fullName: repo.full_name, description: repo.description, url: repo.html_url }));
+      githubState.summary = `Loaded ${githubState.repos.length} repos.`;
+      sendState();
+      render();
+      return { repos: githubState.repos, summary: githubState.summary };
+    }
+    async function handleToolInvoke(callId, toolName, parameters) {
+      try {
+        let result = null;
+        setStatus(`Running ${toolName}...`);
+        if (toolName === 'get_profile') {
+          result = await getProfile();
+        } else if (toolName === 'list_my_repos') {
+          result = await listRepos(parameters.query || '');
+        } else if (toolName === 'finish') {
+          const summary = parameters.summary || githubState.summary || 'Finished GitHub task';
+          sendMsg({ type: 'COMPLETION', payload: { pluginId: 'github', instanceId, summary, data: { ...githubState } } });
+          result = { summary };
+        } else {
+          throw new Error(`Unknown tool: ${toolName}`);
+        }
+        sendMsg({ type: 'TOOL_RESULT', callId, result });
+        setStatus('GitHub task updated', 'success');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setStatus(message, 'error');
+        sendMsg({ type: 'TOOL_RESULT', callId, result: null, error: message });
+      }
+    }
+    document.getElementById('connect').addEventListener('click', requestAuth);
+    document.getElementById('finish').addEventListener('click', () => {
+      const summary = githubState.summary || 'Finished GitHub task';
+      sendMsg({ type: 'COMPLETION', payload: { pluginId: 'github', instanceId, summary, data: { ...githubState } } });
+      setStatus(summary, 'success');
+    });
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object' || !data.type) return;
+      if (data.type === 'PLUGIN_INIT') {
+        nonce = data.nonce;
+        instanceId = data.instanceId;
+        if (data.config?.auth) {
+          auth = {
+            status: data.config.auth.status || 'required',
+            accessToken: data.config.auth.accessToken || '',
+            verificationUri: data.config.auth.verificationUri || '',
+            userCode: data.config.auth.userCode || '',
+          };
+          githubState.authStatus = auth.status;
+        }
+        render();
+        sendState();
+        return;
+      }
+      if (data.type === 'AUTH_STATUS' && data.nonce === nonce) {
+        auth = {
+          status: data.status,
+          accessToken: data.accessToken || '',
+          verificationUri: data.metadata?.verificationUri || '',
+          userCode: data.metadata?.userCode || '',
+        };
+        githubState.authStatus = auth.status;
+        render();
+        sendState();
+        setStatus(
+          data.status === 'connected'
+            ? 'GitHub connected'
+            : data.status === 'authorizing'
+              ? 'Approve GitHub device flow'
+              : 'GitHub auth expired',
+          data.status === 'connected' ? 'success' : data.status === 'authorizing' ? '' : 'error'
+        );
+        return;
+      }
+      if (data.type === 'TOOL_INVOKE' && data.nonce === nonce) {
+        handleToolInvoke(data.callId, data.toolName, data.parameters || {});
+      }
+    });
+    render();
+    window.parent.postMessage({ type: 'PLUGIN_READY', nonce: '' }, '*');
+  </script>
+</body>
+</html>
