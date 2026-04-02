@@ -103,6 +103,9 @@ importers:
       sanitize-filename:
         specifier: ^1.6.3
         version: 1.6.3
+      source-map-support:
+        specifier: ^0.5.21
+        version: 0.5.21
       uuid:
         specifier: ^9.0.0
         version: 9.0.1
