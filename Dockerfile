@@ -11,6 +11,7 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
 COPY .erb ./.erb
+COPY release ./release
 RUN pnpm install --frozen-lockfile
 
 COPY . .
