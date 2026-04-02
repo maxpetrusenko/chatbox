@@ -110,6 +110,46 @@ For more information: [chatboxai.app](https://chatboxai.app/)
 
 <a href="https://www.producthunt.com/posts/chatbox?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-chatbox" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=429547&theme=light" alt="Chatbox - Better&#0032;UI&#0032;&#0038;&#0032;Desktop&#0032;App&#0032;for&#0032;ChatGPT&#0044;&#0032;Claude&#0032;and&#0032;other&#0032;LLMs&#0046; | Product Hunt" style="width: 150px; height: 30px;" width="100" height="40" /></a>
 
+<!-- TODO: add deployed link -->
+
+## ChatBridge Plugin Platform
+
+ChatBridge extends Chatbox with third-party app integration through sandboxed iframe plugins. Plugins render interactive UI directly inside chat conversations, and the LLM can invoke plugin-provided tools mid-generation. The result is a chat platform where external services (weather, music, code, games) participate as first-class conversation members.
+
+### Setup
+
+Requirements: Node 20+, pnpm.
+
+```bash
+pnpm install
+cp .env.example .env   # fill in SPOTIFY_CLIENT_ID, GITHUB_CLIENT_ID
+pnpm dev               # start in development mode
+pnpm test              # run test suite
+```
+
+### Architecture
+
+- **Manifest-driven plugin registry** (`src/renderer/stores/pluginRegistry.ts`). Each plugin declares capabilities, OAuth config, and tool definitions in a static manifest. The registry loads and validates manifests at startup.
+- **Sandboxed iframe host** (`src/renderer/components/PluginFrame.tsx`). Plugins run in `sandbox="allow-scripts"` iframes. All communication flows through a structured `postMessage` bridge defined in `src/shared/plugin-protocol.ts`.
+- **Platform-owned OAuth broker**. The main process handles OAuth on behalf of plugins, supporting both PKCE authorization code flow and device code flow. Tokens are stored in `src/main/plugin-auth-store.ts` and never exposed to plugin iframes.
+- **State retention**. Plugin state (user selections, API responses) is captured and injected into follow-up prompts so the LLM maintains context across turns.
+- **Tool injection** (`src/renderer/packages/model-calls/toolsets/plugin-tools.ts`). Plugin-declared tools are merged into the LLM tool list at call time, allowing models to invoke plugin actions (fetch weather, control playback, create issues) natively.
+
+### Bundled Plugins
+
+| Plugin | Type | Auth |
+|---------|------|------|
+| Chess | Internal (inline) | None |
+| Weather | Public API | None |
+| Spotify | External | OAuth PKCE |
+| GitHub | External | Device flow |
+
+### Plugin API
+
+See [docs/plugin-api.md](docs/plugin-api.md) for the full plugin authoring guide and protocol reference.
+
+---
+
 <a href="./doc/statics/snapshot_light.png">
 <img src="./doc/statics/snapshot_light.png" width="400"/>
 </a>

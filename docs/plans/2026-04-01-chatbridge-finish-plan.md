@@ -19,6 +19,112 @@
 
 ---
 
+## Current Implementation Snapshot
+
+### Done now
+
+- Plugin types exist in `src/shared/plugin-types.ts`
+- Plugin protocol + guards exist in `src/shared/plugin-protocol.ts`
+- Protocol tests exist in `src/shared/plugin-protocol.test.ts`
+- Registry store exists in `src/renderer/stores/pluginRegistry.ts`
+- Registry tests exist in `src/renderer/stores/pluginRegistry.test.ts`
+- Plugin bootstrap exists in `src/renderer/plugins/index.ts`
+- Root bootstrap exists in `src/renderer/routes/__root.tsx`
+- Inline iframe host exists in `src/renderer/components/PluginFrame.tsx`
+- Channel hook exists in `src/renderer/hooks/usePluginChannel.ts`
+- Inline message renderer exists in `src/renderer/components/PluginFrameInline.tsx`
+- Chess bundled plugin exists in `src/renderer/plugins/chess/manifest.ts` and `src/renderer/plugins/chess/ui.html`
+- Model tool injection exists in `src/renderer/packages/model-calls/toolsets/plugin-tools.ts` and `src/renderer/packages/model-calls/stream-text.ts`
+- Focused bridge tests exist in `src/renderer/hooks/usePluginChannel.test.ts` and `src/renderer/components/PluginFrame.test.tsx`
+
+### Partially done
+
+- Tool invocation bridge now works through `plugin-tool-invoke` → `PluginFrame` → `TOOL_RESULT`
+- Plugin instances can be created by the tool layer, but chat UX around instance mount is not yet fully proven
+- Chess plugin UI exists, but full requirement-grade inline lifecycle still needs end-to-end wiring and validation
+
+### Not done yet
+
+- No public external plugin shipped
+- No authenticated plugin shipped
+- No platform-owned auth broker shipped
+- No developer-facing plugin API docs shipped
+- No cost analysis shipped
+- No deploy/demo submission assets shipped
+
+---
+
+## Gap Review
+
+### Critical product gaps
+
+1. **Plugin UI mount path is incomplete**
+   - Registry/tool plumbing exists, but the assistant message path still needs guaranteed insertion of a `plugin` content part when a plugin instance is created.
+   - Without that, the iframe may never render inline even though the tool executes.
+
+2. **Tool call and iframe lifecycle are not yet proven end to end**
+   - We have unit coverage for the bridge.
+   - We still need integration coverage for: model tool call → plugin instance creation → plugin frame render → state update → follow-up answer using latest plugin state.
+
+3. **Context retention from plugin state into later prompts is still open**
+   - Registry stores `lastState` and `lastCompletion`.
+   - Prompt/context builder integration for those snapshots is not yet verified.
+
+4. **Auth architecture is still unimplemented**
+   - Requirements need at least one authenticated third-party app.
+   - Current repo has no platform-owned OAuth broker for plugins yet.
+
+5. **App count still below requirement**
+   - Current state: only chess.
+   - Required ship state: chess + public app + authenticated app.
+
+### Technical gaps
+
+1. **No plugin content-part insertion helper yet**
+   - Add one small helper near tool execution or streaming result handling.
+   - It should append `{ type: 'plugin', pluginId, instanceId, toolCallId }` exactly once per instance/tool mount event.
+
+2. **No integration test for plugin message rendering yet**
+   - Need a test that asserts `PluginFrameInline` appears after plugin tool execution.
+
+3. **Plugin state not yet fed into context-management pipeline**
+   - Review `src/renderer/packages/context-management/` and session generation paths.
+   - Add a compact plugin snapshot layer so follow-up prompts see current app state.
+
+4. **No timeout/retry UX for plugin tool promises beyond simple timeout**
+   - The bridge rejects after timeout.
+   - Chat should show a visible error card and preserve chat stability.
+
+5. **Node mismatch solved operationally, not ergonomically**
+   - Working command: `export PATH="/opt/homebrew/opt/node@20/bin:$PATH"`
+   - Nice-to-have: add a short repo note or helper command so every run uses Node 20/22 consistently.
+
+### Submission gaps
+
+- API docs
+- setup guide updates
+- deployed app link
+- AI cost analysis
+- demo script/video
+- social post
+
+---
+
+## Revised Critical Path
+
+1. Finish plugin mount insertion path
+2. Add integration test for plugin lifecycle render
+3. Verify chess inline end-to-end
+4. Feed plugin state into follow-up prompt context
+5. Add public weather plugin
+6. Add OAuth broker
+7. Add Spotify plugin
+8. Write docs + cost analysis + demo assets
+
+Do not start extra auth/app experiments before steps 1 through 4 are green.
+
+---
+
 ## Recommended App Set
 
 ### Required ship set
@@ -610,6 +716,300 @@ Merge order:
 
 ---
 
+## Subagent Dispatch Packets
+
+Use these as fresh-context packets. One packet per subagent. No freestyle scope expansion. If a packet hits blocked shared files outside its assignment, stop, write findings, hand back.
+
+### Global rules for every subagent
+
+- Use Node 20 or 22 only
+- Before commands: `export PATH="/opt/homebrew/opt/node@20/bin:$PATH"`
+- Do not touch unrelated files
+- Prefer tests first for each assigned seam
+- If a shared type or protocol must change, stop and hand back unless packet explicitly owns it
+- Ship evidence, not claims: test output, file list, exact remaining gaps
+- Commit style: conventional commits only
+
+### Agent A — Platform contract owner
+
+**Owns**
+- `src/shared/plugin-types.ts`
+- `src/shared/plugin-protocol.ts`
+- `src/shared/plugin-protocol.test.ts`
+- `src/renderer/stores/pluginRegistry.ts`
+- `src/renderer/stores/pluginRegistry.test.ts`
+- `src/renderer/plugins/index.ts`
+
+**Mission**
+- Keep manifest/protocol/store stable
+- No UI work
+- No auth work
+
+**Deliverables**
+- Stable plugin type contract
+- Stable plugin registry API
+- Tests green for protocol + registry
+
+**Stop if**
+- You need to change chat message rendering
+- You need to change model streaming behavior
+
+**Prompt**
+
+```text
+You are Agent A on ChatBridge. Own only the plugin contract and registry store. Keep changes inside the assigned files unless a test import forces a tiny adjacent edit. Do test-first. Do not touch UI rendering, auth, or session message formatting. Deliver: exact files changed, tests run, open contract risks.
+```
+
+### Agent B — Plugin host + mount path owner
+
+**Owns**
+- `src/renderer/components/PluginFrame.tsx`
+- `src/renderer/components/PluginFrame.test.tsx`
+- `src/renderer/components/PluginFrameInline.tsx`
+- `src/renderer/hooks/usePluginChannel.ts`
+- `src/renderer/hooks/usePluginChannel.test.ts`
+- `src/renderer/components/chat/Message.tsx`
+- message-part insertion helper wherever finally placed
+
+**Mission**
+- Guarantee plugin content part insertion
+- Guarantee iframe renders inline
+- Guarantee tool invoke/result bridge stays stable
+
+**Deliverables**
+- Inline mount path complete
+- Focused component tests green
+- One integration test proving plugin part renders after tool execution
+
+**Stop if**
+- You need to redesign plugin protocol
+- You need to implement auth broker
+
+**Prompt**
+
+```text
+You are Agent B on ChatBridge. Own the inline plugin host path end to end: assistant/plugin content part insertion, PluginFrame render, bridge event flow, and focused tests. Do not redesign protocol or auth. Goal: after plugin tool execution, a plugin iframe definitely mounts inline in chat and TOOL_RESULT resolves back cleanly.
+```
+
+### Agent C — Chess plugin owner
+
+**Owns**
+- `src/renderer/plugins/chess/manifest.ts`
+- `src/renderer/plugins/chess/ui.html`
+- `src/renderer/plugins/chess/index.ts`
+- `src/renderer/lib/chess/engine.ts`
+- `src/renderer/lib/chess/engine.test.ts`
+- chess lifecycle integration tests
+
+**Mission**
+- Make chess the gold-path plugin
+- Ensure state snapshots are rich enough for hints/follow-ups
+
+**Deliverables**
+- Chess plugin manifest correct
+- Chess UI handles tool calls correctly
+- Chess emits `STATE_UPDATE` and `COMPLETION`
+- One integration test for `let's play chess` full lifecycle
+
+**Stop if**
+- You need to change generic registry contract
+- You need to build auth
+
+**Prompt**
+
+```text
+You are Agent C on ChatBridge. Own chess as the first complete plugin. Assume protocol and host exist. Make chess the demo-quality gold path: start game, move, hint/get_position, completion, state snapshot quality. Stay inside chess/plugin files and tests unless a tiny adapter edit is unavoidable.
+```
+
+### Agent D — Public app owner
+
+**Owns**
+- `src/renderer/plugins/weather/*`
+- `src/main/plugins/weather.ts`
+- weather integration tests
+- `docs/adding-plugin.md`
+
+**Mission**
+- Ship the low-risk public external app
+- Exercise external public category without auth
+
+**Deliverables**
+- Weather manifest
+- Forecast tool(s)
+- Inline widget
+- Failure/loading states
+
+**Stop if**
+- You need auth/token handling
+- You need protocol changes
+
+**Prompt**
+
+```text
+You are Agent D on ChatBridge. Own the public external app path with Weather. Goal: a stable low-risk plugin that proves external public app registration, tool invocation, inline UI, and graceful API failure behavior. No auth work. No protocol redesign.
+```
+
+### Agent E — Auth broker owner
+
+**Owns**
+- `src/main/auth/*`
+- `src/shared/types/plugin-auth.ts`
+- `src/main/deeplinks.ts`
+- `src/preload/index.ts`
+- auth broker tests
+
+**Mission**
+- Build platform-owned auth only
+- Widgets never receive raw refresh tokens
+
+**Deliverables**
+- PKCE broker
+- token storage/refresh
+- minimal IPC surface
+- auth state model for plugins
+
+**Stop if**
+- You need to build plugin UI
+- You need to redesign plugin mount/message rendering
+
+**Prompt**
+
+```text
+You are Agent E on ChatBridge. Own the platform auth broker only. Implement PKCE flow, secure token persistence, refresh, and narrow IPC. Widgets must never receive raw refresh tokens. Do not build plugin UI except tiny auth-status adapters if strictly required.
+```
+
+### Agent F — Authenticated app owner
+
+**Owns**
+- `src/renderer/plugins/spotify/*`
+- `src/main/plugins/spotify.ts`
+- spotify integration tests
+
+**Mission**
+- Ship the first authenticated app on top of Agent E
+- Prove auth request → connect → tool use → widget state
+
+**Deliverables**
+- Spotify manifest
+- connect/disconnect states
+- playlist/current playback tools
+- integration coverage
+
+**Stop if**
+- Auth broker API is unstable
+- Protocol changes are required
+
+**Prompt**
+
+```text
+You are Agent F on ChatBridge. Own Spotify on top of an existing auth broker. Goal: prove authenticated plugin UX end to end with minimal scope: connect, search/create playlist, current playback, clear connected/disconnected/error states. No broker redesign.
+```
+
+### Agent G — Submission/docs owner
+
+**Owns**
+- `README.md`
+- `docs/api/plugin-manifest.md`
+- `docs/api/plugin-bridge.md`
+- `docs/cost-analysis.md`
+- `docs/demo-script.md`
+- `docs/testing.md`
+
+**Mission**
+- Convert implementation into grading-ready deliverables
+
+**Deliverables**
+- setup guide
+- architecture/API docs
+- cost table and assumptions
+- demo walkthrough
+
+**Stop if**
+- Feature behavior is still changing under you
+
+**Prompt**
+
+```text
+You are Agent G on ChatBridge. Own only submission artifacts and developer docs. Write docs that match shipped behavior exactly. Do not invent features. If implementation is incomplete, document current behavior and explicit TODOs instead of guessing.
+```
+
+### Agent H — Stretch auth pattern owner
+
+**Owns**
+- `src/main/auth/providers/github.ts`
+- `src/renderer/plugins/github/*`
+- `src/main/plugins/github.ts`
+- github device-flow tests
+
+**Mission**
+- Add second auth pattern only after A through G stabilize
+
+**Deliverables**
+- GitHub device flow plugin
+- device code UX
+- repo/issue tools
+
+**Stop if**
+- Any blocker remains on revised critical path steps 1 through 8
+
+**Prompt**
+
+```text
+You are Agent H on ChatBridge. This is stretch only. Implement GitHub device-flow auth as a second auth pattern after the primary PKCE path is stable. If core path is still red, stop and hand back without coding.
+```
+
+---
+
+## Subagent Execution Order
+
+### Wave 1
+
+- Agent A
+- Agent B
+
+**Gate before Wave 2**
+
+- plugin protocol stable
+- registry stable
+- plugin content part insertion working
+- PluginFrame bridge tests green
+
+### Wave 2
+
+- Agent C
+- Agent D
+- Agent E
+
+**Gate before Wave 3**
+
+- chess inline lifecycle works
+- public plugin works
+- auth broker works
+
+### Wave 3
+
+- Agent F
+- Agent G
+
+### Wave 4
+
+- Agent H stretch only
+
+---
+
+## Review Checklist Between Subagents
+
+- Did the agent stay inside owned files?
+- Did shared contracts change unexpectedly?
+- Did tests run under Node 20/22?
+- Did any packet silently expand scope?
+- Did the work create merge pressure on shared files?
+- Did the agent report exact remaining gaps?
+
+Reject or rework any packet that fails one of these.
+
+---
+
 ## External Research Notes
 
 - **Spotify**: official docs support Authorization Code with PKCE and refresh tokens; best fit for popup/browser auth in a desktop app.
@@ -625,6 +1025,17 @@ Merge order:
 - Inline plugin rendering is the actual grading cliff; route-only chess is not enough.
 - Auth must stay platform-owned; widgets must never hold raw refresh tokens.
 - Keep broken plugin isolation strict: plugin error card, chat stays alive.
+
+---
+
+## Newly Identified Gaps (2026-04-01 review)
+
+1. README not updated — still vanilla Chatbox, needs setup guide + architecture overview
+2. No social post planned — required for final submission (X or LinkedIn, tag @GauntletAI)
+3. Platform user auth — requirements list it as core feature, need to verify/document
+4. Error recovery UX — need visible error cards for plugin failures
+5. Multi-app switching — need test coverage for scenario #5
+6. Ambiguous routing / refusal — testing scenarios #6 and #7 not addressed (low priority)
 
 ---
 
