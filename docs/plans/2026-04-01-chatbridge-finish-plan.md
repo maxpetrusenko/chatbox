@@ -125,6 +125,49 @@ Do not start extra auth/app experiments before steps 1 through 4 are green.
 
 ---
 
+## Presearch Findings
+
+1. **K12 Install Model: LTI 1.3 Dynamic Registration**
+   The dominant K12 pattern across platforms such as Canvas, Google, and Clever is admin-first enablement, not teacher self-installation. Teachers may request apps, but installation only proceeds after a district or school administrator authorizes the integration. For ChatBridge, this means plugin onboarding should follow a request → review → approval → assignment flow, rather than direct teacher-side installs.
+
+2. **COPPA 2025 Final Rule**
+   The updated COPPA rule, effective April 22, 2026, raises the compliance bar for children’s products with opt-in defaults and penalties up to $51,744 per child per violation. Every plugin manifest should therefore include a structured `data_profile` describing what student data is collected, whether identifiers or PII are processed, how long data is retained, whether data is shared onward, and whether any data is used for model training or product improvement.
+
+3. **FERPA and District Authorization**
+   Under FERPA’s school-official framework, districts may authorize approved educational tools through contract and policy controls without requiring per-parent consent in every case. In practice, this means a plugin should not move beyond pending review unless there is a valid district legal basis, typically a signed DPA or equivalent district approval. No DPA, no activation.
+
+4. **Child Safety Moderation Pipeline**
+   A K12-safe plugin platform needs layered safety controls, not a single moderation check. A practical pipeline is:
+   - OpenAI Moderation for fast, low-cost triage
+   - Azure Content Safety for severity scoring
+   - Prompt Shields or equivalent jailbreak detection
+   - custom district blocklists and policy rules
+   - final LLM output scan before student-visible delivery
+
+   This should feed per-student and per-plugin abuse and risk scoring, with escalation paths for repeated or severe incidents.
+
+5. **Plugin Signing and Trust Levels**
+   A strong signing model should mirror mature plugin ecosystems such as Grafana: signed manifests, SHA-256 file checksums, publisher identity, and trust tiers. Recommended trust levels:
+   - `community`
+   - `verified`
+   - `district`
+
+   This supports revocation, version pinning, publisher reputation, and safer rollout of third-party plugins in school environments.
+
+6. **Runtime Enforcement in Electron**
+   Plugin manifests should declare `allowedDomains[]`, and the host should enforce them with Electron `session.webRequest` controls. Combined with iframe sandboxing, CSP, secret scanning, and bundle inspection for embedded credentials, this gives a practical runtime boundary for untrusted plugin code. Declared permissions must be enforceable, not just informational.
+
+7. **Lifecycle and Governance States**
+   A K12 plugin should move through a full governance pipeline before student exposure. Recommended lifecycle:
+   `submitted → validated → scanned → reviewed → approved → dpa_signed → active | revoked`
+
+   If finer operational control is needed, add `assigned` between `approved` and `active` to distinguish district approval from classroom rollout.
+
+8. **K12 Governance Model for ChatBridge**
+   Students should never be allowed to install plugins. Teachers may request plugins and assign approved ones to classes, but the curated catalog, publisher trust, policy controls, and emergency revoke authority should sit with a central district or platform authority. AI can pre-screen plugins for child safety, but high-risk or novel publishers should still require human approval. Scheduled AI audits should review plugin logs for unsafe outputs, abnormal behavior, policy drift, and repeated abuse signals over time.
+
+---
+
 ## Recommended App Set
 
 ### Required ship set

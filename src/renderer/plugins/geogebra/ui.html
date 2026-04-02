@@ -1,0 +1,662 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Graphing Calculator</title>
+  <style>
+    :root {
+      --bg: #1a1b2e;
+      --panel: rgba(26, 27, 46, 0.92);
+      --card: rgba(35, 37, 58, 0.95);
+      --text: #e2e8f0;
+      --muted: #8891a8;
+      --accent: #4f8cff;
+      --line: rgba(148, 163, 184, 0.14);
+      --grid-major: rgba(100, 116, 150, 0.22);
+      --grid-minor: rgba(80, 92, 120, 0.10);
+      --axis: rgba(200, 210, 230, 0.55);
+      --font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+    .container {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+    canvas {
+      flex: 1;
+      display: block;
+      cursor: crosshair;
+    }
+    .sidebar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 220px;
+      max-height: calc(100% - 70px);
+      overflow-y: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+      z-index: 10;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 2px; }
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .eq-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      font-size: 13px;
+      border-bottom: 1px solid var(--line);
+    }
+    .eq-item:last-child { border-bottom: none; }
+    .eq-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .eq-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+    .eq-remove {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .eq-remove:hover { color: #f05050; }
+    .empty-msg {
+      color: var(--muted);
+      font-size: 12px;
+      font-style: italic;
+      padding: 4px 0;
+    }
+    .input-bar {
+      display: flex;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--card);
+      border-top: 1px solid var(--line);
+      z-index: 10;
+    }
+    .input-bar input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      outline: none;
+    }
+    .input-bar input::placeholder { color: var(--muted); }
+    .input-bar input:focus { border-color: var(--accent); }
+    .input-bar button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .input-bar button:hover { opacity: 0.85; }
+    .coords {
+      position: absolute;
+      bottom: 54px;
+      right: 10px;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--panel);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      pointer-events: none;
+      z-index: 5;
+    }
+    .status-bar {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--panel);
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <canvas id="graph"></canvas>
+    <div class="sidebar">
+      <div class="sidebar-title">Equations</div>
+      <div id="eq-list"><div class="empty-msg">No equations yet</div></div>
+    </div>
+    <div class="coords" id="coords">x: --, y: --</div>
+    <div class="status-bar" id="status">Ready</div>
+  </div>
+  <div class="input-bar">
+    <input type="text" id="eq-input" placeholder="y = x^2 + sin(x)" />
+    <button id="plot-btn">Plot</button>
+  </div>
+
+  <script>
+    /* ── State ── */
+    let nonce = '';
+    let instanceId = '';
+    const COLORS = ['#4f8cff', '#f05050', '#3dd68c', '#a78bfa', '#f0a030'];
+    let equations = []; // { raw, fn, color }
+    let viewport = { xMin: -10, xMax: 10, yMin: -7, yMax: 7 };
+    let dpr = window.devicePixelRatio || 1;
+
+    /* ── Canvas ── */
+    const canvas = document.getElementById('graph');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      dpr = window.devicePixelRatio || 1;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+      draw();
+    }
+    window.addEventListener('resize', resize);
+
+    /* ── Coordinate transforms ── */
+    function xToCanvas(x) {
+      return ((x - viewport.xMin) / (viewport.xMax - viewport.xMin)) * canvas.width;
+    }
+    function yToCanvas(y) {
+      return ((viewport.yMax - y) / (viewport.yMax - viewport.yMin)) * canvas.height;
+    }
+    function canvasToX(cx) {
+      return viewport.xMin + (cx / canvas.width) * (viewport.xMax - viewport.xMin);
+    }
+    function canvasToY(cy) {
+      return viewport.yMax - (cy / canvas.height) * (viewport.yMax - viewport.yMin);
+    }
+
+    /* ── Grid + Axes ── */
+    function niceStep(range) {
+      const rough = range / 10;
+      const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+      const norm = rough / mag;
+      if (norm < 1.5) return mag;
+      if (norm < 3.5) return 2 * mag;
+      if (norm < 7.5) return 5 * mag;
+      return 10 * mag;
+    }
+
+    function drawGrid() {
+      const w = canvas.width, h = canvas.height;
+      const xRange = viewport.xMax - viewport.xMin;
+      const yRange = viewport.yMax - viewport.yMin;
+      const stepX = niceStep(xRange);
+      const stepY = niceStep(yRange);
+
+      ctx.lineWidth = dpr;
+
+      // minor grid
+      const minorX = stepX / 5, minorY = stepY / 5;
+      ctx.strokeStyle = 'rgba(80, 92, 120, 0.08)';
+      ctx.beginPath();
+      let start = Math.ceil(viewport.xMin / minorX) * minorX;
+      for (let x = start; x <= viewport.xMax; x += minorX) {
+        const cx = xToCanvas(x);
+        ctx.moveTo(cx, 0); ctx.lineTo(cx, h);
+      }
+      start = Math.ceil(viewport.yMin / minorY) * minorY;
+      for (let y = start; y <= viewport.yMax; y += minorY) {
+        const cy = yToCanvas(y);
+        ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+      }
+      ctx.stroke();
+
+      // major grid
+      ctx.strokeStyle = 'rgba(100, 116, 150, 0.22)';
+      ctx.beginPath();
+      start = Math.ceil(viewport.xMin / stepX) * stepX;
+      for (let x = start; x <= viewport.xMax; x += stepX) {
+        const cx = xToCanvas(x);
+        ctx.moveTo(cx, 0); ctx.lineTo(cx, h);
+      }
+      start = Math.ceil(viewport.yMin / stepY) * stepY;
+      for (let y = start; y <= viewport.yMax; y += stepY) {
+        const cy = yToCanvas(y);
+        ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+      }
+      ctx.stroke();
+
+      // axes
+      ctx.strokeStyle = 'rgba(200, 210, 230, 0.55)';
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.beginPath();
+      // x-axis
+      if (viewport.yMin <= 0 && viewport.yMax >= 0) {
+        const cy = yToCanvas(0);
+        ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+      }
+      // y-axis
+      if (viewport.xMin <= 0 && viewport.xMax >= 0) {
+        const cx = xToCanvas(0);
+        ctx.moveTo(cx, 0); ctx.lineTo(cx, h);
+      }
+      ctx.stroke();
+
+      // tick labels
+      ctx.fillStyle = 'rgba(136, 145, 168, 0.85)';
+      ctx.font = `${11 * dpr}px ${getComputedStyle(document.body).fontFamily}`;
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'center';
+
+      const axisY = (viewport.yMin <= 0 && viewport.yMax >= 0) ? yToCanvas(0) : canvas.height;
+      start = Math.ceil(viewport.xMin / stepX) * stepX;
+      for (let x = start; x <= viewport.xMax; x += stepX) {
+        if (Math.abs(x) < stepX * 0.01) continue;
+        const cx = xToCanvas(x);
+        const label = Number.isInteger(x) ? String(x) : x.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+        ctx.fillText(label, cx, Math.min(axisY + 4 * dpr, h - 14 * dpr));
+      }
+
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'right';
+      const axisX = (viewport.xMin <= 0 && viewport.xMax >= 0) ? xToCanvas(0) : 0;
+      start = Math.ceil(viewport.yMin / stepY) * stepY;
+      for (let y = start; y <= viewport.yMax; y += stepY) {
+        if (Math.abs(y) < stepY * 0.01) continue;
+        const cy = yToCanvas(y);
+        const label = Number.isInteger(y) ? String(y) : y.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+        ctx.fillText(label, Math.max(axisX - 4 * dpr, 30 * dpr), cy);
+      }
+    }
+
+    /* ── Equation parser ── */
+    function parseEquation(raw) {
+      let expr = raw.trim();
+      // strip "y =" or "y=" prefix
+      const yMatch = expr.match(/^y\s*=\s*(.+)$/i);
+      if (yMatch) expr = yMatch[1];
+
+      // transform math notation to JS
+      expr = expr
+        .replace(/\bpi\b/gi, '(Math.PI)')
+        .replace(/\be\b/g, '(Math.E)')
+        .replace(/\bsin\b/gi, 'Math.sin')
+        .replace(/\bcos\b/gi, 'Math.cos')
+        .replace(/\btan\b/gi, 'Math.tan')
+        .replace(/\basin\b/gi, 'Math.asin')
+        .replace(/\bacos\b/gi, 'Math.acos')
+        .replace(/\batan\b/gi, 'Math.atan')
+        .replace(/\babs\b/gi, 'Math.abs')
+        .replace(/\bsqrt\b/gi, 'Math.sqrt')
+        .replace(/\blog\b/gi, 'Math.log10')
+        .replace(/\bln\b/gi, 'Math.log')
+        .replace(/\bexp\b/gi, 'Math.exp')
+        .replace(/\bceil\b/gi, 'Math.ceil')
+        .replace(/\bfloor\b/gi, 'Math.floor');
+
+      // handle ^ as exponentiation
+      // multi-pass for nested: 2^3^2
+      let prev = '';
+      while (prev !== expr) {
+        prev = expr;
+        // base^exponent where base/exponent can be groups, numbers, or identifiers
+        expr = expr.replace(/(\([^()]*\)|[\w.]+)\s*\^\s*(\([^()]*\)|[\w.]+)/g, 'Math.pow($1,$2)');
+      }
+
+      // implicit multiplication: 2x, 2sin, 2(, )(
+      expr = expr.replace(/(\d)([a-zA-Z(])/g, '$1*$2');
+      expr = expr.replace(/\)(\()/g, ')*(');
+      expr = expr.replace(/\)([a-zA-Z])/g, ')*$1');
+
+      // validate: only allow safe chars
+      const safe = expr.replace(/Math\.\w+/g, '').replace(/[\d+\-*/().,%\s]/g, '').replace(/x/g, '');
+      if (safe.length > 0) throw new Error('Invalid characters in equation: ' + safe);
+
+      try {
+        const fn = new Function('x', 'return (' + expr + ');');
+        // test it
+        fn(0); fn(1); fn(-1);
+        return fn;
+      } catch (e) {
+        throw new Error('Could not parse equation: ' + raw);
+      }
+    }
+
+    /* ── Drawing equations ── */
+    function drawEquations() {
+      const w = canvas.width, h = canvas.height;
+      const steps = Math.max(w / dpr, 800);
+      const xStep = (viewport.xMax - viewport.xMin) / steps;
+
+      for (const eq of equations) {
+        ctx.strokeStyle = eq.color;
+        ctx.lineWidth = 2.2 * dpr;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+
+        let drawing = false;
+        let prevY = null;
+
+        for (let i = 0; i <= steps; i++) {
+          const x = viewport.xMin + i * xStep;
+          let y;
+          try { y = eq.fn(x); } catch { y = NaN; }
+
+          if (!isFinite(y) || isNaN(y)) {
+            drawing = false;
+            prevY = null;
+            continue;
+          }
+
+          const cx = xToCanvas(x);
+          const cy = yToCanvas(y);
+
+          // detect discontinuity (e.g. 1/x at 0)
+          if (drawing && prevY !== null) {
+            const jump = Math.abs(y - prevY);
+            const yRange = viewport.yMax - viewport.yMin;
+            if (jump > yRange * 2) {
+              drawing = false;
+            }
+          }
+
+          if (!drawing) {
+            ctx.moveTo(cx, cy);
+            drawing = true;
+          } else {
+            ctx.lineTo(cx, cy);
+          }
+          prevY = y;
+        }
+        ctx.stroke();
+      }
+    }
+
+    /* ── Main draw ── */
+    function draw() {
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // background
+      ctx.fillStyle = '#1a1b2e';
+      ctx.fillRect(0, 0, w, h);
+
+      drawGrid();
+      drawEquations();
+    }
+
+    /* ── Sidebar ── */
+    function renderSidebar() {
+      const list = document.getElementById('eq-list');
+      if (equations.length === 0) {
+        list.innerHTML = '<div class="empty-msg">No equations yet</div>';
+        return;
+      }
+      list.innerHTML = '';
+      equations.forEach((eq, i) => {
+        const item = document.createElement('div');
+        item.className = 'eq-item';
+        item.innerHTML = `<span class="eq-dot" style="background:${eq.color}"></span><span class="eq-text" title="${eq.raw}">${eq.raw}</span><button class="eq-remove" data-idx="${i}">x</button>`;
+        list.appendChild(item);
+      });
+      list.querySelectorAll('.eq-remove').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const idx = parseInt(e.target.dataset.idx);
+          equations.splice(idx, 1);
+          renderSidebar();
+          draw();
+          sendStateUpdate();
+        });
+      });
+    }
+
+    /* ── Add equation ── */
+    function addEquation(raw, color) {
+      const fn = parseEquation(raw);
+      const c = color || COLORS[equations.length % COLORS.length];
+      equations.push({ raw, fn, color: c });
+      renderSidebar();
+      draw();
+      sendStateUpdate();
+    }
+
+    /* ── Mouse coords ── */
+    canvas.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * dpr;
+      const my = (e.clientY - rect.top) * dpr;
+      const x = canvasToX(mx);
+      const y = canvasToY(my);
+      document.getElementById('coords').textContent = `x: ${x.toFixed(2)}, y: ${y.toFixed(2)}`;
+    });
+
+    /* ── Pan + Zoom ── */
+    let dragging = false;
+    let dragStart = { x: 0, y: 0, vp: null };
+
+    canvas.addEventListener('mousedown', (e) => {
+      dragging = true;
+      const rect = canvas.getBoundingClientRect();
+      dragStart = {
+        x: e.clientX,
+        y: e.clientY,
+        vp: { ...viewport }
+      };
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      const rect = canvas.getBoundingClientRect();
+      const xRange = dragStart.vp.xMax - dragStart.vp.xMin;
+      const yRange = dragStart.vp.yMax - dragStart.vp.yMin;
+      const shiftX = -(dx / rect.width) * xRange;
+      const shiftY = (dy / rect.height) * yRange;
+      viewport.xMin = dragStart.vp.xMin + shiftX;
+      viewport.xMax = dragStart.vp.xMax + shiftX;
+      viewport.yMin = dragStart.vp.yMin + shiftY;
+      viewport.yMax = dragStart.vp.yMax + shiftY;
+      draw();
+    });
+
+    window.addEventListener('mouseup', () => { dragging = false; });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) / rect.width;
+      const my = (e.clientY - rect.top) / rect.height;
+      const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
+      const xRange = viewport.xMax - viewport.xMin;
+      const yRange = viewport.yMax - viewport.yMin;
+      const cx = viewport.xMin + mx * xRange;
+      const cy = viewport.yMax - my * yRange;
+      viewport.xMin = cx - (cx - viewport.xMin) * factor;
+      viewport.xMax = cx + (viewport.xMax - cx) * factor;
+      viewport.yMin = cy - (cy - viewport.yMin) * factor;
+      viewport.yMax = cy + (viewport.yMax - cy) * factor;
+      draw();
+    }, { passive: false });
+
+    /* ── Input bar ── */
+    document.getElementById('plot-btn').addEventListener('click', () => {
+      const input = document.getElementById('eq-input');
+      const val = input.value.trim();
+      if (!val) return;
+      try {
+        addEquation(val);
+        input.value = '';
+      } catch (err) {
+        setStatus(err.message, true);
+      }
+    });
+
+    document.getElementById('eq-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('plot-btn').click();
+    });
+
+    /* ── Plugin protocol ── */
+    function sendMsg(msg) {
+      if (!nonce) return;
+      msg.nonce = nonce;
+      window.parent.postMessage(msg, '*');
+    }
+
+    function setStatus(text, isError) {
+      const el = document.getElementById('status');
+      el.textContent = text;
+      el.style.color = isError ? '#f05050' : 'var(--muted)';
+    }
+
+    function sendStateUpdate() {
+      sendMsg({
+        type: 'STATE_UPDATE',
+        state: {
+          equations: equations.map(eq => ({ equation: eq.raw, color: eq.color })),
+          viewport: { ...viewport }
+        }
+      });
+    }
+
+    function sendCompletion(summary) {
+      sendMsg({
+        type: 'COMPLETION',
+        payload: {
+          pluginId: 'geogebra',
+          instanceId,
+          summary: summary || 'Graphing session complete',
+          data: {
+            equations: equations.map(eq => ({ equation: eq.raw, color: eq.color })),
+            viewport: { ...viewport }
+          }
+        }
+      });
+    }
+
+    function handleToolInvoke(callId, toolName, parameters) {
+      try {
+        setStatus('Running ' + toolName + '...');
+        let result = null;
+        switch (toolName) {
+          case 'plot_equation': {
+            const raw = parameters.equation;
+            if (!raw) throw new Error('Missing equation parameter');
+            addEquation(raw, parameters.color);
+            setStatus('Plotted: ' + raw);
+            result = { plotted: raw, total: equations.length };
+            break;
+          }
+          case 'clear_graph': {
+            equations = [];
+            renderSidebar();
+            draw();
+            sendStateUpdate();
+            setStatus('Graph cleared');
+            result = { cleared: true };
+            break;
+          }
+          case 'get_state': {
+            result = {
+              equations: equations.map(eq => ({ equation: eq.raw, color: eq.color })),
+              viewport: { ...viewport }
+            };
+            setStatus('State returned');
+            break;
+          }
+          case 'set_viewport': {
+            const xMin = parseFloat(parameters.xMin);
+            const xMax = parseFloat(parameters.xMax);
+            const yMin = parseFloat(parameters.yMin);
+            const yMax = parseFloat(parameters.yMax);
+            if (isNaN(xMin) || isNaN(xMax) || isNaN(yMin) || isNaN(yMax))
+              throw new Error('Invalid viewport parameters');
+            if (xMin >= xMax || yMin >= yMax)
+              throw new Error('Min must be less than max');
+            viewport = { xMin, xMax, yMin, yMax };
+            draw();
+            sendStateUpdate();
+            setStatus('Viewport: [' + xMin + ', ' + xMax + '] x [' + yMin + ', ' + yMax + ']');
+            result = { viewport: { ...viewport } };
+            break;
+          }
+          case 'finish': {
+            const summary = parameters.summary || 'Graphing session complete';
+            setStatus('Session complete');
+            sendCompletion(summary);
+            result = { summary };
+            break;
+          }
+          default:
+            throw new Error('Unknown tool: ' + toolName);
+        }
+        sendMsg({ type: 'TOOL_RESULT', callId, result });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setStatus(message, true);
+        sendMsg({ type: 'TOOL_RESULT', callId, result: null, error: message });
+      }
+    }
+
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (!data || typeof data !== 'object' || !data.type) return;
+      switch (data.type) {
+        case 'PLUGIN_INIT':
+          nonce = data.nonce;
+          instanceId = data.instanceId;
+          draw();
+          sendStateUpdate();
+          break;
+        case 'TOOL_INVOKE':
+          if (data.nonce !== nonce) return;
+          handleToolInvoke(data.callId, data.toolName, data.parameters || {});
+          break;
+      }
+    });
+
+    /* ── Boot ── */
+    resize();
+    window.parent.postMessage({ type: 'PLUGIN_READY', nonce: '' }, '*');
+  </script>
+</body>
+</html>

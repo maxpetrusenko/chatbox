@@ -24,6 +24,7 @@ import storage from '@/storage'
 import { StorageKey, StorageKeyGenerator } from '@/storage/StoreStorage'
 import { migrateSession, sortSessions } from '@/utils/session-utils'
 import * as defaults from '../../shared/defaults'
+import { hasProviderApiKey } from '../../shared/providers/env'
 import { createMessage, type Message, SessionSettingsSchema, TOKEN_CACHE_KEYS } from '../../shared/types'
 import { lastUsedModelStore } from './lastUsedModelStore'
 import * as settingActions from './settingActions'
@@ -581,6 +582,18 @@ export function mergeSettings(
 export function initEmptyChatSession(): Omit<Session, 'id'> {
   const settings = settingsStore.getState().getSettings()
   const { chat: lastUsedChatModel } = lastUsedModelStore.getState()
+  const defaultChatModel = settings.defaultChatModel
+    ? {
+        provider: settings.defaultChatModel.provider,
+        modelId: settings.defaultChatModel.model,
+      }
+    : lastUsedChatModel ||
+      (hasProviderApiKey('openai', settings.providers?.openai)
+        ? {
+            provider: 'openai',
+            modelId: 'gpt-5-mini',
+          }
+        : undefined)
   const newSession: Omit<Session, 'id'> = {
     name: 'Untitled',
     type: 'chat',
@@ -589,12 +602,7 @@ export function initEmptyChatSession(): Omit<Session, 'id'> {
       maxContextMessageCount: settings.maxContextMessageCount ?? Number.MAX_SAFE_INTEGER,
       temperature: settings.temperature || undefined,
       topP: settings.topP || undefined,
-      ...(settings.defaultChatModel
-        ? {
-            provider: settings.defaultChatModel.provider,
-            modelId: settings.defaultChatModel.model,
-          }
-        : lastUsedChatModel),
+      ...defaultChatModel,
     },
   }
   if (settings.defaultPrompt) {

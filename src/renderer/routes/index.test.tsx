@@ -105,7 +105,7 @@ vi.mock('@/stores/uiStore', () => {
 
 import { Index } from './index'
 
-describe('Index chess submit flow', () => {
+describe('Index inline plugin submit flow', () => {
   beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -125,9 +125,10 @@ describe('Index chess submit flow', () => {
   beforeEach(() => {
     navigateSpy.mockReset()
     createSessionSpy.mockReset()
+    createSessionSpy.mockResolvedValue({ id: 'session-1' })
   })
 
-  it('navigates to chess instead of creating a chat session', async () => {
+  it('creates a chat session and submits the message inline', async () => {
     render(
       <MantineProvider>
         <Index />
@@ -137,12 +138,9 @@ describe('Index chess submit flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'submit' }))
 
     await waitFor(() => {
-      expect(navigateSpy).toHaveBeenCalledWith({
-        to: '/chess',
-        search: { prompt: 'play chess with me', autostart: true },
-      })
+      expect(createSessionSpy).toHaveBeenCalledOnce()
     })
 
-    expect(createSessionSpy).not.toHaveBeenCalled()
+    expect(navigateSpy).not.toHaveBeenCalled()
   })
 })

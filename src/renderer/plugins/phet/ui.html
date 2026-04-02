@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhET Simulations</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #1a1b2e;
+    color: #e2e4f0;
+    overflow: hidden;
+    user-select: none;
+  }
+  #container { display: flex; flex-direction: column; height: 100vh; padding: 10px; }
+
+  #header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; background: #242640; border-radius: 10px; margin-bottom: 8px;
+    border: 1px solid #2e3052;
+  }
+  #header .title { font-size: 14px; font-weight: 700; letter-spacing: 0.3px; }
+  #header .subtitle { font-size: 11px; color: #8b8da8; margin-left: 8px; }
+  #header .back-btn {
+    font-size: 11px; padding: 4px 10px; border: 1px solid #3a3d5c;
+    border-radius: 6px; background: #2a2d4a; cursor: pointer; color: #a0a3c0;
+    display: none;
+  }
+  #header .back-btn:hover { background: #33365a; color: #e2e4f0; }
+
+  #browser {
+    flex: 1; overflow-y: auto; display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px; padding: 4px 2px;
+  }
+  #browser::-webkit-scrollbar { width: 4px; }
+  #browser::-webkit-scrollbar-thumb { background: #3a3d5c; border-radius: 2px; }
+
+  .sim-card {
+    background: #242640; border: 1px solid #2e3052; border-radius: 10px;
+    padding: 14px; cursor: pointer; transition: all 0.2s ease;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .sim-card:hover { border-color: #4f8cff; transform: translateY(-2px); box-shadow: 0 4px 16px rgba(79,140,255,0.12); }
+  .sim-card .card-icon { font-size: 28px; margin-bottom: 2px; }
+  .sim-card .card-name { font-size: 13px; font-weight: 600; }
+  .sim-card .card-desc { font-size: 10px; color: #8b8da8; line-height: 1.4; }
+  .sim-card .card-badge {
+    display: inline-block; font-size: 9px; font-weight: 600; padding: 2px 7px;
+    border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+    width: fit-content;
+  }
+  .badge-physics { background: rgba(79,140,255,0.15); color: #4f8cff; }
+  .badge-chemistry { background: rgba(61,214,140,0.15); color: #3dd68c; }
+  .badge-math { background: rgba(167,139,250,0.15); color: #a78bfa; }
+
+  #sim-view { display: none; flex: 1; flex-direction: column; min-height: 0; }
+  #sim-canvas-wrap { flex: 1; display: flex; justify-content: center; align-items: center; min-height: 0; }
+  canvas { border-radius: 8px; background: #0f1020; }
+
+  #controls {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    padding: 8px 12px; background: #242640; border-radius: 10px;
+    margin-top: 8px; border: 1px solid #2e3052;
+  }
+  .control-group { display: flex; flex-direction: column; gap: 2px; }
+  .control-group label {
+    font-size: 9px; font-weight: 600; color: #8b8da8;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .control-group .value {
+    font-size: 11px; color: #c8cae0; font-variant-numeric: tabular-nums;
+  }
+  input[type="range"] {
+    -webkit-appearance: none; width: 100px; height: 4px;
+    background: #3a3d5c; border-radius: 2px; outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px;
+    border-radius: 50%; background: #4f8cff; cursor: pointer;
+    border: 2px solid #1a1b2e;
+  }
+  .sim-btn {
+    font-size: 11px; padding: 5px 14px; border: none;
+    border-radius: 6px; cursor: pointer; font-weight: 600;
+    transition: all 0.15s ease;
+  }
+  .sim-btn-primary { background: #4f8cff; color: #fff; }
+  .sim-btn-primary:hover { background: #6ba0ff; }
+  .sim-btn-secondary { background: #2a2d4a; color: #a0a3c0; border: 1px solid #3a3d5c; }
+  .sim-btn-secondary:hover { background: #33365a; color: #e2e4f0; }
+
+  #info-bar {
+    display: flex; gap: 16px; padding: 6px 12px; margin-top: 6px;
+    font-size: 10px; color: #8b8da8;
+  }
+  #info-bar .info-item span { color: #c8cae0; font-weight: 600; }
+  .spacer { flex: 1; }
+</style>
+</head>
+<body>
+<div id="container">
+  <div id="header">
+    <div style="display:flex;align-items:center;">
+      <span class="title" id="header-title">PhET Simulations</span>
+      <span class="subtitle" id="header-subtitle">Interactive Science Lab</span>
+    </div>
+    <button class="back-btn" id="back-btn">Back to Catalog</button>
+  </div>
+  <div id="browser"></div>
+  <div id="sim-view">
+    <div id="sim-canvas-wrap">
+      <canvas id="sim-canvas"></canvas>
+    </div>
+    <div id="info-bar"></div>
+    <div id="controls"></div>
+  </div>
+</div>
+
+<script>
+// ===== Plugin Bridge Protocol =====
+var nonce = '';
+var currentSim = null;
+var animFrame = null;
+var catalog = [];
+
+window.parent.postMessage({ type: 'PLUGIN_READY', nonce: '' }, '*');
+
+window.addEventListener('message', function(event) {
+  var msg = event.data;
+  if (msg.type === 'PLUGIN_INIT') {
+    nonce = msg.nonce;
+  }
+  if (msg.type === 'TOOL_INVOKE') {
+    handleToolInvoke(msg.callId, msg.toolName, msg.parameters || {});
+  }
+});
+
+function sendResult(callId, result) {
+  window.parent.postMessage({ type: 'TOOL_RESULT', nonce: nonce, callId: callId, result: result }, '*');
+}
+
+function handleToolInvoke(callId, toolName, params) {
+  switch (toolName) {
+    case 'launch_simulation': {
+      var name = (params.simulation || '').toLowerCase();
+      var sim = findSimulation(name);
+      if (sim) {
+        loadSimulation(sim.id);
+        sendResult(callId, { success: true, simulation: sim.name, subject: sim.subject });
+      } else {
+        sendResult(callId, { success: false, error: 'Simulation not found: ' + params.simulation, available: catalog.map(function(s) { return s.name; }) });
+      }
+      break;
+    }
+    case 'list_simulations': {
+      var list = catalog;
+      if (params.subject) {
+        var subj = params.subject.toLowerCase();
+        list = catalog.filter(function(s) { return s.subject.toLowerCase() === subj; });
+      }
+      sendResult(callId, { simulations: list.map(function(s) { return { id: s.id, name: s.name, subject: s.subject, description: s.description }; }) });
+      break;
+    }
+    case 'get_simulation_info': {
+      if (currentSim) {
+        var sim = catalog.find(function(s) { return s.id === currentSim; });
+        var state = sim ? sim.getState() : {};
+        sendResult(callId, { loaded: true, simulation: sim.name, subject: sim.subject, state: state });
+      } else {
+        sendResult(callId, { loaded: false });
+      }
+      break;
+    }
+    case 'finish': {
+      if (currentSim) showBrowser();
+      sendResult(callId, { success: true, summary: params.summary || 'Session ended' });
+      break;
+    }
+    default:
+      sendResult(callId, { error: 'Unknown tool: ' + toolName });
+  }
+}
+
+function findSimulation(query) {
+  var q = query.toLowerCase().trim();
+  return catalog.find(function(s) {
+    return s.id === q ||
+      s.name.toLowerCase().indexOf(q) !== -1 ||
+      s.keywords.some(function(k) { return q.indexOf(k) !== -1; });
+  });
+}
+
+// ===== Canvas =====
+var canvas = document.getElementById('sim-canvas');
+var ctx = canvas.getContext('2d');
+var cw = 0, ch = 0;
+
+function resizeCanvas() {
+  var wrap = document.getElementById('sim-canvas-wrap');
+  var w = wrap.clientWidth - 16;
+  var h = wrap.clientHeight - 16;
+  var dpr = window.devicePixelRatio || 1;
+  cw = Math.min(w, 640);
+  ch = Math.min(h, 340);
+  canvas.width = cw * dpr;
+  canvas.height = ch * dpr;
+  canvas.style.width = cw + 'px';
+  canvas.style.height = ch + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function drawGrid() {
+  ctx.strokeStyle = '#1e2040';
+  ctx.lineWidth = 0.5;
+  for (var x = 0; x < cw; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, ch); ctx.stroke(); }
+  for (var y = 0; y < ch; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke(); }
+}
+
+// ===== Browser =====
+function renderBrowser() {
+  var el = document.getElementById('browser');
+  el.innerHTML = '';
+  catalog.forEach(function(sim) {
+    var card = document.createElement('div');
+    card.className = 'sim-card';
+    card.setAttribute('data-sim', sim.id);
+    var badgeClass = 'badge-' + sim.subject.toLowerCase();
+    card.innerHTML =
+      '<div class="card-icon">' + sim.icon + '</div>' +
+      '<span class="card-badge ' + badgeClass + '">' + sim.subject + '</span>' +
+      '<div class="card-name">' + sim.name + '</div>' +
+      '<div class="card-desc">' + sim.description + '</div>';
+    el.appendChild(card);
+  });
+  el.addEventListener('click', function(e) {
+    var card = e.target.closest('.sim-card');
+    if (card) loadSimulation(card.getAttribute('data-sim'));
+  });
+}
+
+function showBrowser() {
+  if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
+  currentSim = null;
+  canvas.onmousedown = null;
+  canvas.onmousemove = null;
+  canvas.onmouseup = null;
+  document.getElementById('browser').style.display = 'grid';
+  document.getElementById('sim-view').style.display = 'none';
+  document.getElementById('back-btn').style.display = 'none';
+  document.getElementById('header-title').textContent = 'PhET Simulations';
+  document.getElementById('header-subtitle').textContent = 'Interactive Science Lab';
+}
+
+document.getElementById('back-btn').addEventListener('click', showBrowser);
+
+function loadSimulation(id) {
+  var sim = catalog.find(function(s) { return s.id === id; });
+  if (!sim) return;
+  currentSim = id;
+  document.getElementById('browser').style.display = 'none';
+  document.getElementById('sim-view').style.display = 'flex';
+  document.getElementById('back-btn').style.display = 'block';
+  document.getElementById('header-title').textContent = sim.name;
+  document.getElementById('header-subtitle').textContent = sim.subject;
+  resizeCanvas();
+  sim.init();
+  sim.renderControls();
+  sim.renderInfo();
+  function loop() {
+    sim.update();
+    sim.draw();
+    animFrame = requestAnimationFrame(loop);
+  }
+  if (animFrame) cancelAnimationFrame(animFrame);
+  loop();
+}
+
+window.addEventListener('resize', function() {
+  if (currentSim) resizeCanvas();
+});
+
+// =======================================
+// 1. PENDULUM LAB
+// =======================================
+(function() {
+  var angle, angularVel, length, gravity, trail, dragging, time;
+
+  var sim = {
+    id: 'pendulum',
+    name: 'Pendulum Lab',
+    subject: 'Physics',
+    icon: '\u{1F552}',
+    description: 'Simple pendulum with adjustable length and gravity. Observe the relationship between period and length.',
+    keywords: ['pendulum', 'swing', 'period', 'gravity', 'oscillation'],
+
+    init: function() {
+      angle = Math.PI / 4;
+      angularVel = 0;
+      length = 200;
+      gravity = 9.81;
+      trail = [];
+      dragging = false;
+      time = 0;
+
+      canvas.onmousedown = function(e) {
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        var pivotX = cw / 2, pivotY = 50;
+        var bobX = pivotX + length * Math.sin(angle);
+        var bobY = pivotY + length * Math.cos(angle);
+        if (Math.hypot(mx - bobX, my - bobY) < 24) {
+          dragging = true;
+          angularVel = 0;
+        }
+      };
+      canvas.onmousemove = function(e) {
+        if (!dragging) return;
+        var rect = canvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        angle = Math.atan2(mx - cw / 2, my - 50);
+      };
+      canvas.onmouseup = function() { dragging = false; };
+    },
+
+    update: function() {
+      if (dragging) return;
+      var dt = 0.016;
+      time += dt;
+      var acc = -(gravity / (length / 100)) * Math.sin(angle);
+      angularVel += acc * dt;
+      angularVel *= 0.9995;
+      angle += angularVel * dt;
+      var pivotX = cw / 2, pivotY = 50;
+      var bobX = pivotX + length * Math.sin(angle);
+      var bobY = pivotY + length * Math.cos(angle);
+      trail.push({ x: bobX, y: bobY });
+      if (trail.length > 80) trail.shift();
+    },
+
+    draw: function() {
+      ctx.clearRect(0, 0, cw, ch);
+      drawGrid();
+
+      var pivotX = cw / 2, pivotY = 50;
+      var bobX = pivotX + length * Math.sin(angle);
+      var bobY = pivotY + length * Math.cos(angle);
+
+      // Trail
+      for (var i = 1; i < trail.length; i++) {
+        var alpha = i / trail.length * 0.4;
+        ctx.strokeStyle = 'rgba(79,140,255,' + alpha + ')';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
+        ctx.lineTo(trail[i].x, trail[i].y);
+        ctx.stroke();
+      }
+
+      // Mount
+      ctx.fillStyle = '#3a3d5c';
+      ctx.fillRect(pivotX - 30, pivotY - 8, 60, 8);
+
+      // Rope
+      ctx.strokeStyle = '#5a5d80';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(pivotX, pivotY);
+      ctx.lineTo(bobX, bobY);
+      ctx.stroke();
+
+      // Pivot
+      ctx.fillStyle = '#8b8da8';
+      ctx.beginPath();
+      ctx.arc(pivotX, pivotY, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Angle arc
+      if (Math.abs(angle) > 0.03) {
+        ctx.strokeStyle = 'rgba(79,140,255,0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        if (angle > 0) {
+          ctx.arc(pivotX, pivotY, 35, Math.PI / 2, Math.PI / 2 + angle, false);
+        } else {
+          ctx.arc(pivotX, pivotY, 35, Math.PI / 2 + angle, Math.PI / 2, false);
+        }
+        ctx.stroke();
+      }
+
+      // Bob
+      var grad = ctx.createRadialGradient(bobX - 3, bobY - 3, 2, bobX, bobY, 14);
+      grad.addColorStop(0, '#6ba0ff');
+      grad.addColorStop(1, '#4f8cff');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(bobX, bobY, 14, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Bob highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.beginPath();
+      ctx.arc(bobX - 4, bobY - 4, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Period + angle readout
+      var period = 2 * Math.PI * Math.sqrt((length / 100) / gravity);
+      ctx.fillStyle = '#8b8da8';
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('T = ' + period.toFixed(3) + 's', 12, ch - 12);
+      ctx.textAlign = 'right';
+      ctx.fillText('\u03B8 = ' + (angle * 180 / Math.PI).toFixed(1) + '\u00B0', cw - 12, ch - 12);
+    },
+
+    renderControls: function() {
+      var el = document.getElementById('controls');
+      el.innerHTML =
+        '<div class="control-group">' +
+          '<label>Length</label>' +
+          '<input type="range" id="pend-length" min="80" max="280" value="' + length + '" step="1">' +
+          '<span class="value" id="pend-length-val">' + (length / 100).toFixed(2) + ' m</span>' +
+        '</div>' +
+        '<div class="control-group">' +
+          '<label>Gravity</label>' +
+          '<input type="range" id="pend-gravity" min="1" max="25" value="' + gravity + '" step="0.1">' +
+          '<span class="value" id="pend-gravity-val">' + gravity.toFixed(1) + ' m/s\u00B2</span>' +
+        '</div>' +
+        '<div class="spacer"></div>' +
+        '<button class="sim-btn sim-btn-secondary" id="pend-reset">Reset</button>';
+      document.getElementById('pend-length').oninput = function() {
+        length = +this.value;
+        document.getElementById('pend-length-val').textContent = (length / 100).toFixed(2) + ' m';
+        trail = [];
+        sim.renderInfo();
+      };
+      document.getElementById('pend-gravity').oninput = function() {
+        gravity = +this.value;
+        document.getElementById('pend-gravity-val').textContent = gravity.toFixed(1) + ' m/s\u00B2';
+        sim.renderInfo();
+      };
+      document.getElementById('pend-reset').onclick = function() {
+        angle = Math.PI / 4;
+        angularVel = 0;
+        trail = [];
+        time = 0;
+      };
+    },
+
+    renderInfo: function() {
+      var period = 2 * Math.PI * Math.sqrt((length / 100) / gravity);
+      document.getElementById('info-bar').innerHTML =
+        '<div class="info-item">Period: <span>' + period.toFixed(3) + 's</span></div>' +
+        '<div class="info-item">Length: <span>' + (length / 100).toFixed(2) + 'm</span></div>' +
+        '<div class="info-item">g: <span>' + gravity.toFixed(1) + ' m/s\u00B2</span></div>' +
+        '<div class="info-item">Drag the bob to set angle</div>';
+    },
+
+    getState: function() {
+      var period = 2 * Math.PI * Math.sqrt((length / 100) / gravity);
+      return {
+        angle_deg: +(angle * 180 / Math.PI).toFixed(1),
+        length_m: +(length / 100).toFixed(2),
+        gravity: +gravity.toFixed(1),
+        period_s: +period.toFixed(3)
+      };
+    }
+  };
+  catalog.push(sim);
+})();
+
+// =======================================
+// 2. PROJECTILE MOTION
+// =======================================
+(function() {
+  var launchAngle, velocity, projectile, launched, maxHeight, range, flightTime, t;
+
+  function groundY() { return ch - 40; }
+  function toScreenX(x) { return 60 + x * (cw - 80) / 120; }
+  function toScreenY(y) { return groundY() - y * (ch - 100) / 60; }
+
+  var sim = {
+    id: 'projectile',
+    name: 'Projectile Motion',
+    subject: 'Physics',
+    icon: '\u{1F3AF}',
+    description: 'Launch a projectile at any angle and velocity. Observe trajectory, max height, and range.',
+    keywords: ['projectile', 'motion', 'trajectory', 'launch', 'parabola', 'kinematics'],
+
+    init: function() {
+      launchAngle = 45;
+      velocity = 30;
+      projectile = null;
+      launched = false;
+      maxHeight = 0;
+      range = 0;
+      flightTime = 0;
+      t = 0;
+      canvas.onmousedown = null;
+      canvas.onmousemove = null;
+      canvas.onmouseup = null;
+    },
+
+    update: function() {
+      if (!launched || !projectile) return;
+      var dt = 0.03;
+      t += dt;
+      var g = 9.81;
+      var rad = launchAngle * Math.PI / 180;
+      var vx = velocity * Math.cos(rad);
+      var vy = velocity * Math.sin(rad);
+      var x = vx * t;
+      var y = vy * t - 0.5 * g * t * t;
+
+      if (y < 0 && t > 0.05) {
+        flightTime = 2 * vy / g;
+        range = vx * flightTime;
+        maxHeight = (vy * vy) / (2 * g);
+        projectile.x = toScreenX(range);
+        projectile.y = groundY();
+        projectile.trail.push({ x: projectile.x, y: projectile.y });
+        launched = false;
+        sim.renderInfo();
+        var btn = document.getElementById('proj-launch');
+        if (btn) { btn.disabled = false; btn.textContent = 'Launch'; }
+        return;
+      }
+
+      maxHeight = Math.max(maxHeight, y);
+      range = x;
+      flightTime = t;
+      projectile.x = toScreenX(x);
+      projectile.y = toScreenY(y);
+      projectile.trail.push({ x: projectile.x, y: projectile.y });
+      if (projectile.trail.length > 500) projectile.trail.shift();
+    },
+
+    draw: function() {
+      ctx.clearRect(0, 0, cw, ch);
+      drawGrid();
+
+      var gy = groundY();
+      var originX = 60;
+      var rad = launchAngle * Math.PI / 180;
+
+      // Ground
+      ctx.fillStyle = '#242640';
+      ctx.fillRect(0, gy, cw, ch - gy);
+      ctx.strokeStyle = '#3dd68c';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, gy);
+      ctx.lineTo(cw, gy);
+      ctx.stroke();
+
+      // Distance markers
+      ctx.fillStyle = '#5a5d80';
+      ctx.font = '9px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      for (var d = 0; d <= 120; d += 20) {
+        var sx = toScreenX(d);
+        if (sx > cw) break;
+        ctx.fillText(d + 'm', sx, gy + 14);
+        ctx.strokeStyle = '#2e3052';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(sx, gy); ctx.lineTo(sx, gy + 4); ctx.stroke();
+      }
+
+      // Launch arrow
+      var arrowLen = 40;
+      ctx.strokeStyle = '#ff6b6b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(originX, gy);
+      ctx.lineTo(originX + arrowLen * Math.cos(rad), gy - arrowLen * Math.sin(rad));
+      ctx.stroke();
+
+      var ax = originX + arrowLen * Math.cos(rad);
+      var ay = gy - arrowLen * Math.sin(rad);
+      ctx.fillStyle = '#ff6b6b';
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(ax - 8 * Math.cos(rad - 0.4), ay + 8 * Math.sin(rad - 0.4));
+      ctx.lineTo(ax - 8 * Math.cos(rad + 0.4), ay + 8 * Math.sin(rad + 0.4));
+      ctx.closePath();
+      ctx.fill();
+
+      // Angle arc
+      ctx.strokeStyle = 'rgba(255,107,107,0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(originX, gy, 25, -rad, 0);
+      ctx.stroke();
+      ctx.fillStyle = '#ff6b6b';
+      ctx.font = '10px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(launchAngle + '\u00B0', originX + 28, gy - 8);
+
+      // Predicted trajectory (dotted)
+      if (!launched && !projectile) {
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = 'rgba(79,140,255,0.25)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        var g = 9.81;
+        var vx = velocity * Math.cos(rad);
+        var vy = velocity * Math.sin(rad);
+        var totalT = 2 * vy / g;
+        for (var i = 0; i <= 60; i++) {
+          var tt = (i / 60) * totalT;
+          var px = vx * tt;
+          var py = vy * tt - 0.5 * g * tt * tt;
+          var screenX = toScreenX(px);
+          var screenY = toScreenY(py);
+          if (screenY > gy) break;
+          if (i === 0) ctx.moveTo(screenX, screenY); else ctx.lineTo(screenX, screenY);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Trail
+      if (projectile && projectile.trail.length > 1) {
+        ctx.strokeStyle = '#4f8cff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(projectile.trail[0].x, projectile.trail[0].y);
+        for (var i = 1; i < projectile.trail.length; i++) {
+          ctx.lineTo(projectile.trail[i].x, projectile.trail[i].y);
+        }
+        ctx.stroke();
+      }
+
+      // Ball
+      if (projectile) {
+        var bgrad = ctx.createRadialGradient(projectile.x - 2, projectile.y - 2, 1, projectile.x, projectile.y, 8);
+        bgrad.addColorStop(0, '#ffd966');
+        bgrad.addColorStop(1, '#ff9f43');
+        ctx.fillStyle = bgrad;
+        ctx.beginPath();
+        ctx.arc(projectile.x, projectile.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Info overlay
+      if (projectile) {
+        ctx.fillStyle = '#8b8da8';
+        ctx.font = '11px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('H_max = ' + maxHeight.toFixed(1) + 'm', 12, 20);
+        ctx.fillText('R = ' + range.toFixed(1) + 'm', 12, 34);
+        ctx.fillText('t = ' + flightTime.toFixed(2) + 's', 12, 48);
+      }
+
+      // Launcher base
+      ctx.fillStyle = '#3a3d5c';
+      ctx.fillRect(originX - 10, gy - 4, 20, 8);
+    },
+
+    renderControls: function() {
+      var el = document.getElementById('controls');
+      el.innerHTML =
+        '<div class="control-group">' +
+          '<label>Angle</label>' +
+          '<input type="range" id="proj-angle" min="5" max="85" value="' + launchAngle + '" step="1">' +
+          '<span class="value" id="proj-angle-val">' + launchAngle + '\u00B0</span>' +
+        '</div>' +
+        '<div class="control-group">' +
+          '<label>Velocity</label>' +
+          '<input type="range" id="proj-vel" min="5" max="50" value="' + velocity + '" step="1">' +
+          '<span class="value" id="proj-vel-val">' + velocity + ' m/s</span>' +
+        '</div>' +
+        '<div class="spacer"></div>' +
+        '<button class="sim-btn sim-btn-primary" id="proj-launch">Launch</button>' +
+        '<button class="sim-btn sim-btn-secondary" id="proj-reset">Reset</button>';
+
+      document.getElementById('proj-angle').oninput = function() {
+        launchAngle = +this.value;
+        document.getElementById('proj-angle-val').textContent = launchAngle + '\u00B0';
+        if (!launched) { projectile = null; sim.renderInfo(); }
+      };
+      document.getElementById('proj-vel').oninput = function() {
+        velocity = +this.value;
+        document.getElementById('proj-vel-val').textContent = velocity + ' m/s';
+        if (!launched) { projectile = null; sim.renderInfo(); }
+      };
+      document.getElementById('proj-launch').onclick = function() {
+        if (launched) return;
+        launched = true;
+        t = 0;
+        maxHeight = 0;
+        range = 0;
+        flightTime = 0;
+        projectile = { x: toScreenX(0), y: groundY(), trail: [] };
+        this.disabled = true;
+        this.textContent = 'In Flight...';
+      };
+      document.getElementById('proj-reset').onclick = function() {
+        launched = false;
+        projectile = null;
+        t = 0;
+        maxHeight = 0;
+        range = 0;
+        flightTime = 0;
+        var btn = document.getElementById('proj-launch');
+        if (btn) { btn.disabled = false; btn.textContent = 'Launch'; }
+        sim.renderInfo();
+      };
+    },
+
+    renderInfo: function() {
+      var rad = launchAngle * Math.PI / 180;
+      var g = 9.81;
+      var vy = velocity * Math.sin(rad);
+      var predRange = (velocity * velocity * Math.sin(2 * rad)) / g;
+      var predMax = (vy * vy) / (2 * g);
+      var predTime = 2 * vy / g;
+      document.getElementById('info-bar').innerHTML =
+        '<div class="info-item">Predicted Range: <span>' + predRange.toFixed(1) + 'm</span></div>' +
+        '<div class="info-item">Max Height: <span>' + predMax.toFixed(1) + 'm</span></div>' +
+        '<div class="info-item">Flight Time: <span>' + predTime.toFixed(2) + 's</span></div>';
+    },
+
+    getState: function() {
+      var rad = launchAngle * Math.PI / 180;
+      var g = 9.81;
+      var predRange = (velocity * velocity * Math.sin(2 * rad)) / g;
+      var predMax = (velocity * Math.sin(rad)) * (velocity * Math.sin(rad)) / (2 * g);
+      return {
+        angle_deg: launchAngle,
+        velocity_ms: velocity,
+        max_height_m: +predMax.toFixed(1),
+        range_m: +predRange.toFixed(1),
+        launched: launched
+      };
+    }
+  };
+  catalog.push(sim);
+})();
+
+// =======================================
+// 3. WAVE ON A STRING
+// =======================================
+(function() {
+  var frequency, amplitude, speed, time, paused;
+
+  var sim = {
+    id: 'waves',
+    name: 'Wave on a String',
+    subject: 'Physics',
+    icon: '\u{1F30A}',
+    description: 'Transverse wave visualization. Adjust frequency, amplitude, and observe wavelength and propagation.',
+    keywords: ['wave', 'waves', 'transverse', 'frequency', 'amplitude', 'wavelength', 'string', 'oscillation'],
+
+    init: function() {
+      frequency = 2;
+      amplitude = 40;
+      speed = 120;
+      time = 0;
+      paused = false;
+      canvas.onmousedown = null;
+      canvas.onmousemove = null;
+      canvas.onmouseup = null;
+    },
+
+    update: function() {
+      if (paused) return;
+      time += 0.016;
+    },
+
+    draw: function() {
+      ctx.clearRect(0, 0, cw, ch);
+      drawGrid();
+
+      var midY = ch / 2;
+      var wavelength = speed / frequency;
+      var startX = 20;
+      var endX = cw - 20;
+      var wlPx = wavelength * ((endX - startX) / 400);
+
+      // Equilibrium line
+      ctx.strokeStyle = '#2e3052';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(startX, midY);
+      ctx.lineTo(endX, midY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Amplitude guides
+      ctx.strokeStyle = 'rgba(167,139,250,0.15)';
+      ctx.lineWidth = 0.5;
+      ctx.setLineDash([2, 4]);
+      ctx.beginPath(); ctx.moveTo(startX, midY - amplitude); ctx.lineTo(endX, midY - amplitude); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(startX, midY + amplitude); ctx.lineTo(endX, midY + amplitude); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Wave glow
+      ctx.strokeStyle = 'rgba(167,139,250,0.12)';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      for (var px = startX; px <= endX; px++) {
+        var yy = amplitude * Math.sin(2 * Math.PI * (frequency * time - (px - startX) / wlPx));
+        if (px === startX) ctx.moveTo(px, midY - yy); else ctx.lineTo(px, midY - yy);
+      }
+      ctx.stroke();
+
+      // Wave line
+      ctx.strokeStyle = '#a78bfa';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (var px = startX; px <= endX; px++) {
+        var yy = amplitude * Math.sin(2 * Math.PI * (frequency * time - (px - startX) / wlPx));
+        if (px === startX) ctx.moveTo(px, midY - yy); else ctx.lineTo(px, midY - yy);
+      }
+      ctx.stroke();
+
+      // Particle dots with velocity arrows
+      for (var i = 0; i < 20; i++) {
+        var dotPx = startX + i * (endX - startX) / 19;
+        var dotYY = amplitude * Math.sin(2 * Math.PI * (frequency * time - (dotPx - startX) / wlPx));
+        var dotScreenY = midY - dotYY;
+
+        // Velocity arrow
+        var vyy = amplitude * 2 * Math.PI * frequency * Math.cos(2 * Math.PI * (frequency * time - (dotPx - startX) / wlPx));
+        ctx.strokeStyle = 'rgba(61,214,140,0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(dotPx, dotScreenY);
+        ctx.lineTo(dotPx, dotScreenY - vyy * 0.25);
+        ctx.stroke();
+
+        ctx.fillStyle = '#e2e4f0';
+        ctx.beginPath();
+        ctx.arc(dotPx, dotScreenY, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Wavelength indicator
+      if (wlPx > 30 && wlPx < cw - 40) {
+        var indicatorY = midY + amplitude + 30;
+        ctx.strokeStyle = '#a78bfa';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(startX, indicatorY);
+        ctx.lineTo(startX + wlPx, indicatorY);
+        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(startX, indicatorY - 4); ctx.lineTo(startX, indicatorY + 4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(startX + wlPx, indicatorY - 4); ctx.lineTo(startX + wlPx, indicatorY + 4); ctx.stroke();
+
+        ctx.fillStyle = '#a78bfa';
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u03BB = ' + wavelength.toFixed(1) + ' units', startX + wlPx / 2, indicatorY - 7);
+      }
+
+      // Text readouts
+      ctx.fillStyle = '#8b8da8';
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('f = ' + frequency.toFixed(1) + ' Hz', 12, 20);
+      ctx.fillText('A = ' + amplitude.toFixed(0) + ' px', 12, 34);
+      ctx.fillText('v = ' + speed.toFixed(0) + ' u/s', 12, 48);
+      ctx.textAlign = 'right';
+      ctx.fillText('\u03BB = ' + wavelength.toFixed(1) + ' units', cw - 12, 20);
+      ctx.fillText('T = ' + (1 / frequency).toFixed(3) + 's', cw - 12, 34);
+    },
+
+    renderControls: function() {
+      var el = document.getElementById('controls');
+      el.innerHTML =
+        '<div class="control-group">' +
+          '<label>Frequency</label>' +
+          '<input type="range" id="wave-freq" min="0.5" max="5" value="' + frequency + '" step="0.1">' +
+          '<span class="value" id="wave-freq-val">' + frequency.toFixed(1) + ' Hz</span>' +
+        '</div>' +
+        '<div class="control-group">' +
+          '<label>Amplitude</label>' +
+          '<input type="range" id="wave-amp" min="10" max="80" value="' + amplitude + '" step="1">' +
+          '<span class="value" id="wave-amp-val">' + amplitude + ' px</span>' +
+        '</div>' +
+        '<div class="control-group">' +
+          '<label>Wave Speed</label>' +
+          '<input type="range" id="wave-speed" min="40" max="300" value="' + speed + '" step="5">' +
+          '<span class="value" id="wave-speed-val">' + speed + ' u/s</span>' +
+        '</div>' +
+        '<div class="spacer"></div>' +
+        '<button class="sim-btn sim-btn-secondary" id="wave-pause">' + (paused ? 'Play' : 'Pause') + '</button>' +
+        '<button class="sim-btn sim-btn-secondary" id="wave-reset">Reset</button>';
+
+      document.getElementById('wave-freq').oninput = function() {
+        frequency = +this.value;
+        document.getElementById('wave-freq-val').textContent = frequency.toFixed(1) + ' Hz';
+        sim.renderInfo();
+      };
+      document.getElementById('wave-amp').oninput = function() {
+        amplitude = +this.value;
+        document.getElementById('wave-amp-val').textContent = amplitude + ' px';
+      };
+      document.getElementById('wave-speed').oninput = function() {
+        speed = +this.value;
+        document.getElementById('wave-speed-val').textContent = speed + ' u/s';
+        sim.renderInfo();
+      };
+      document.getElementById('wave-pause').onclick = function() {
+        paused = !paused;
+        this.textContent = paused ? 'Play' : 'Pause';
+      };
+      document.getElementById('wave-reset').onclick = function() {
+        time = 0;
+        paused = false;
+        var btn = document.getElementById('wave-pause');
+        if (btn) btn.textContent = 'Pause';
+      };
+    },
+
+    renderInfo: function() {
+      var wavelength = speed / frequency;
+      document.getElementById('info-bar').innerHTML =
+        '<div class="info-item">Wavelength: <span>' + wavelength.toFixed(1) + ' units</span></div>' +
+        '<div class="info-item">Period: <span>' + (1 / frequency).toFixed(3) + 's</span></div>' +
+        '<div class="info-item">v = f\u00B7\u03BB = <span>' + frequency.toFixed(1) + ' \u00D7 ' + wavelength.toFixed(1) + ' = ' + speed.toFixed(0) + '</span></div>' +
+        '<div class="info-item" style="color:#3dd68c">Green arrows = particle velocity</div>';
+    },
+
+    getState: function() {
+      var wavelength = speed / frequency;
+      return {
+        frequency_hz: +frequency.toFixed(1),
+        amplitude_px: amplitude,
+        speed: speed,
+        wavelength: +wavelength.toFixed(1),
+        paused: paused
+      };
+    }
+  };
+  catalog.push(sim);
+})();
+
+// ===== Initialize browser =====
+renderBrowser();
+</script>
+</body>
+</html>

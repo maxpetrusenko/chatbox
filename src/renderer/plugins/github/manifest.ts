@@ -6,6 +6,7 @@ export const githubManifest: PluginManifest = {
   version: '1.0.0',
   description: 'Connect with GitHub device flow and inspect your repos inline.',
   category: 'external-authenticated',
+  trustLevel: 'builtin',
   tools: [
     {
       name: 'get_profile',
@@ -33,5 +34,14 @@ export const githubManifest: PluginManifest = {
     deviceAuthorizationUrl: 'https://github.com/login/device/code',
     tokenUrl: 'https://github.com/login/oauth/access_token',
     scopes: ['read:user', 'repo'],
+  },
+  proxy: {
+    trackingPattern: 'js-api',
+    usageUnit: 'call',
+    rateLimits: {
+      perStudentHour: 30,
+      perStudentDay: 60,
+      perDistrictMonth: 2500,
+    },
   },
 }

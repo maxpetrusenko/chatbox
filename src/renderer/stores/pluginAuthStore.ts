@@ -3,6 +3,7 @@ import { createStore, useStore } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { startDeviceFlow } from '@/packages/plugin-auth/device-flow'
 import { createPkcePair, randomBase64Url } from '@/packages/plugin-auth/pkce'
+import type { Platform } from '@/platform/interfaces'
 
 export interface PluginAuthSession {
   pluginId: string
@@ -45,9 +46,9 @@ interface PluginAuthActions {
 type PluginAuthStore = PluginAuthState & PluginAuthActions
 
 const TOKEN_KEY = (pluginId: string) => `plugin-auth-token:${pluginId}`
-async function getPlatform() {
+async function getPlatform(): Promise<Platform> {
   const mod = await import('../platform/index.js')
-  return mod.default
+  return mod.default as unknown as Platform
 }
 
 const PENDING_KEY = (state: string) => `plugin-auth-pending:${state}`
@@ -78,6 +79,36 @@ async function delSecret(key: string): Promise<void> {
 function getRedirectUri(): string {
   const scheme = process.env.NODE_ENV === 'development' ? 'chatbox-dev' : 'chatbox'
   return `${scheme}://plugin-auth/callback`
+}
+
+function getPluginAuthEnvKey(pluginId: string): string | null {
+  switch (pluginId) {
+    case 'spotify':
+      return 'SPOTIFY_CLIENT_ID'
+    case 'github':
+      return 'GITHUB_CLIENT_ID'
+    default:
+      return null
+  }
+}
+
+export function getPluginAuthSetupError(pluginId: string, auth: PluginAuthDefinition): string | null {
+  if (auth.type === 'api-key') {
+    return null
+  }
+  if ((auth.type === 'oauth2-pkce' || auth.type === 'device-flow') && !auth.clientId) {
+    const envKey = getPluginAuthEnvKey(pluginId)
+    return envKey
+      ? `${pluginId === 'spotify' ? 'Spotify' : pluginId === 'github' ? 'GitHub' : pluginId} is not configured. Set ${envKey} in .env and restart the app.`
+      : 'Plugin auth is not configured.'
+  }
+  if (auth.type === 'oauth2-pkce' && (!auth.authorizationUrl || !auth.tokenUrl)) {
+    return 'OAuth configuration is incomplete.'
+  }
+  if (auth.type === 'device-flow' && (!auth.deviceAuthorizationUrl || !auth.tokenUrl)) {
+    return 'Device flow configuration is incomplete.'
+  }
+  return null
 }
 
 async function readStoredToken(pluginId: string): Promise<StoredToken | null> {
@@ -147,6 +178,15 @@ export function createPluginAuthStore() {
       sessions: {},
 
       hydrate: async (pluginId, auth) => {
+        if (auth.type === 'api-key') {
+          upsertSession(set, { pluginId, authType: auth.type, status: 'required' })
+          return
+        }
+        const setupError = getPluginAuthSetupError(pluginId, auth)
+        if (setupError) {
+          upsertSession(set, { pluginId, authType: auth.type, status: 'error', error: setupError })
+          return
+        }
         const token = await readStoredToken(pluginId)
         if (!token) {
           upsertSession(set, { pluginId, authType: auth.type, status: 'required' })
@@ -178,16 +218,26 @@ export function createPluginAuthStore() {
 
       beginAuth: async (pluginId, auth) => {
         try {
-          if (!auth.clientId) {
-            upsertSession(set, { pluginId, authType: auth.type, status: 'error', error: 'Missing client id' })
+          if (auth.type === 'api-key') {
+            upsertSession(set, {
+              pluginId,
+              authType: auth.type,
+              status: 'error',
+              error: 'Configured by district admin in Platform Proxy settings',
+            })
+            return
+          }
+          const setupError = getPluginAuthSetupError(pluginId, auth)
+          if (setupError) {
+            upsertSession(set, { pluginId, authType: auth.type, status: 'error', error: setupError })
             return
           }
 
           upsertSession(set, { pluginId, authType: auth.type, status: 'authorizing', error: undefined })
 
           if (auth.type === 'oauth2-pkce') {
-            if (!auth.authorizationUrl || !auth.tokenUrl) {
-              upsertSession(set, { pluginId, authType: auth.type, status: 'error', error: 'Missing OAuth URLs' })
+            if (!auth.clientId || !auth.authorizationUrl || !auth.tokenUrl) {
+              upsertSession(set, { pluginId, authType: auth.type, status: 'error', error: 'Missing OAuth configuration' })
               return
             }
             const redirectUri = getRedirectUri()
@@ -212,7 +262,7 @@ export function createPluginAuthStore() {
           }
 
           if (auth.type === 'device-flow') {
-            if (!auth.deviceAuthorizationUrl || !auth.tokenUrl) {
+            if (!auth.clientId || !auth.deviceAuthorizationUrl || !auth.tokenUrl) {
               upsertSession(set, { pluginId, authType: auth.type, status: 'error', error: 'Missing device flow URLs' })
               return
             }
@@ -229,7 +279,11 @@ export function createPluginAuthStore() {
               verificationUri: started.verification_uri,
               verificationUriComplete: started.verification_uri_complete,
             })
-            await (await getPlatform()).openLink(started.verification_uri_complete || started.verification_uri)
+            const verificationLink = started.verification_uri_complete || started.verification_uri
+            if (!verificationLink) {
+              throw new Error('Device flow provider did not return a verification URL')
+            }
+            await (await getPlatform()).openLink(verificationLink)
             const startedAt = Date.now()
             const maxUntil = startedAt + started.expires_in * 1000
             const intervalMs = (started.interval || 5) * 1000
@@ -295,6 +349,11 @@ export function createPluginAuthStore() {
       },
 
       ensureAccessToken: async (pluginId, auth) => {
+        const setupError = getPluginAuthSetupError(pluginId, auth)
+        if (setupError) {
+          upsertSession(set, { pluginId, authType: auth.type, status: 'error', error: setupError })
+          return null
+        }
         await get().hydrate(pluginId, auth)
         const session = get().sessions[pluginId]
         return session?.accessToken || null

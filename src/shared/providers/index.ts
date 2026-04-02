@@ -29,6 +29,7 @@ import {
   hasProvider,
 } from './registry'
 import type { CreateModelConfig, ProviderDefinition, ProviderDefinitionInput } from './types'
+import { getProviderSettingsWithEnvFallback } from './env'
 import { createCustomProviderModel } from './utils'
 
 export {
@@ -60,7 +61,7 @@ export function getProviderSettings(setting: SessionSettings, globalSettings: Se
   if (!providerBaseInfo) {
     throw new Error(`Cannot find model with provider: ${setting.provider}`)
   }
-  const providerSetting = globalSettings.providers?.[provider] || {}
+  const providerSetting = getProviderSettingsWithEnvFallback(provider, globalSettings.providers?.[provider])
   const formattedApiHost = (providerSetting.apiHost || providerBaseInfo.defaultSettings?.apiHost || '').trim()
   return {
     providerSetting,
@@ -73,7 +74,7 @@ export function getProviderSettings(setting: SessionSettings, globalSettings: Se
  * Get the model configuration from provider settings or defaults.
  */
 function getModelConfig(settings: SessionSettings, globalSettings: Settings, provider: string): ProviderModelInfo {
-  const providerSetting = globalSettings.providers?.[provider] || {}
+  const providerSetting = getProviderSettingsWithEnvFallback(provider, globalSettings.providers?.[provider])
 
   let model = providerSetting.models?.find((m) => m.modelId === settings.modelId)
   if (!model) {

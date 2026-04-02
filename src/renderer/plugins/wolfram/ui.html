@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Computation Engine</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1b2e;
+    color: #e0e0e8;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  #container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  /* Header */
+  #header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #22243a 0%, #2a2c48 100%);
+    border-radius: 10px;
+    border: 1px solid #33365a;
+  }
+
+  #header .logo {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, #f0a030, #e07818);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1b2e;
+  }
+
+  #header .title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f0a030;
+    letter-spacing: 0.5px;
+  }
+
+  #header .subtitle {
+    font-size: 11px;
+    color: #888;
+    margin-left: auto;
+  }
+
+  /* Input area */
+  #input-area {
+    display: flex;
+    gap: 8px;
+  }
+
+  #query-input {
+    flex: 1;
+    padding: 10px 14px;
+    background: #12132a;
+    border: 1px solid #33365a;
+    border-radius: 8px;
+    color: #e0e0e8;
+    font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  #query-input:focus {
+    border-color: #f0a030;
+  }
+
+  #query-input::placeholder {
+    color: #555;
+  }
+
+  #compute-btn {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #f0a030, #e07818);
+    border: none;
+    border-radius: 8px;
+    color: #1a1b2e;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+
+  #compute-btn:hover { opacity: 0.9; }
+  #compute-btn:active { opacity: 0.75; }
+
+  /* Layout: results + history side by side */
+  #main-area {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Results */
+  #results-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    min-height: 120px;
+  }
+
+  #results-area:empty::before {
+    content: 'Enter an expression above to compute';
+    display: block;
+    text-align: center;
+    padding: 40px 20px;
+    color: #555;
+    font-size: 13px;
+  }
+
+  .result-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: fadeIn 0.25s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-group .query-echo {
+    font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    color: #f0a030;
+    padding: 6px 10px;
+    background: #22243a;
+    border-radius: 6px;
+    border-left: 3px solid #f0a030;
+  }
+
+  .pod {
+    background: linear-gradient(135deg, #22243a 0%, #262848 100%);
+    border: 1px solid #33365a;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .pod-header {
+    padding: 6px 12px;
+    background: linear-gradient(90deg, #f0a030, #e07818);
+    color: #1a1b2e;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .pod-content {
+    padding: 10px 14px;
+    font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .pod-content .step {
+    padding: 3px 0;
+    border-bottom: 1px solid #2a2c48;
+  }
+
+  .pod-content .step:last-child { border-bottom: none; }
+
+  .pod-content .step-num {
+    color: #f0a030;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+
+  .pod-content .final-answer {
+    color: #4cdf8a;
+    font-weight: 700;
+    font-size: 18px;
+    padding: 4px 0;
+  }
+
+  .error-pod .pod-header {
+    background: linear-gradient(90deg, #d9534f, #c9302c);
+  }
+
+  /* History panel */
+  #history-panel {
+    width: 180px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: #22243a;
+    border: 1px solid #33365a;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  #history-panel .panel-title {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #888;
+    border-bottom: 1px solid #33365a;
+  }
+
+  #history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px;
+  }
+
+  .history-item {
+    padding: 6px 8px;
+    font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+    font-size: 11px;
+    color: #aaa;
+    cursor: pointer;
+    border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.15s;
+  }
+
+  .history-item:hover {
+    background: #2a2c48;
+    color: #f0a030;
+  }
+
+  /* Quick buttons */
+  #quick-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .quick-btn {
+    padding: 4px 10px;
+    background: #22243a;
+    border: 1px solid #33365a;
+    border-radius: 6px;
+    color: #888;
+    font-size: 11px;
+    font-family: 'Menlo', 'Consolas', 'Courier New', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .quick-btn:hover {
+    border-color: #f0a030;
+    color: #f0a030;
+  }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #33365a; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #44477a; }
+</style>
+</head>
+<body>
+<div id="container">
+  <div id="header">
+    <div class="logo">W</div>
+    <span class="title">Computation Engine</span>
+    <span class="subtitle" id="status-text">Ready</span>
+  </div>
+
+  <div id="input-area">
+    <input type="text" id="query-input" placeholder="e.g. sqrt(144), solve 2x+5=15, 5 miles to km" autocomplete="off" spellcheck="false">
+    <button id="compute-btn">Compute</button>
+  </div>
+
+  <div id="quick-bar">
+    <button class="quick-btn" data-q="2^10">2^10</button>
+    <button class="quick-btn" data-q="sin(pi/4)">sin(pi/4)</button>
+    <button class="quick-btn" data-q="solve 2x + 5 = 15">solve 2x+5=15</button>
+    <button class="quick-btn" data-q="100 fahrenheit to celsius">100F to C</button>
+    <button class="quick-btn" data-q="speed of light">speed of light</button>
+    <button class="quick-btn" data-q="mass of earth">mass of earth</button>
+    <button class="quick-btn" data-q="sqrt(2)">sqrt(2)</button>
+    <button class="quick-btn" data-q="log(1000)">log(1000)</button>
+  </div>
+
+  <div id="main-area">
+    <div id="results-area"></div>
+    <div id="history-panel">
+      <div class="panel-title">History</div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== Plugin Bridge Protocol =====
+let nonce = null;
+let instanceId = null;
+const history = [];
+
+function sendMsg(msg) {
+  if (nonce) msg.nonce = nonce;
+  window.parent.postMessage(msg, '*');
+}
+
+// ===== Constants Database =====
+const CONSTANTS = {
+  pi: Math.PI,
+  e: Math.E,
+  tau: Math.PI * 2,
+  phi: (1 + Math.sqrt(5)) / 2,
+  sqrt2: Math.sqrt(2),
+  sqrt3: Math.sqrt(3),
+  ln2: Math.LN2,
+  ln10: Math.LN10,
+  c: 299792458,
+  g: 9.80665,
+  G: 6.6743e-11,
+  h: 6.62607e-34,
+  k_b: 1.380649e-23,
+  N_A: 6.02214076e23,
+  R: 8.314462,
+  epsilon_0: 8.854187817e-12,
+  mu_0: 1.2566370614e-6,
+  e_charge: 1.602176634e-19,
+};
+
+// ===== Scientific Facts Database =====
+const FACTS = {
+  'speed of light': { value: '299,792,458 m/s', detail: 'The speed of light in vacuum (c) is exactly 299,792,458 meters per second.' },
+  'mass of earth': { value: '5.972 x 10^24 kg', detail: 'The mass of the Earth is approximately 5.972 x 10^24 kilograms.' },
+  'mass of sun': { value: '1.989 x 10^30 kg', detail: 'The mass of the Sun is approximately 1.989 x 10^30 kilograms.' },
+  'mass of moon': { value: '7.342 x 10^22 kg', detail: 'The mass of the Moon is approximately 7.342 x 10^22 kilograms.' },
+  'radius of earth': { value: '6,371 km', detail: 'The mean radius of the Earth is approximately 6,371 kilometers.' },
+  'distance to moon': { value: '384,400 km', detail: 'The average distance from Earth to the Moon is approximately 384,400 kilometers.' },
+  'distance to sun': { value: '149.6 million km', detail: 'The average distance from Earth to the Sun is approximately 149.6 million km (1 AU).' },
+  'age of universe': { value: '13.8 billion years', detail: 'The age of the universe is estimated at approximately 13.8 billion years.' },
+  'age of earth': { value: '4.54 billion years', detail: 'The age of the Earth is estimated at approximately 4.54 billion years.' },
+  'avogadro number': { value: '6.022 x 10^23 /mol', detail: "Avogadro's number is approximately 6.02214076 x 10^23 particles per mole." },
+  'planck constant': { value: '6.626 x 10^-34 J*s', detail: "Planck's constant is approximately 6.62607 x 10^-34 joule-seconds." },
+  'boltzmann constant': { value: '1.381 x 10^-23 J/K', detail: "Boltzmann's constant is approximately 1.380649 x 10^-23 joules per kelvin." },
+  'gravitational constant': { value: '6.674 x 10^-11 N*m^2/kg^2', detail: 'The gravitational constant G is approximately 6.6743 x 10^-11 N*m^2/kg^2.' },
+  'boiling point of water': { value: '100 C (212 F)', detail: 'Water boils at 100 degrees Celsius (212 degrees Fahrenheit) at standard atmospheric pressure.' },
+  'freezing point of water': { value: '0 C (32 F)', detail: 'Water freezes at 0 degrees Celsius (32 degrees Fahrenheit) at standard atmospheric pressure.' },
+  'absolute zero': { value: '-273.15 C (0 K)', detail: 'Absolute zero is -273.15 degrees Celsius or 0 Kelvin, the lowest possible temperature.' },
+  'density of water': { value: '1000 kg/m^3', detail: 'The density of pure water at 4 degrees Celsius is approximately 1000 kg/m^3.' },
+  'atmospheric pressure': { value: '101,325 Pa', detail: 'Standard atmospheric pressure at sea level is 101,325 Pascals (1 atm).' },
+  'electron mass': { value: '9.109 x 10^-31 kg', detail: 'The mass of an electron is approximately 9.10938 x 10^-31 kilograms.' },
+  'proton mass': { value: '1.673 x 10^-27 kg', detail: 'The mass of a proton is approximately 1.67262 x 10^-27 kilograms.' },
+  'hubble constant': { value: '~70 km/s/Mpc', detail: 'The Hubble constant is approximately 70 km/s per megaparsec.' },
+};
+
+// ===== Unit Conversion Engine =====
+const UNIT_CONVERSIONS = {
+  miles:     { km: 1.60934, meters: 1609.34, feet: 5280, inches: 63360, yards: 1760 },
+  km:        { miles: 0.621371, meters: 1000, feet: 3280.84, inches: 39370.1, yards: 1093.61 },
+  meters:    { km: 0.001, miles: 0.000621371, feet: 3.28084, inches: 39.3701, yards: 1.09361, cm: 100 },
+  feet:      { meters: 0.3048, km: 0.0003048, miles: 0.000189394, inches: 12, yards: 0.333333, cm: 30.48 },
+  inches:    { cm: 2.54, meters: 0.0254, feet: 0.0833333 },
+  yards:     { meters: 0.9144, feet: 3, miles: 0.000568182 },
+  cm:        { inches: 0.393701, meters: 0.01, feet: 0.0328084 },
+  kg:        { lbs: 2.20462, grams: 1000, oz: 35.274 },
+  lbs:       { kg: 0.453592, grams: 453.592, oz: 16 },
+  grams:     { kg: 0.001, lbs: 0.00220462, oz: 0.035274 },
+  oz:        { grams: 28.3495, kg: 0.0283495, lbs: 0.0625 },
+  liters:    { gallons: 0.264172, ml: 1000, cups: 4.22675 },
+  gallons:   { liters: 3.78541, ml: 3785.41, cups: 16 },
+  ml:        { liters: 0.001, gallons: 0.000264172 },
+  cups:      { liters: 0.236588, ml: 236.588, gallons: 0.0625 },
+  hours:     { minutes: 60, seconds: 3600, days: 0.0416667 },
+  minutes:   { seconds: 60, hours: 0.0166667, days: 0.000694444 },
+  seconds:   { minutes: 0.0166667, hours: 0.000277778 },
+  days:      { hours: 24, minutes: 1440, seconds: 86400, weeks: 0.142857 },
+  weeks:     { days: 7, hours: 168, minutes: 10080 },
+  mph:       { kph: 1.60934, 'mps': 0.44704, knots: 0.868976 },
+  kph:       { mph: 0.621371, 'mps': 0.277778, knots: 0.539957 },
+  acres:     { hectares: 0.404686, sqft: 43560, sqm: 4046.86 },
+  hectares:  { acres: 2.47105, sqm: 10000, sqft: 107639 },
+};
+
+const UNIT_ALIASES = {
+  mile: 'miles', mi: 'miles', kilometer: 'km', kilometers: 'km',
+  meter: 'meters', metre: 'meters', metres: 'meters', m: 'meters',
+  foot: 'feet', ft: 'feet', inch: 'inches',
+  yard: 'yards', yd: 'yards', centimeter: 'cm', centimeters: 'cm',
+  centimetre: 'cm', centimetres: 'cm',
+  kilogram: 'kg', kilograms: 'kg', pound: 'lbs', pounds: 'lbs', lb: 'lbs',
+  gram: 'grams', ounce: 'oz', ounces: 'oz',
+  liter: 'liters', litres: 'liters', litre: 'liters', l: 'liters',
+  gallon: 'gallons', gal: 'gallons', milliliter: 'ml', milliliters: 'ml',
+  cup: 'cups',
+  hour: 'hours', hr: 'hours', hrs: 'hours',
+  minute: 'minutes', min: 'minutes', mins: 'minutes',
+  second: 'seconds', sec: 'seconds', secs: 'seconds',
+  day: 'days', week: 'weeks',
+  acre: 'acres', hectare: 'hectares',
+};
+
+function resolveUnit(u) {
+  u = u.toLowerCase().trim();
+  return UNIT_ALIASES[u] || u;
+}
+
+function tryUnitConversion(query) {
+  // "5 miles to km", "convert 5 miles to km"
+  const patterns = [
+    /^convert\s+([\d.]+)\s+(\w+)\s+(?:to|in|into)\s+(\w+)$/i,
+    /^([\d.]+)\s+(\w+)\s+(?:to|in|into)\s+(\w+)$/i,
+  ];
+  for (const pat of patterns) {
+    const m = query.match(pat);
+    if (m) {
+      const val = parseFloat(m[1]);
+      const from = resolveUnit(m[2]);
+      const to = resolveUnit(m[3]);
+      if (UNIT_CONVERSIONS[from] && UNIT_CONVERSIONS[from][to] !== undefined) {
+        const result = val * UNIT_CONVERSIONS[from][to];
+        return { value: result, from, to, input: val, formatted: val + ' ' + from + ' = ' + formatNumber(result) + ' ' + to };
+      }
+    }
+  }
+
+  // Temperature special handling
+  const tempPat = /^([\d.]+)\s*(fahrenheit|celsius|kelvin|f|c|k)\s+(?:to|in|into)\s+(fahrenheit|celsius|kelvin|f|c|k)$/i;
+  const tm = query.match(tempPat);
+  if (tm) {
+    const val = parseFloat(tm[1]);
+    let from = tm[2].toLowerCase();
+    let to = tm[3].toLowerCase();
+    if (from === 'f') from = 'fahrenheit';
+    if (from === 'c') from = 'celsius';
+    if (from === 'k') from = 'kelvin';
+    if (to === 'f') to = 'fahrenheit';
+    if (to === 'c') to = 'celsius';
+    if (to === 'k') to = 'kelvin';
+    let result;
+    if (from === 'fahrenheit' && to === 'celsius') result = (val - 32) * 5 / 9;
+    else if (from === 'celsius' && to === 'fahrenheit') result = val * 9 / 5 + 32;
+    else if (from === 'celsius' && to === 'kelvin') result = val + 273.15;
+    else if (from === 'kelvin' && to === 'celsius') result = val - 273.15;
+    else if (from === 'fahrenheit' && to === 'kelvin') result = (val - 32) * 5 / 9 + 273.15;
+    else if (from === 'kelvin' && to === 'fahrenheit') result = (val - 273.15) * 9 / 5 + 32;
+    else result = val;
+    return { value: result, from: from, to: to, input: val, formatted: val + ' ' + from + ' = ' + formatNumber(result) + ' ' + to };
+  }
+
+  return null;
+}
+
+function formatNumber(n) {
+  if (Number.isNaN(n)) return 'NaN';
+  if (!Number.isFinite(n)) return n > 0 ? 'Infinity' : '-Infinity';
+  if (Number.isInteger(n) && Math.abs(n) < 1e15) return n.toLocaleString();
+  if (Math.abs(n) > 1e10 || (Math.abs(n) < 1e-6 && n !== 0)) return n.toExponential(6);
+  return parseFloat(n.toPrecision(10)).toString();
+}
+
+// ===== Math Expression Parser =====
+function tokenize(expr) {
+  var tokens = [];
+  var i = 0;
+  while (i < expr.length) {
+    if (expr[i] === ' ') { i++; continue; }
+
+    // Number
+    if (/[\d.]/.test(expr[i])) {
+      var num = '';
+      while (i < expr.length && /[\d.]/.test(expr[i])) { num += expr[i]; i++; }
+      // Scientific notation
+      if (i < expr.length && (expr[i] === 'e' || expr[i] === 'E')) {
+        // Only if followed by digit or +/-
+        if (i + 1 < expr.length && /[\d+-]/.test(expr[i + 1])) {
+          num += expr[i]; i++;
+          if (expr[i] === '+' || expr[i] === '-') { num += expr[i]; i++; }
+          while (i < expr.length && /\d/.test(expr[i])) { num += expr[i]; i++; }
+        }
+      }
+      tokens.push({ type: 'num', value: parseFloat(num) });
+      continue;
+    }
+
+    // Identifier
+    if (/[a-zA-Z_]/.test(expr[i])) {
+      var id = '';
+      while (i < expr.length && /[a-zA-Z_0-9]/.test(expr[i])) { id += expr[i]; i++; }
+      tokens.push({ type: 'id', value: id });
+      continue;
+    }
+
+    // Operators
+    if ('+-*/^%()!,'.includes(expr[i])) {
+      tokens.push({ type: 'op', value: expr[i] });
+      i++;
+      continue;
+    }
+
+    i++; // skip unknown
+  }
+  return tokens;
+}
+
+function parseExpr(tokens, pos) {
+  var result = parseTerm(tokens, pos);
+  var left = result[0]; var p = result[1];
+  while (p < tokens.length && tokens[p].type === 'op' && (tokens[p].value === '+' || tokens[p].value === '-')) {
+    var op = tokens[p].value; p++;
+    var r2 = parseTerm(tokens, p);
+    var right = r2[0]; p = r2[1];
+    left = op === '+' ? left + right : left - right;
+  }
+  return [left, p];
+}
+
+function parseTerm(tokens, pos) {
+  var result = parsePower(tokens, pos);
+  var left = result[0]; var p = result[1];
+  while (p < tokens.length && tokens[p].type === 'op' && (tokens[p].value === '*' || tokens[p].value === '/' || tokens[p].value === '%')) {
+    var op = tokens[p].value; p++;
+    var r2 = parsePower(tokens, p);
+    var right = r2[0]; p = r2[1];
+    if (op === '*') left = left * right;
+    else if (op === '/') left = left / right;
+    else left = left % right;
+  }
+  return [left, p];
+}
+
+function parsePower(tokens, pos) {
+  var result = parseUnary(tokens, pos);
+  var base = result[0]; var p = result[1];
+  if (p < tokens.length && tokens[p].type === 'op' && tokens[p].value === '^') {
+    p++;
+    var r2 = parsePower(tokens, p); // right-associative
+    var exp = r2[0]; p = r2[1];
+    base = Math.pow(base, exp);
+  }
+  return [base, p];
+}
+
+function parseUnary(tokens, pos) {
+  if (pos < tokens.length && tokens[pos].type === 'op' && (tokens[pos].value === '+' || tokens[pos].value === '-')) {
+    var sign = tokens[pos].value; pos++;
+    var r = parseUnary(tokens, pos);
+    var val = r[0]; var p = r[1];
+    return [sign === '-' ? -val : val, p];
+  }
+  return parseAtom(tokens, pos);
+}
+
+function parseAtom(tokens, pos) {
+  if (pos >= tokens.length) throw new Error('Unexpected end of expression');
+  var tok = tokens[pos];
+
+  // Number
+  if (tok.type === 'num') {
+    var val = tok.value;
+    if (pos + 1 < tokens.length && tokens[pos + 1].type === 'op' && tokens[pos + 1].value === '!') {
+      val = factorial(val);
+      return [val, pos + 2];
+    }
+    // Implicit multiplication: number followed by identifier (e.g. 2pi)
+    if (pos + 1 < tokens.length && tokens[pos + 1].type === 'id') {
+      // Don't consume here; let the * insertion in preprocessor handle it
+    }
+    return [val, pos + 1];
+  }
+
+  // Parenthesized expression
+  if (tok.type === 'op' && tok.value === '(') {
+    var r = parseExpr(tokens, pos + 1);
+    var val2 = r[0]; var p = r[1];
+    if (p < tokens.length && tokens[p].type === 'op' && tokens[p].value === ')') p++;
+    if (p < tokens.length && tokens[p] && tokens[p].type === 'op' && tokens[p].value === '!') {
+      val2 = factorial(val2);
+      p++;
+    }
+    return [val2, p];
+  }
+
+  // Identifier: function call or constant
+  if (tok.type === 'id') {
+    var name = tok.value.toLowerCase();
+
+    // Function call
+    if (pos + 1 < tokens.length && tokens[pos + 1].type === 'op' && tokens[pos + 1].value === '(') {
+      var p2 = pos + 2;
+      var args = [];
+      if (p2 < tokens.length && !(tokens[p2].type === 'op' && tokens[p2].value === ')')) {
+        var ar = parseExpr(tokens, p2);
+        args.push(ar[0]); p2 = ar[1];
+        while (p2 < tokens.length && tokens[p2].type === 'op' && tokens[p2].value === ',') {
+          p2++;
+          var ar2 = parseExpr(tokens, p2);
+          args.push(ar2[0]); p2 = ar2[1];
+        }
+      }
+      if (p2 < tokens.length && tokens[p2].type === 'op' && tokens[p2].value === ')') p2++;
+      var fResult = callFunction(name, args);
+      return [fResult, p2];
+    }
+
+    // Constant
+    if (CONSTANTS[name] !== undefined) return [CONSTANTS[name], pos + 1];
+
+    throw new Error('Unknown identifier: ' + tok.value);
+  }
+
+  throw new Error('Unexpected token: ' + tok.value);
+}
+
+function factorial(n) {
+  if (n < 0 || n !== Math.floor(n)) throw new Error('Factorial requires a non-negative integer');
+  if (n > 170) return Infinity;
+  var r = 1;
+  for (var i = 2; i <= n; i++) r *= i;
+  return r;
+}
+
+function callFunction(name, args) {
+  var fns = {
+    sin: function(a) { return Math.sin(a[0]); },
+    cos: function(a) { return Math.cos(a[0]); },
+    tan: function(a) { return Math.tan(a[0]); },
+    asin: function(a) { return Math.asin(a[0]); },
+    acos: function(a) { return Math.acos(a[0]); },
+    atan: function(a) { return Math.atan(a[0]); },
+    atan2: function(a) { return Math.atan2(a[0], a[1]); },
+    sinh: function(a) { return Math.sinh(a[0]); },
+    cosh: function(a) { return Math.cosh(a[0]); },
+    tanh: function(a) { return Math.tanh(a[0]); },
+    sqrt: function(a) { return Math.sqrt(a[0]); },
+    cbrt: function(a) { return Math.cbrt(a[0]); },
+    abs: function(a) { return Math.abs(a[0]); },
+    ceil: function(a) { return Math.ceil(a[0]); },
+    floor: function(a) { return Math.floor(a[0]); },
+    round: function(a) { return Math.round(a[0]); },
+    log: function(a) { return a.length === 1 ? Math.log10(a[0]) : Math.log(a[0]) / Math.log(a[1]); },
+    ln: function(a) { return Math.log(a[0]); },
+    log2: function(a) { return Math.log2(a[0]); },
+    log10: function(a) { return Math.log10(a[0]); },
+    exp: function(a) { return Math.exp(a[0]); },
+    pow: function(a) { return Math.pow(a[0], a[1]); },
+    max: function(a) { return Math.max.apply(null, a); },
+    min: function(a) { return Math.min.apply(null, a); },
+    sign: function(a) { return Math.sign(a[0]); },
+    trunc: function(a) { return Math.trunc(a[0]); },
+    hypot: function(a) { return Math.hypot.apply(null, a); },
+    mod: function(a) { return a[0] % a[1]; },
+    gcd: function(a) { return gcd(Math.abs(a[0]), Math.abs(a[1])); },
+    lcm: function(a) { return Math.abs(a[0] * a[1]) / gcd(Math.abs(a[0]), Math.abs(a[1])); },
+    fact: function(a) { return factorial(a[0]); },
+    factorial: function(a) { return factorial(a[0]); },
+  };
+  if (fns[name]) return fns[name](args);
+  throw new Error('Unknown function: ' + name);
+}
+
+function gcd(a, b) { while (b) { var t = b; b = a % b; a = t; } return a; }
+
+function evaluateExpression(expr) {
+  // Preprocess
+  expr = expr.replace(/\u00d7/g, '*').replace(/\u00f7/g, '/').replace(/\*\*/g, '^');
+  // Insert * between number and identifier: "2pi" -> "2*pi"
+  expr = expr.replace(/(\d)([a-zA-Z])/g, '$1*$2');
+  // Insert * between ) and ( or ) and identifier
+  expr = expr.replace(/\)(\()/g, ')*$1');
+  expr = expr.replace(/\)([a-zA-Z])/g, ')*$1');
+
+  var tokens = tokenize(expr);
+  if (tokens.length === 0) throw new Error('Empty expression');
+  var result = parseExpr(tokens, 0);
+  var val = result[0]; var pos = result[1];
+  if (pos < tokens.length) throw new Error('Unexpected tokens after expression');
+  return val;
+}
+
+// ===== Linear Equation Solver (step-by-step) =====
+function solveLinear(problem) {
+  var eq = problem.replace(/^solve\s+/i, '').trim();
+  var parts = eq.split('=');
+  if (parts.length !== 2) return null;
+
+  var lhs = parts[0].trim();
+  var rhs = parts[1].trim();
+
+  // Find the variable (single letter not part of longer word)
+  var varMatch = eq.match(/([a-zA-Z])(?![a-zA-Z])/);
+  if (!varMatch) return null;
+  var v = varMatch[1];
+
+  function parseLinearSide(s, variable) {
+    s = s.replace(/\s/g, '');
+    if (s[0] !== '+' && s[0] !== '-') s = '+' + s;
+
+    var coeff = 0;
+    var constant = 0;
+
+    var terms = s.match(/[+-][^+-]+/g);
+    if (!terms) return null;
+
+    for (var i = 0; i < terms.length; i++) {
+      var t = terms[i].trim();
+      if (t.indexOf(variable) !== -1) {
+        var c = t.replace(variable, '');
+        if (c === '+' || c === '') c = '1';
+        if (c === '-') c = '-1';
+        coeff += parseFloat(c);
+      } else {
+        constant += parseFloat(t);
+      }
+    }
+
+    if (isNaN(coeff) || isNaN(constant)) return null;
+    return { coeff: coeff, constant: constant };
+  }
+
+  var left = parseLinearSide(lhs, v);
+  var right = parseLinearSide(rhs, v);
+  if (!left || !right) return null;
+
+  var a = left.coeff;
+  var b = left.constant;
+  var c = right.coeff;
+  var d = right.constant;
+
+  var steps = [];
+  steps.push({ text: 'Given: ' + lhs + ' = ' + rhs });
+
+  var currentA = a;
+  var currentB = b;
+  var currentC = c;
+  var currentD = d;
+
+  // Move variable terms to left side
+  if (currentC !== 0) {
+    steps.push({ text: 'Subtract ' + formatNumber(currentC) + v + ' from both sides' });
+    currentA -= currentC;
+    currentC = 0;
+    steps.push({ text: formatNumber(currentA) + v + ' + ' + formatNumber(currentB) + ' = ' + formatNumber(currentD) });
+  }
+
+  // Move constant to right side
+  if (currentB !== 0) {
+    steps.push({ text: 'Subtract ' + formatNumber(currentB) + ' from both sides' });
+    currentD -= currentB;
+    currentB = 0;
+    steps.push({ text: formatNumber(currentA) + v + ' = ' + formatNumber(currentD) });
+  }
+
+  if (currentA === 0) {
+    if (currentD === 0) {
+      steps.push({ text: 'Infinite solutions (identity)' });
+      return { steps: steps, result: 'Infinite solutions', variable: v };
+    } else {
+      steps.push({ text: 'No solution (contradiction)' });
+      return { steps: steps, result: 'No solution', variable: v };
+    }
+  }
+
+  if (currentA !== 1) {
+    steps.push({ text: 'Divide both sides by ' + formatNumber(currentA) });
+  }
+
+  var answer = currentD / currentA;
+  steps.push({ text: v + ' = ' + formatNumber(answer) });
+
+  return { steps: steps, result: answer, variable: v };
+}
+
+// ===== Fact Lookup =====
+function lookupFact(query) {
+  var q = query.toLowerCase().trim();
+  var keys = Object.keys(FACTS);
+  for (var i = 0; i < keys.length; i++) {
+    if (q.indexOf(keys[i]) !== -1 || keys[i].indexOf(q) !== -1) return FACTS[keys[i]];
+  }
+  // Partial match: at least 2 overlapping words
+  var words = q.split(/\s+/);
+  for (var i = 0; i < keys.length; i++) {
+    var keyWords = keys[i].split(/\s+/);
+    var overlap = 0;
+    for (var j = 0; j < words.length; j++) {
+      if (keyWords.indexOf(words[j]) !== -1) overlap++;
+    }
+    if (overlap >= 2) return FACTS[keys[i]];
+  }
+  return null;
+}
+
+// ===== Date Calculations =====
+function tryDateCalc(query) {
+  var q = query.toLowerCase().trim();
+
+  if (q === 'today' || q === 'current date' || q === "what's today" || q === 'what is today' || q === 'date') {
+    var d = new Date();
+    return { value: d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), detail: 'Current date and time: ' + d.toLocaleString() };
+  }
+
+  var untilMatch = q.match(/days?\s+(?:until|to|before)\s+(.+)/i);
+  if (untilMatch) {
+    var target = new Date(untilMatch[1]);
+    if (!isNaN(target.getTime())) {
+      var now = new Date();
+      var diff = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+      return { value: diff + ' days', detail: 'From today to ' + target.toLocaleDateString() + ': ' + diff + ' days' };
+    }
+  }
+
+  var sinceMatch = q.match(/days?\s+since\s+(.+)/i);
+  if (sinceMatch) {
+    var target2 = new Date(sinceMatch[1]);
+    if (!isNaN(target2.getTime())) {
+      var now2 = new Date();
+      var diff2 = Math.floor((now2 - target2) / (1000 * 60 * 60 * 24));
+      return { value: diff2 + ' days', detail: 'From ' + target2.toLocaleDateString() + ' to today: ' + diff2 + ' days' };
+    }
+  }
+
+  return null;
+}
+
+// ===== Main Compute Function =====
+function compute(query) {
+  var q = query.trim();
+  if (!q) return { error: 'Please enter a query' };
+
+  var pods = [];
+
+  // 1. Try unit conversion
+  var unitResult = tryUnitConversion(q);
+  if (unitResult) {
+    pods.push({ title: 'Unit Conversion', content: unitResult.formatted });
+    pods.push({ title: 'Result', content: formatNumber(unitResult.value) + ' ' + unitResult.to, isAnswer: true });
+    return { pods: pods, query: q };
+  }
+
+  // 2. Try fact lookup
+  var fact = lookupFact(q);
+  if (fact) {
+    pods.push({ title: 'Result', content: fact.value, isAnswer: true });
+    pods.push({ title: 'Information', content: fact.detail });
+    return { pods: pods, query: q };
+  }
+
+  // 3. Try date calculation
+  var dateResult = tryDateCalc(q);
+  if (dateResult) {
+    pods.push({ title: 'Result', content: dateResult.value, isAnswer: true });
+    pods.push({ title: 'Detail', content: dateResult.detail });
+    return { pods: pods, query: q };
+  }
+
+  // 4. Try linear equation solve
+  if (q.indexOf('=') !== -1 || q.toLowerCase().indexOf('solve') === 0) {
+    var solution = solveLinear(q);
+    if (solution) {
+      pods.push({ title: 'Result', content: solution.variable + ' = ' + formatNumber(solution.result), isAnswer: true });
+      pods.push({ title: 'Step-by-step Solution', steps: solution.steps });
+      return { pods: pods, query: q };
+    }
+  }
+
+  // 5. Try math expression
+  try {
+    var result = evaluateExpression(q);
+    pods.push({ title: 'Result', content: formatNumber(result), isAnswer: true });
+
+    // Decimal approximation for non-integers
+    if (!Number.isInteger(result) && Math.abs(result) < 1e15) {
+      pods.push({ title: 'Decimal Approximation', content: result.toPrecision(15) });
+    }
+
+    // Number properties for positive integers
+    if (Number.isInteger(result) && result > 1 && result < 1e12) {
+      var props = [];
+      var isPrime = true;
+      if (result < 2) isPrime = false;
+      else {
+        for (var i = 2; i <= Math.sqrt(result); i++) {
+          if (result % i === 0) { isPrime = false; break; }
+        }
+      }
+      if (isPrime) props.push('Prime number');
+      else props.push('Composite number');
+      if (result % 2 === 0) props.push('Even');
+      else props.push('Odd');
+      if (props.length > 0) {
+        pods.push({ title: 'Number Properties', content: props.join(', ') });
+      }
+    }
+
+    return { pods: pods, query: q };
+  } catch (mathErr) {
+    // Fall through
+  }
+
+  return { error: 'Could not interpret: "' + q + '"\n\nTry: math expressions, unit conversions, or scientific facts.' };
+}
+
+// ===== Step-by-step Solver =====
+function stepByStep(problem) {
+  var q = problem.trim();
+
+  var solution = solveLinear(q);
+  if (solution) {
+    return { steps: solution.steps, result: solution.result, variable: solution.variable, query: q };
+  }
+
+  try {
+    var result = evaluateExpression(q);
+    return {
+      steps: [
+        { text: 'Expression: ' + q },
+        { text: 'Evaluate: ' + formatNumber(result) },
+      ],
+      result: result,
+      query: q
+    };
+  } catch (e) {
+    return { error: 'Cannot solve step-by-step: "' + q + '"' };
+  }
+}
+
+// ===== UI Rendering =====
+var resultsArea = document.getElementById('results-area');
+var historyList = document.getElementById('history-list');
+var queryInput = document.getElementById('query-input');
+var computeBtn = document.getElementById('compute-btn');
+
+function renderPods(computeResult) {
+  var group = document.createElement('div');
+  group.className = 'result-group';
+
+  var echo = document.createElement('div');
+  echo.className = 'query-echo';
+  echo.textContent = computeResult.query || computeResult.error || '';
+  group.appendChild(echo);
+
+  if (computeResult.error) {
+    var pod = document.createElement('div');
+    pod.className = 'pod error-pod';
+    pod.innerHTML = '<div class="pod-header">Error</div><div class="pod-content">' + escapeHtml(computeResult.error) + '</div>';
+    group.appendChild(pod);
+  } else if (computeResult.pods) {
+    for (var i = 0; i < computeResult.pods.length; i++) {
+      var p = computeResult.pods[i];
+      var pod = document.createElement('div');
+      pod.className = 'pod';
+      var content = '';
+      if (p.steps) {
+        content = p.steps.map(function(s, idx) {
+          return '<div class="step"><span class="step-num">' + (idx + 1) + '.</span>' + escapeHtml(s.text) + '</div>';
+        }).join('');
+      } else if (p.isAnswer) {
+        content = '<div class="final-answer">' + escapeHtml(p.content) + '</div>';
+      } else {
+        content = escapeHtml(p.content);
+      }
+      pod.innerHTML = '<div class="pod-header">' + escapeHtml(p.title) + '</div><div class="pod-content">' + content + '</div>';
+      group.appendChild(pod);
+    }
+  }
+
+  resultsArea.prepend(group);
+}
+
+function renderStepByStep(result) {
+  var group = document.createElement('div');
+  group.className = 'result-group';
+
+  var echo = document.createElement('div');
+  echo.className = 'query-echo';
+  echo.textContent = 'Step-by-step: ' + (result.query || '');
+  group.appendChild(echo);
+
+  if (result.error) {
+    var pod = document.createElement('div');
+    pod.className = 'pod error-pod';
+    pod.innerHTML = '<div class="pod-header">Error</div><div class="pod-content">' + escapeHtml(result.error) + '</div>';
+    group.appendChild(pod);
+  } else {
+    if (result.steps) {
+      var pod = document.createElement('div');
+      pod.className = 'pod';
+      var content = result.steps.map(function(s, idx) {
+        return '<div class="step"><span class="step-num">' + (idx + 1) + '.</span>' + escapeHtml(s.text) + '</div>';
+      }).join('');
+      pod.innerHTML = '<div class="pod-header">Step-by-step Solution</div><div class="pod-content">' + content + '</div>';
+      group.appendChild(pod);
+    }
+    if (result.result !== undefined) {
+      var pod2 = document.createElement('div');
+      pod2.className = 'pod';
+      var label = result.variable ? result.variable + ' = ' + formatNumber(result.result) : formatNumber(result.result);
+      pod2.innerHTML = '<div class="pod-header">Final Answer</div><div class="pod-content"><div class="final-answer">' + escapeHtml(label) + '</div></div>';
+      group.appendChild(pod2);
+    }
+  }
+
+  resultsArea.prepend(group);
+}
+
+function addToHistory(query) {
+  if (history.length > 0 && history[0] === query) return;
+  history.unshift(query);
+  if (history.length > 50) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  historyList.innerHTML = '';
+  for (var i = 0; i < history.length; i++) {
+    var item = document.createElement('div');
+    item.className = 'history-item';
+    item.textContent = history[i];
+    item.title = history[i];
+    (function(q) {
+      item.addEventListener('click', function() {
+        queryInput.value = q;
+        runCompute(q);
+      });
+    })(history[i]);
+    historyList.appendChild(item);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function runCompute(query) {
+  var result = compute(query);
+  renderPods(result);
+  addToHistory(query);
+  return result;
+}
+
+// ===== Event Listeners =====
+computeBtn.addEventListener('click', function() {
+  var q = queryInput.value.trim();
+  if (q) {
+    runCompute(q);
+    queryInput.value = '';
+    queryInput.focus();
+  }
+});
+
+queryInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    computeBtn.click();
+  }
+});
+
+// Quick buttons
+var quickBtns = document.querySelectorAll('.quick-btn');
+for (var i = 0; i < quickBtns.length; i++) {
+  (function(btn) {
+    btn.addEventListener('click', function() {
+      var q = btn.getAttribute('data-q');
+      queryInput.value = q;
+      runCompute(q);
+      queryInput.value = '';
+    });
+  })(quickBtns[i]);
+}
+
+// ===== Tool Handlers =====
+function handleToolInvoke(callId, toolName, params) {
+  var result = null;
+  var error = null;
+
+  switch (toolName) {
+    case 'compute': {
+      var q = params.query || '';
+      var r = compute(q);
+      renderPods(r);
+      addToHistory(q);
+      if (r.error) {
+        result = { success: false, error: r.error };
+      } else {
+        var mainPod = null;
+        for (var i = 0; i < r.pods.length; i++) {
+          if (r.pods[i].isAnswer) { mainPod = r.pods[i]; break; }
+        }
+        result = {
+          success: true,
+          query: q,
+          result: mainPod ? mainPod.content : (r.pods[0] ? r.pods[0].content : ''),
+          pods: r.pods.map(function(p) {
+            return {
+              title: p.title,
+              content: p.content || (p.steps ? p.steps.map(function(s) { return s.text; }).join('\n') : '')
+            };
+          })
+        };
+      }
+      break;
+    }
+
+    case 'step_by_step': {
+      var problem = params.problem || '';
+      var r2 = stepByStep(problem);
+      renderStepByStep(r2);
+      addToHistory(problem);
+      if (r2.error) {
+        result = { success: false, error: r2.error };
+      } else {
+        result = {
+          success: true,
+          problem: problem,
+          steps: r2.steps.map(function(s) { return s.text; }),
+          result: r2.result,
+          variable: r2.variable
+        };
+      }
+      break;
+    }
+
+    case 'get_history': {
+      result = { history: history.slice(0, 20) };
+      break;
+    }
+
+    case 'finish': {
+      result = { message: 'Computation session complete', queriesRun: history.length };
+      break;
+    }
+
+    default:
+      error = 'Unknown tool: ' + toolName;
+  }
+
+  sendMsg({ type: 'TOOL_RESULT', callId: callId, result: result || null, error: error || undefined });
+}
+
+// ===== Plugin Bridge =====
+window.addEventListener('message', function(event) {
+  var data = event.data;
+  if (!data || typeof data !== 'object' || !data.type) return;
+
+  switch (data.type) {
+    case 'PLUGIN_INIT':
+      nonce = data.nonce;
+      instanceId = data.instanceId;
+      break;
+
+    case 'TOOL_INVOKE':
+      if (data.nonce !== nonce) return;
+      handleToolInvoke(data.callId, data.toolName, data.parameters || {});
+      break;
+  }
+});
+
+// Signal ready
+window.parent.postMessage({ type: 'PLUGIN_READY', nonce: '' }, '*');
+
+// Focus input on load
+queryInput.focus();
+</script>
+</body>
+</html>

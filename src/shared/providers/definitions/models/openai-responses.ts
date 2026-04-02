@@ -1,6 +1,7 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
+import { getEnvApiKeyForProvider } from '../../env'
 import { fetchRemoteModels } from '../../../models/openai-compatible'
 import type { CallChatCompletionOptions } from '../../../models/types'
 import { createFetchWithProxy } from '../../../models/utils/fetch-proxy'
@@ -47,9 +48,9 @@ export default class OpenAIResponses extends AbstractAISDKModel {
     return true
   }
 
-  protected getProvider(_options: CallChatCompletionOptions, fetchFunction?: FetchFunction) {
+  private buildProvider(apiKey: string, fetchFunction?: FetchFunction) {
     return createOpenAI({
-      apiKey: this.options.apiKey,
+      apiKey,
       baseURL: this.options.apiHost,
       fetch: fetchFunction,
       headers: this.options.apiHost.includes('openrouter.ai')
@@ -65,15 +66,31 @@ export default class OpenAIResponses extends AbstractAISDKModel {
     })
   }
 
-  protected getChatModel(options: CallChatCompletionOptions) {
+  protected getProvider(_options: CallChatCompletionOptions, fetchFunction?: FetchFunction) {
+    return this.buildProvider(this.options.apiKey, fetchFunction)
+  }
+
+  private buildChatModel(apiKey: string, options: CallChatCompletionOptions) {
     const { apiHost, apiPath } = this.options
-    const provider = this.getProvider(options, (_input, init) =>
+    const provider = this.buildProvider(apiKey, (_input, init) =>
       createFetchWithProxy(this.options.useProxy, this.dependencies)(`${apiHost}${apiPath}`, init)
     )
     return wrapLanguageModel({
       model: provider.responses(this.options.model.modelId),
       middleware: extractReasoningMiddleware({ tagName: 'think' }),
     })
+  }
+
+  protected getChatModel(options: CallChatCompletionOptions) {
+    return this.buildChatModel(this.options.apiKey, options)
+  }
+
+  protected getAuthFallbackModel(options: CallChatCompletionOptions) {
+    const envApiKey = getEnvApiKeyForProvider('openai-responses')
+    if (!envApiKey || envApiKey === this.options.apiKey) {
+      return null
+    }
+    return this.buildChatModel(envApiKey, options)
   }
 
   public listModels() {

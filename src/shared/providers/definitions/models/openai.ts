@@ -1,6 +1,7 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
+import { getEnvApiKeyForProvider } from '../../env'
 import { fetchRemoteModels } from '../../../models/openai-compatible'
 import type { CallChatCompletionOptions } from '../../../models/types'
 import { createFetchWithProxy } from '../../../models/utils/fetch-proxy'
@@ -35,9 +36,9 @@ export default class OpenAI extends AbstractAISDKModel {
     return true
   }
 
-  protected getProvider() {
+  private buildProvider(apiKey: string) {
     return createOpenAI({
-      apiKey: this.options.apiKey,
+      apiKey,
       baseURL: this.options.apiHost,
       fetch: createFetchWithProxy(this.options.useProxy, this.dependencies),
       headers: this.options.apiHost.includes('openrouter.ai')
@@ -49,12 +50,28 @@ export default class OpenAI extends AbstractAISDKModel {
     })
   }
 
-  protected getChatModel() {
-    const provider = this.getProvider()
+  protected getProvider() {
+    return this.buildProvider(this.options.apiKey)
+  }
+
+  private buildChatModel(apiKey: string) {
+    const provider = this.buildProvider(apiKey)
     return wrapLanguageModel({
       model: provider.chat(this.options.model.modelId),
       middleware: extractReasoningMiddleware({ tagName: 'think' }),
     })
+  }
+
+  protected getChatModel() {
+    return this.buildChatModel(this.options.apiKey)
+  }
+
+  protected getAuthFallbackModel() {
+    const envApiKey = getEnvApiKeyForProvider('openai')
+    if (!envApiKey || envApiKey === this.options.apiKey) {
+      return null
+    }
+    return this.buildChatModel(envApiKey)
   }
 
   protected getImageModel(modelId?: string) {

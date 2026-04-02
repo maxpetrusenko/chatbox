@@ -69,7 +69,7 @@
   <script>
     let nonce = '';
     let instanceId = '';
-    let auth = { status: 'required', accessToken: '', expiresAt: null };
+    let auth = { status: 'required', accessToken: '', expiresAt: null, error: '' };
     let spotifyState = { connected: false, playlists: [], currentPlayback: null, summary: '' };
 
     function sendMsg(msg) {
@@ -98,6 +98,8 @@
         meta.textContent = auth.expiresAt ? `Connected • expires ${new Date(auth.expiresAt).toLocaleTimeString()}` : 'Connected';
       } else if (auth.status === 'expired') {
         meta.textContent = 'Token expired';
+      } else if (auth.status === 'error') {
+        meta.textContent = auth.error || 'Auth not configured';
       } else {
         meta.textContent = 'Not connected';
       }
@@ -239,6 +241,7 @@
             status: data.config.auth.status || 'required',
             accessToken: data.config.auth.accessToken || '',
             expiresAt: data.config.auth.expiresAt || null,
+            error: data.config.auth.error || '',
           };
           spotifyState.connected = auth.status === 'connected';
         }
@@ -251,16 +254,19 @@
           status: data.status,
           accessToken: data.accessToken || '',
           expiresAt: data.expiresAt || null,
+          error: data.metadata?.error || '',
         };
         spotifyState.connected = data.status === 'connected';
         render();
         sendState();
         setStatus(
           data.status === 'connected'
-            ? 'Spotify connected'
+            ? 'Connected'
             : data.status === 'authorizing'
-              ? 'Waiting for Spotify approval'
-              : 'Spotify auth expired',
+              ? 'Waiting for approval'
+              : data.status === 'error'
+                ? auth.error || 'Auth not configured'
+                : 'Auth expired',
           data.status === 'connected' ? 'success' : data.status === 'authorizing' ? '' : 'error'
         );
         return;

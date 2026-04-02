@@ -55,6 +55,7 @@ import Sidebar from '@/Sidebar'
 import * as atoms from '@/stores/atoms'
 import { initPluginAuthBroker } from '@/stores/pluginAuthStore'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
+import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
 import * as premiumActions from '@/stores/premiumActions'
 import * as settingActions from '@/stores/settingActions'
 import { settingsStore, useLanguage, useSettingsStore, useTheme } from '@/stores/settingsStore'
@@ -62,6 +63,7 @@ import { useUIStore } from '@/stores/uiStore'
 
 // Initialize plugins at module load time (before first render)
 initPlugins()
+droppedPluginsStore.getState().hydrateIntoRuntime()
 pluginRegistryStore.getState().loadBuiltins()
 initPluginAuthBroker()
 

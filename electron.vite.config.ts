@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import path, { resolve } from 'node:path'
 import { visualizer } from 'rollup-plugin-visualizer'
-import type { Plugin } from 'vite'
+import { loadEnv, type Plugin } from 'vite'
 import packageJson from './release/app/package.json'
 /**
  * Vite plugin to inject <base href="/"> for web builds
@@ -53,6 +53,13 @@ if (inferredDist) {
 }
 
 export default defineConfig(({ mode }) => {
+  const loadedEnv = loadEnv(mode, process.cwd(), '')
+  for (const [key, value] of Object.entries(loadedEnv)) {
+    if (!process.env[key]) {
+      process.env[key] = value
+    }
+  }
+
   const isProduction = mode === 'production'
   const isWeb = process.env.CHATBOX_BUILD_PLATFORM === 'web'
 
@@ -103,6 +110,7 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, './src/renderer'),
+          '@shared': path.resolve(__dirname, './src/shared'),
           'src/shared': path.resolve(__dirname, './src/shared'),
         },
       },
@@ -113,6 +121,22 @@ export default defineConfig(({ mode }) => {
         'process.env.CHATBOX_BUILD_PLATFORM': JSON.stringify(process.env.CHATBOX_BUILD_PLATFORM || 'unknown'),
         'process.env.USE_LOCAL_API': JSON.stringify(process.env.USE_LOCAL_API || ''),
         'process.env.USE_BETA_API': JSON.stringify(process.env.USE_BETA_API || ''),
+        'process.env.OPENAI_API_KEY': JSON.stringify(process.env.OPENAI_API_KEY || ''),
+        'process.env.ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY || ''),
+        'process.env.CLAUDE_API_KEY': JSON.stringify(process.env.CLAUDE_API_KEY || ''),
+        'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || ''),
+        'process.env.GOOGLE_API_KEY': JSON.stringify(process.env.GOOGLE_API_KEY || ''),
+        'process.env.DEEPSEEK_API_KEY': JSON.stringify(process.env.DEEPSEEK_API_KEY || ''),
+        'process.env.SILICONFLOW_API_KEY': JSON.stringify(process.env.SILICONFLOW_API_KEY || ''),
+        'process.env.SILICON_CLOUD_API_KEY': JSON.stringify(process.env.SILICON_CLOUD_API_KEY || ''),
+        'process.env.OPENROUTER_API_KEY': JSON.stringify(process.env.OPENROUTER_API_KEY || ''),
+        'process.env.GROQ_API_KEY': JSON.stringify(process.env.GROQ_API_KEY || ''),
+        'process.env.XAI_API_KEY': JSON.stringify(process.env.XAI_API_KEY || ''),
+        'process.env.PERPLEXITY_API_KEY': JSON.stringify(process.env.PERPLEXITY_API_KEY || ''),
+        'process.env.MISTRAL_API_KEY': JSON.stringify(process.env.MISTRAL_API_KEY || ''),
+        'process.env.VOLCENGINE_API_KEY': JSON.stringify(process.env.VOLCENGINE_API_KEY || ''),
+        'process.env.CHATGLM_API_KEY': JSON.stringify(process.env.CHATGLM_API_KEY || ''),
+        'process.env.AZURE_API_KEY': JSON.stringify(process.env.AZURE_API_KEY || ''),
         'process.env.SPOTIFY_CLIENT_ID': JSON.stringify(process.env.SPOTIFY_CLIENT_ID || ''),
         'process.env.GITHUB_CLIENT_ID': JSON.stringify(process.env.GITHUB_CLIENT_ID || ''),
       },
@@ -136,6 +160,7 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, './src/renderer'),
+          '@shared': path.resolve(__dirname, './src/shared'),
           'src/shared': path.resolve(__dirname, './src/shared'),
         },
       },
@@ -153,6 +178,7 @@ export default defineConfig(({ mode }) => {
           autoCodeSplitting: true,
           routesDirectory: './src/renderer/routes',
           generatedRouteTree: './src/renderer/routeTree.gen.ts',
+          routeFileIgnorePattern: '\.(test|spec)\.(ts|tsx|js|jsx)$',
         }),
         react({}),
         dvhToVh(),
@@ -234,6 +260,22 @@ export default defineConfig(({ mode }) => {
         'process.env.CHATBOX_BUILD_PLATFORM': JSON.stringify(process.env.CHATBOX_BUILD_PLATFORM || 'unknown'),
         'process.env.USE_LOCAL_API': JSON.stringify(process.env.USE_LOCAL_API || ''),
         'process.env.USE_BETA_API': JSON.stringify(process.env.USE_BETA_API || ''),
+        'process.env.OPENAI_API_KEY': JSON.stringify(process.env.OPENAI_API_KEY || ''),
+        'process.env.ANTHROPIC_API_KEY': JSON.stringify(process.env.ANTHROPIC_API_KEY || ''),
+        'process.env.CLAUDE_API_KEY': JSON.stringify(process.env.CLAUDE_API_KEY || ''),
+        'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY || ''),
+        'process.env.GOOGLE_API_KEY': JSON.stringify(process.env.GOOGLE_API_KEY || ''),
+        'process.env.DEEPSEEK_API_KEY': JSON.stringify(process.env.DEEPSEEK_API_KEY || ''),
+        'process.env.SILICONFLOW_API_KEY': JSON.stringify(process.env.SILICONFLOW_API_KEY || ''),
+        'process.env.SILICON_CLOUD_API_KEY': JSON.stringify(process.env.SILICON_CLOUD_API_KEY || ''),
+        'process.env.OPENROUTER_API_KEY': JSON.stringify(process.env.OPENROUTER_API_KEY || ''),
+        'process.env.GROQ_API_KEY': JSON.stringify(process.env.GROQ_API_KEY || ''),
+        'process.env.XAI_API_KEY': JSON.stringify(process.env.XAI_API_KEY || ''),
+        'process.env.PERPLEXITY_API_KEY': JSON.stringify(process.env.PERPLEXITY_API_KEY || ''),
+        'process.env.MISTRAL_API_KEY': JSON.stringify(process.env.MISTRAL_API_KEY || ''),
+        'process.env.VOLCENGINE_API_KEY': JSON.stringify(process.env.VOLCENGINE_API_KEY || ''),
+        'process.env.CHATGLM_API_KEY': JSON.stringify(process.env.CHATGLM_API_KEY || ''),
+        'process.env.AZURE_API_KEY': JSON.stringify(process.env.AZURE_API_KEY || ''),
         'process.env.SPOTIFY_CLIENT_ID': JSON.stringify(process.env.SPOTIFY_CLIENT_ID || ''),
         'process.env.GITHUB_CLIENT_ID': JSON.stringify(process.env.GITHUB_CLIENT_ID || ''),
       },

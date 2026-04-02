@@ -5,9 +5,6 @@
  * Provides tool set derivation for model calls and instance lifecycle management.
  */
 
-import { v4 as uuidv4 } from 'uuid'
-import { createStore, useStore } from 'zustand'
-import { immer } from 'zustand/middleware/immer'
 import type {
   PluginCompletionPayload,
   PluginInstance,
@@ -15,7 +12,12 @@ import type {
   PluginManifest,
   PluginToolDefinition,
 } from '@shared/plugin-types'
+import { v4 as uuidv4 } from 'uuid'
+import { createStore, useStore } from 'zustand'
+import { immer } from 'zustand/middleware/immer'
 import { getBuiltinManifests } from '@/plugins'
+import { k12Store } from '@/stores/k12Store'
+import { pluginAuthStore } from '@/stores/pluginAuthStore'
 
 // ---------------------------------------------------------------------------
 // Derived tool type exposed to model
@@ -154,17 +156,31 @@ export function createPluginRegistryStore() {
 
       getActiveInstanceForPlugin: (pluginId, sessionId) => {
         return get().instances.find(
-          (i) => i.pluginId === pluginId && i.sessionId === sessionId && i.status !== 'completed' && i.status !== 'error',
+          (i) =>
+            i.pluginId === pluginId && i.sessionId === sessionId && i.status !== 'completed' && i.status !== 'error'
         )
       },
 
-      getToolSet: (sessionId) => {
+      getToolSet: (_sessionId) => {
         const state = get()
         const tools: PluginTool[] = []
 
-        for (const manifest of state.manifests) {
-          // Only expose tools for plugins that either have no active instance
-          // or have an active (non-completed) instance in this session
+        // Filter manifests by K12 role if authenticated
+        const k12State = k12Store.getState()
+        const allowedManifests = k12State.isAuthenticated
+          ? k12State.getAvailablePlugins(state.manifests)
+          : state.manifests
+
+        for (const manifest of allowedManifests) {
+          if (
+            k12State.currentUser?.role === 'student' &&
+            manifest.auth?.type !== undefined &&
+            manifest.auth.type !== 'api-key' &&
+            manifest.auth.type !== 'none' &&
+            pluginAuthStore.getState().sessions[manifest.id]?.status !== 'connected'
+          ) {
+            continue
+          }
           for (const tool of manifest.tools) {
             tools.push({
               namespacedName: `plugin__${manifest.id}__${tool.name}`,
@@ -186,7 +202,7 @@ export function createPluginRegistryStore() {
         if (!manifest.tools.some((t) => t.name === toolName)) return null
         return { pluginId, toolName }
       },
-    })),
+    }))
   )
 }
 

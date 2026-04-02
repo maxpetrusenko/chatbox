@@ -3,9 +3,11 @@
  * that route invocations through the plugin bridge protocol.
  */
 
+import type { PluginToolParameter } from '@shared/plugin-types'
 import { tool } from 'ai'
 import z from 'zod'
-import type { PluginToolParameter } from '@shared/plugin-types'
+import { k12Store } from '@/stores/k12Store'
+import { platformProxyStore } from '@/stores/platformProxyStore'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
 
 export interface QueuedPluginToolInvocation {
@@ -116,6 +118,25 @@ export function getPluginToolSet(sessionId: string): Record<string, ReturnType<t
       inputSchema,
       execute: async (input: Record<string, unknown>) => {
         const callId = `${pt.namespacedName}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+        const currentUser = k12Store.getState().currentUser
+
+        if (currentUser) {
+          const quota = await platformProxyStore.getState().recordUsage({
+            pluginId: pt.pluginId,
+            action: 'tool-invoke',
+            trackingPattern: manifest.proxy?.trackingPattern || 'js-api',
+            userId: currentUser.id,
+            classId: currentUser.classId,
+            schoolId: currentUser.schoolId,
+            districtId: currentUser.districtId,
+            toolName: pt.tool.name,
+            paramsSummary: JSON.stringify(input).slice(0, 300),
+            proxyConfig: manifest.proxy,
+          })
+          if (!quota.allowed) {
+            throw new Error(quota.reason || `Usage limit reached for ${manifest.name}`)
+          }
+        }
 
         let instance = store.getActiveInstanceForPlugin(pt.pluginId, sessionId)
         const isNewInstance = !instance
@@ -161,7 +182,7 @@ export function getPluginToolSet(sessionId: string): Record<string, ReturnType<t
               toolName: pt.tool.name,
               parameters: input,
             },
-          }),
+          })
         )
 
         return await resultPromise

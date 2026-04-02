@@ -15,8 +15,25 @@ import { registerSpotifyPlugin } from './spotify'
 import { spotifyManifest } from './spotify/manifest'
 import { registerWeatherPlugin } from './weather'
 import { weatherManifest } from './weather/manifest'
+import { registerGeoGebraPlugin } from './geogebra'
+import { geogebraManifest } from './geogebra/manifest'
+import { registerPhETPlugin } from './phet'
+import { phetManifest } from './phet/manifest'
+import { registerGoogleMapsPlugin } from './google-maps'
+import { googleMapsManifest } from './google-maps/manifest'
+import { registerWolframPlugin } from './wolfram'
+import { wolframManifest } from './wolfram/manifest'
 
-const builtinManifests: PluginManifest[] = [chessManifest, weatherManifest, spotifyManifest, githubManifest]
+const builtinManifests: PluginManifest[] = [
+  chessManifest,
+  weatherManifest,
+  spotifyManifest,
+  githubManifest,
+  geogebraManifest,
+  phetManifest,
+  googleMapsManifest,
+  wolframManifest,
+]
 
 let initialized = false
 
@@ -27,6 +44,10 @@ export function initPlugins(): void {
   registerWeatherPlugin()
   registerSpotifyPlugin()
   registerGitHubPlugin()
+  registerGeoGebraPlugin()
+  registerPhETPlugin()
+  registerGoogleMapsPlugin()
+  registerWolframPlugin()
 }
 
 export function getBuiltinManifests(): PluginManifest[] {

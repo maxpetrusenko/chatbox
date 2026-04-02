@@ -1,0 +1,86 @@
+import type { PluginManifest } from '@shared/plugin-types'
+
+export const googleMapsManifest: PluginManifest = {
+  id: 'google-maps',
+  name: 'Map Explorer',
+  version: '1.0.0',
+  description:
+    'Interactive map for geography, history, and earth science. Explore places, landmarks, and locations worldwide.',
+  category: 'external-public',
+  trustLevel: 'verified',
+  targetGrades: ['K-5', '6-8', '9-12'],
+  contentSafetyLevel: 'strict',
+  coppaScope: 'none',
+  dataProfile: {
+    collectsPii: false,
+    persistentIdentifiers: false,
+    dataCategories: ['usage_analytics'],
+    retentionDays: 0,
+    thirdPartySharing: [],
+    aiTrainingUse: false,
+  },
+  tools: [
+    {
+      name: 'show_location',
+      description: 'Show a location on the map with a marker and info card.',
+      parameters: [
+        {
+          name: 'query',
+          type: 'string',
+          description: 'Place name or address, e.g. "Great Wall of China", "Paris, France"',
+          required: true,
+        },
+        { name: 'zoom', type: 'number', description: 'Zoom level 1-18 (1=world, 10=city, 15=street)', required: false },
+      ],
+    },
+    {
+      name: 'show_region',
+      description: 'Show a geographic region or area.',
+      parameters: [
+        {
+          name: 'region',
+          type: 'string',
+          description: 'Region name, e.g. "Amazon Rainforest", "Sahara Desert", "Mediterranean Sea"',
+          required: true,
+        },
+      ],
+    },
+    {
+      name: 'compare_locations',
+      description: 'Show two locations side by side for comparison.',
+      parameters: [
+        { name: 'location1', type: 'string', description: 'First location', required: true },
+        { name: 'location2', type: 'string', description: 'Second location', required: true },
+      ],
+    },
+    {
+      name: 'get_current_view',
+      description: 'Get information about what is currently shown on the map.',
+      parameters: [],
+    },
+    {
+      name: 'finish',
+      description: 'Close the map explorer.',
+      parameters: [{ name: 'summary', type: 'string', description: 'Summary of what was explored', required: false }],
+    },
+  ],
+  widget: {
+    entrypoint: 'ui.html',
+    defaultHeight: 480,
+  },
+  auth: {
+    type: 'api-key',
+  },
+  proxy: {
+    trackingPattern: 'iframe-display',
+    requiresDistrictKey: true,
+    setupLabel: 'Enter Google Maps API key',
+    embedKeyParam: 'key',
+    usageUnit: 'session',
+    rateLimits: {
+      perStudentHour: 50,
+      perStudentDay: 200,
+      perDistrictMonth: 5000,
+    },
+  },
+}

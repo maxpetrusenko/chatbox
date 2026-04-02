@@ -6,6 +6,7 @@ export const spotifyManifest: PluginManifest = {
   version: '1.0.0',
   description: 'Search playlists, create a study mix, and inspect current playback.',
   category: 'external-authenticated',
+  trustLevel: 'builtin',
   tools: [
     {
       name: 'search_playlists',
@@ -46,5 +47,14 @@ export const spotifyManifest: PluginManifest = {
       'user-read-playback-state',
       'user-read-currently-playing',
     ],
+  },
+  proxy: {
+    trackingPattern: 'js-api',
+    usageUnit: 'call',
+    rateLimits: {
+      perStudentHour: 30,
+      perStudentDay: 80,
+      perDistrictMonth: 2500,
+    },
   },
 }

@@ -57,6 +57,26 @@ function is5xxError(error: unknown): boolean {
   return false
 }
 
+
+function isAuthKeyError(error: unknown): boolean {
+  if (APICallError.isInstance(error)) {
+    if (error.statusCode === 401 || error.statusCode == 403) {
+      return true
+    }
+    const message = error.message.toLowerCase()
+    return message.includes('incorrect api key') || message.includes('invalid api key')
+  }
+  if (error instanceof ApiError) {
+    const message = error.message.toLowerCase()
+    return message.includes('incorrect api key') || message.includes('invalid api key') || message.includes('status code 401')
+  }
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase()
+    return message.includes('incorrect api key') || message.includes('invalid api key') || message.includes('status code 401')
+  }
+  return false
+}
+
 // ai sdk CallSettings类型的子集
 export interface CallSettings {
   temperature?: number
@@ -102,6 +122,10 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
   ): Pick<Provider, 'languageModel'> & Partial<Pick<Provider, 'embeddingModel' | 'imageModel'>>
 
   protected abstract getChatModel(options: CallChatCompletionOptions): LanguageModelV3
+
+  protected getAuthFallbackModel(_options: CallChatCompletionOptions): LanguageModelV3 | null {
+    return null
+  }
 
   protected getImageModel(): ImageModel | null {
     return null
@@ -551,6 +575,8 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       })
     }
 
+    const authFallbackModel = this.getAuthFallbackModel(options)
+
     const retryable5xx = (context: RetryContext<LanguageModelV3>) => {
       if (isErrorAttempt(context.current)) {
         const { error } = context.current
@@ -566,9 +592,24 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       return undefined
     }
 
+    const retryableAuthFallback = (context: RetryContext<LanguageModelV3>) => {
+      if (!authFallbackModel) {
+        return undefined
+      }
+      if (isErrorAttempt(context.current) && isAuthKeyError(context.current.error)) {
+        return {
+          model: authFallbackModel,
+          maxAttempts: 2,
+          delay: 0,
+          backoffFactor: 1,
+        }
+      }
+      return undefined
+    }
+
     const model = createRetryable({
       model: baseModel,
-      retries: [retryable5xx],
+      retries: [retryableAuthFallback, retryable5xx],
       onError: (context) => {
         if (isErrorAttempt(context.current)) {
           const { error } = context.current

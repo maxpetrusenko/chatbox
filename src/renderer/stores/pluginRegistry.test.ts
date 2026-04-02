@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest'
 import type { PluginManifest } from '@shared/plugin-types'
-import { type PluginRegistryStore, createPluginRegistryStore } from './pluginRegistry'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { k12Store } from '@/stores/k12Store'
+import { createPluginRegistryStore, type PluginRegistryStore } from './pluginRegistry'
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -14,7 +15,11 @@ const chessManifest: PluginManifest = {
   category: 'internal',
   tools: [
     { name: 'start_game', description: 'Start a new game', parameters: [] },
-    { name: 'apply_move', description: 'Apply a move', parameters: [{ name: 'move', type: 'string', description: 'SAN move', required: true }] },
+    {
+      name: 'apply_move',
+      description: 'Apply a move',
+      parameters: [{ name: 'move', type: 'string', description: 'SAN move', required: true }],
+    },
     { name: 'get_position', description: 'Get current position', parameters: [] },
   ],
   widget: { entrypoint: 'ui.html' },
@@ -27,7 +32,11 @@ const weatherManifest: PluginManifest = {
   description: 'Weather forecasts',
   category: 'external-public',
   tools: [
-    { name: 'lookup_forecast', description: 'Get forecast', parameters: [{ name: 'city', type: 'string', description: 'City name', required: true }] },
+    {
+      name: 'lookup_forecast',
+      description: 'Get forecast',
+      parameters: [{ name: 'city', type: 'string', description: 'City name', required: true }],
+    },
   ],
   widget: { entrypoint: 'ui.html' },
 }
@@ -38,11 +47,25 @@ const spotifyManifest: PluginManifest = {
   version: '1.0.0',
   description: 'Study playlists',
   category: 'external-authenticated',
-  tools: [
-    { name: 'search_playlist', description: 'Search playlists', parameters: [] },
-  ],
+  tools: [{ name: 'search_playlist', description: 'Search playlists', parameters: [] }],
   widget: { entrypoint: 'ui.html' },
-  auth: { type: 'oauth2-pkce', authorizationUrl: 'https://accounts.spotify.com/authorize', tokenUrl: 'https://accounts.spotify.com/api/token', scopes: ['playlist-read-private'] },
+  auth: {
+    type: 'oauth2-pkce',
+    authorizationUrl: 'https://accounts.spotify.com/authorize',
+    tokenUrl: 'https://accounts.spotify.com/api/token',
+    scopes: ['playlist-read-private'],
+  },
+}
+
+const wolframManifest: PluginManifest = {
+  id: 'wolfram',
+  name: 'Wolfram Alpha',
+  version: '1.0.0',
+  description: 'Computational knowledge engine',
+  category: 'external-public',
+  tools: [{ name: 'compute', description: 'Compute a query', parameters: [] }],
+  widget: { entrypoint: 'ui.html' },
+  auth: { type: 'api-key' },
 }
 
 // ---------------------------------------------------------------------------
@@ -56,6 +79,11 @@ describe('pluginRegistry', () => {
   beforeEach(() => {
     store = createPluginRegistryStore()
     get = store.getState
+    k12Store.setState((state) => ({
+      ...state,
+      isAuthenticated: false,
+      currentUser: null,
+    }))
   })
 
   // -- Manifest registration --
@@ -95,6 +123,29 @@ describe('pluginRegistry', () => {
 
     it('returns empty array with no manifests', () => {
       expect(get().getToolSet('session-1')).toHaveLength(0)
+    })
+
+    it('keeps district-key tools visible to students without per-student auth', () => {
+      get().registerManifest(wolframManifest)
+      k12Store.setState((state) => ({
+        ...state,
+        isAuthenticated: true,
+        classes: state.classes.map((cls) =>
+          cls.id === 'class-1' ? { ...cls, activePlugins: [...cls.activePlugins, 'wolfram'] } : cls
+        ),
+        currentUser: {
+          id: 'student-1',
+          email: 'student@example.edu',
+          name: 'Student',
+          role: 'student',
+          districtId: 'district-1',
+          schoolId: 'school-1',
+          classId: 'class-1',
+        },
+      }))
+
+      const tools = get().getToolSet('session-1')
+      expect(tools.map((tool) => tool.namespacedName)).toContain('plugin__wolfram__compute')
     })
   })
 
@@ -206,7 +257,11 @@ describe('pluginRegistry', () => {
     it('does not return completed instance as active', () => {
       get().registerManifest(chessManifest)
       const inst = get().createInstance('chess', 'session-1')!
-      get().updateInstanceCompletion(inst.instanceId, { pluginId: 'chess', instanceId: inst.instanceId, summary: 'done' })
+      get().updateInstanceCompletion(inst.instanceId, {
+        pluginId: 'chess',
+        instanceId: inst.instanceId,
+        summary: 'done',
+      })
       expect(get().getActiveInstanceForPlugin('chess', 'session-1')).toBeUndefined()
     })
   })

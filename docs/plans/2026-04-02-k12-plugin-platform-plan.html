@@ -1,0 +1,1349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>K12 Plugin Platform Plan — ChatBridge</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --bg-card: #181b24;
+  --bg-card-hover: #1e2230;
+  --accent: #4f8cff;
+  --accent-dim: rgba(79, 140, 255, 0.12);
+  --accent-glow: rgba(79, 140, 255, 0.25);
+  --green: #3dd68c;
+  --green-dim: rgba(61, 214, 140, 0.12);
+  --amber: #f0a030;
+  --amber-dim: rgba(240, 160, 48, 0.12);
+  --red: #f05050;
+  --red-dim: rgba(240, 80, 80, 0.12);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167, 139, 250, 0.12);
+  --ink: #e4e6ed;
+  --muted: #8b8fa4;
+  --line: rgba(255,255,255,0.06);
+  --font: "SF Pro Text", "Inter", -apple-system, system-ui, sans-serif;
+  --mono: "SF Mono", "JetBrains Mono", "Fira Code", monospace;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.container { max-width: 1200px; margin: 0 auto; padding: 40px 24px; }
+
+/* Header */
+.hero {
+  text-align: center;
+  padding: 80px 0 60px;
+  position: relative;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  pointer-events: none;
+  opacity: 0.4;
+}
+.hero h1 {
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #fff 30%, var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.hero .subtitle {
+  font-size: 18px;
+  color: var(--muted);
+  max-width: 640px;
+  margin: 0 auto;
+}
+.badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 16px;
+}
+.badge--blue { background: var(--accent-dim); color: var(--accent); }
+.badge--green { background: var(--green-dim); color: var(--green); }
+.badge--amber { background: var(--amber-dim); color: var(--amber); }
+.badge--red { background: var(--red-dim); color: var(--red); }
+.badge--purple { background: var(--purple-dim); color: var(--purple); }
+
+/* Sections */
+h2 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 8px;
+}
+h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.section {
+  margin-bottom: 64px;
+}
+.section-desc {
+  color: var(--muted);
+  margin-bottom: 32px;
+  max-width: 680px;
+}
+
+/* Cards */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  transition: background 0.2s, border-color 0.2s;
+}
+.card:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255,255,255,0.1);
+}
+.card h3 { margin-bottom: 8px; }
+.card p { color: var(--muted); font-size: 14px; }
+.card ul { color: var(--muted); font-size: 14px; padding-left: 18px; margin-top: 8px; }
+.card ul li { margin-bottom: 4px; }
+
+/* Status dot */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status::before {
+  content: '';
+  width: 8px; height: 8px;
+  border-radius: 50%;
+}
+.status--done::before { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status--partial::before { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+.status--missing::before { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.status--done { color: var(--green); }
+.status--partial { color: var(--amber); }
+.status--missing { color: var(--red); }
+
+/* Architecture diagram */
+.arch-diagram {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 40px;
+  overflow-x: auto;
+}
+.arch-diagram svg { display: block; margin: 0 auto; }
+
+/* Flow diagrams */
+.flow-container {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 32px;
+  margin-bottom: 16px;
+}
+
+/* Timeline */
+.timeline {
+  position: relative;
+  padding-left: 32px;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: var(--line);
+}
+.timeline-item {
+  position: relative;
+  margin-bottom: 32px;
+}
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -27px;
+  top: 6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: var(--bg);
+}
+.timeline-item.done::before {
+  background: var(--green);
+  border-color: var(--green);
+}
+.timeline-item.partial::before {
+  background: var(--amber);
+  border-color: var(--amber);
+}
+.timeline-item .tl-title {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+.timeline-item .tl-desc {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Role matrix table */
+.matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.matrix-table th, .matrix-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.matrix-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.matrix-table td { color: var(--ink); }
+.matrix-table tr:hover td { background: rgba(255,255,255,0.02); }
+.check { color: var(--green); font-weight: 700; }
+.cross { color: var(--red); opacity: 0.5; }
+.limited { color: var(--amber); font-weight: 600; }
+
+/* Layers stack */
+.layer-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.layer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+.layer .layer-label {
+  min-width: 160px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.layer .layer-desc {
+  color: var(--muted);
+  font-size: 13px;
+}
+.layer--1 { background: rgba(79, 140, 255, 0.08); border-left: 3px solid var(--accent); }
+.layer--2 { background: rgba(167, 139, 250, 0.08); border-left: 3px solid var(--purple); }
+.layer--3 { background: rgba(61, 214, 140, 0.08); border-left: 3px solid var(--green); }
+.layer--4 { background: rgba(240, 160, 48, 0.08); border-left: 3px solid var(--amber); }
+.layer--5 { background: rgba(240, 80, 80, 0.08); border-left: 3px solid var(--red); }
+
+/* Nav */
+.toc {
+  position: fixed;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+}
+.toc a {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background 0.2s, transform 0.2s;
+}
+.toc a:hover, .toc a.active {
+  background: var(--accent);
+  transform: scale(1.3);
+}
+
+/* Pill list */
+.pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.pill {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.pill--green { background: var(--green-dim); color: var(--green); }
+.pill--amber { background: var(--amber-dim); color: var(--amber); }
+.pill--purple { background: var(--purple-dim); color: var(--purple); }
+.pill--red { background: var(--red-dim); color: var(--red); }
+
+/* Decision box */
+.decision-box {
+  background: var(--bg-card);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-top: 24px;
+}
+.decision-box h3 { color: var(--accent); margin-bottom: 12px; }
+.decision-box ol { padding-left: 20px; }
+.decision-box li { margin-bottom: 8px; color: var(--muted); font-size: 14px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero h1 { font-size: 28px; }
+  .card-grid { grid-template-columns: 1fr; }
+  .toc { display: none; }
+  .arch-diagram { padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV DOTS -->
+<nav class="toc">
+  <a href="#current" title="Current State"></a>
+  <a href="#k12-vision" title="K12 Vision"></a>
+  <a href="#tenant" title="Tenant Model"></a>
+  <a href="#rbac" title="RBAC"></a>
+  <a href="#install-flow" title="Install Flow"></a>
+  <a href="#safety" title="Safety Pipeline"></a>
+  <a href="#audit" title="Audit Layer"></a>
+  <a href="#arch" title="Architecture"></a>
+  <a href="#phases" title="Phases"></a>
+  <a href="#presearch" title="Presearch"></a>
+  <a href="#confirm" title="Confirm"></a>
+</nav>
+
+<div class="container">
+
+<!-- HERO -->
+<header class="hero" id="top">
+  <span class="badge badge--blue">Plan Review</span>
+  <h1>K12 Plugin Platform</h1>
+  <p class="subtitle">Evolving ChatBridge from developer-install plugins to a teacher-friendly, district-controlled, AI-screened plugin marketplace for K-12 education.</p>
+</header>
+
+<!-- ================================================== -->
+<!-- SECTION: CURRENT STATE -->
+<!-- ================================================== -->
+<section class="section" id="current">
+  <h2>Current State</h2>
+  <p class="section-desc">What exists in the codebase today vs. what the K12 vision requires.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <span class="status status--done">Shipped</span>
+      <h3>Plugin Protocol</h3>
+      <p>Manifest types, postMessage bridge, protocol guards, sandboxed iframe host.</p>
+      <div class="pills">
+        <span class="pill">plugin-types.ts</span>
+        <span class="pill">plugin-protocol.ts</span>
+        <span class="pill">PluginFrame.tsx</span>
+      </div>
+    </div>
+    <div class="card">
+      <span class="status status--done">Shipped</span>
+      <h3>Plugin Registry</h3>
+      <p>Zustand store, tool set derivation, instance lifecycle, state snapshots.</p>
+      <div class="pills">
+        <span class="pill">pluginRegistry.ts</span>
+        <span class="pill">plugin-tools.ts</span>
+      </div>
+    </div>
+    <div class="card">
+      <span class="status status--done">Shipped</span>
+      <h3>4 Plugins Built</h3>
+      <p>Chess (internal), Weather (public), Spotify (OAuth PKCE), GitHub (device flow).</p>
+      <div class="pills">
+        <span class="pill pill--green">chess</span>
+        <span class="pill pill--green">weather</span>
+        <span class="pill pill--purple">spotify</span>
+        <span class="pill pill--purple">github</span>
+      </div>
+    </div>
+    <div class="card">
+      <span class="status status--done">Shipped</span>
+      <h3>Auth Broker</h3>
+      <p>Per-plugin OAuth (PKCE + device flow), token storage, scoped sessions.</p>
+      <div class="pills">
+        <span class="pill pill--purple">pluginAuthStore.ts</span>
+      </div>
+    </div>
+    <div class="card">
+      <span class="status status--partial">Partial</span>
+      <h3>Settings Page</h3>
+      <p>Plugin discovery UI exists. No role controls, no install flow, no admin panel.</p>
+      <div class="pills">
+        <span class="pill pill--amber">PluginSettings.tsx</span>
+      </div>
+    </div>
+    <div class="card">
+      <span class="status status--missing">Missing</span>
+      <h3>Platform User Auth</h3>
+      <p>No login system. No user roles. No tenant hierarchy. Requirements list it as core.</p>
+      <div class="pills">
+        <span class="pill pill--red">requirements.md:57</span>
+      </div>
+    </div>
+    <div class="card">
+      <span class="status status--missing">Missing</span>
+      <h3>Plugin Marketplace</h3>
+      <p>No install UI, no upload flow, no catalog, no approval pipeline.</p>
+    </div>
+    <div class="card">
+      <span class="status status--missing">Missing</span>
+      <h3>Safety / Audit</h3>
+      <p>No content screening, no AI safety review, no audit logs, no scheduled scans.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: K12 VISION -->
+<!-- ================================================== -->
+<section class="section" id="k12-vision">
+  <h2>K12 Vision</h2>
+  <p class="section-desc">What the platform should look like for a district deploying to schools.</p>
+
+  <div class="arch-diagram">
+    <svg viewBox="0 0 1000 480" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:960px">
+      <!-- District level -->
+      <rect x="50" y="20" width="900" height="100" rx="12" fill="rgba(79,140,255,0.08)" stroke="#4f8cff" stroke-width="1.5"/>
+      <text x="80" y="52" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="16">DISTRICT / CENTRAL AUTHORITY</text>
+      <text x="80" y="76" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="13">Global plugin allowlist/denylist    Version pinning    Forced removals    Incident review</text>
+      <text x="80" y="98" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="13">AI audit dashboard    Cross-school visibility    COPPA/FERPA compliance controls</text>
+
+      <!-- School level -->
+      <rect x="100" y="150" width="380" height="90" rx="12" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="130" y="182" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">SCHOOL A</text>
+      <text x="130" y="204" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">School-admin can scope district catalog</text>
+      <text x="130" y="222" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Own plugin request queue</text>
+
+      <rect x="520" y="150" width="380" height="90" rx="12" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="550" y="182" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">SCHOOL B</text>
+      <text x="550" y="204" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Independent catalog subset</text>
+      <text x="550" y="222" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Own approval queue</text>
+
+      <!-- Teacher level -->
+      <rect x="120" y="270" width="160" height="70" rx="10" fill="rgba(61,214,140,0.08)" stroke="#3dd68c" stroke-width="1.5"/>
+      <text x="140" y="298" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="13">TEACHER</text>
+      <text x="140" y="316" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Can install from catalog</text>
+
+      <rect x="300" y="270" width="160" height="70" rx="10" fill="rgba(61,214,140,0.08)" stroke="#3dd68c" stroke-width="1.5"/>
+      <text x="320" y="298" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="13">TEACHER</text>
+      <text x="320" y="316" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Can request new plugin</text>
+
+      <!-- Student level -->
+      <rect x="120" y="370" width="340" height="70" rx="10" fill="rgba(240,160,48,0.08)" stroke="#f0a030" stroke-width="1.5"/>
+      <text x="150" y="398" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="13">STUDENTS</text>
+      <text x="150" y="418" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Use only. No install. No auth admin. Teacher-curated plugins only.</text>
+
+      <!-- AI Safety -->
+      <rect x="560" y="270" width="300" height="170" rx="12" fill="rgba(240,80,80,0.08)" stroke="#f05050" stroke-width="1.5"/>
+      <text x="590" y="298" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">AI SAFETY LAYER</text>
+      <text x="590" y="322" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Manifest validation</text>
+      <text x="590" y="342" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Content safety scan (age-appropriate)</text>
+      <text x="590" y="362" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Network scope audit</text>
+      <text x="590" y="382" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Scheduled log review</text>
+      <text x="590" y="402" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Flagged behavior alerts</text>
+      <text x="590" y="422" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Data exfiltration detection</text>
+
+      <!-- Arrows -->
+      <line x1="290" y1="120" x2="290" y2="150" stroke="#4f8cff" stroke-width="1.5" stroke-dasharray="4"/>
+      <line x1="710" y1="120" x2="710" y2="150" stroke="#4f8cff" stroke-width="1.5" stroke-dasharray="4"/>
+      <line x1="200" y1="240" x2="200" y2="270" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4"/>
+      <line x1="380" y1="240" x2="380" y2="270" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4"/>
+      <line x1="200" y1="340" x2="200" y2="370" stroke="#3dd68c" stroke-width="1.5" stroke-dasharray="4"/>
+      <line x1="380" y1="340" x2="380" y2="370" stroke="#3dd68c" stroke-width="1.5" stroke-dasharray="4"/>
+      <!-- Teacher to AI safety -->
+      <path d="M460 305 L560 305" stroke="#f05050" stroke-width="1.5" stroke-dasharray="4" marker-end="url(#arrowRed)"/>
+      <defs>
+        <marker id="arrowRed" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#f05050"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: TENANT MODEL -->
+<!-- ================================================== -->
+<section class="section" id="tenant">
+  <h2>Tenant Model</h2>
+  <p class="section-desc">Hierarchical multi-tenant structure for K-12 deployment.</p>
+
+  <div class="layer-stack">
+    <div class="layer layer--1">
+      <span class="layer-label">District</span>
+      <span class="layer-desc">Top-level tenant. Owns global policies, plugin allowlist/denylist, compliance settings. One district = one deployment.</span>
+    </div>
+    <div class="layer layer--2">
+      <span class="layer-label">School</span>
+      <span class="layer-desc">Belongs to a district. Can narrow (not widen) district catalog. Has own admin and approval queue.</span>
+    </div>
+    <div class="layer layer--3">
+      <span class="layer-label">Class / Group</span>
+      <span class="layer-desc">Belongs to a school. Teacher assigns active plugins per class. Students see only class-scoped plugins.</span>
+    </div>
+    <div class="layer layer--4">
+      <span class="layer-label">User</span>
+      <span class="layer-desc">Teacher or Student. Role determines plugin install/use/admin capabilities.</span>
+    </div>
+  </div>
+
+  <div class="flow-container" style="margin-top: 24px;">
+    <h3>Data Model (simplified)</h3>
+    <pre style="color: var(--muted); font-family: var(--mono); font-size: 13px; line-height: 1.6; overflow-x: auto;">
+District {
+  id, name, settings: PolicyConfig
+  allowedPlugins: string[]       // global allowlist
+  blockedPlugins: string[]       // global denylist
+}
+
+School {
+  id, districtId, name
+  pluginOverrides: { pluginId: 'allow' | 'block' }[]
+}
+
+Class {
+  id, schoolId, teacherId, name
+  activePlugins: string[]        // teacher-curated subset
+}
+
+User {
+  id, email, role: 'district-admin' | 'school-admin' | 'teacher' | 'student'
+  schoolId, districtId
+}
+
+PluginInstall {
+  id, pluginId, schoolId
+  status: 'pending' | 'ai-review' | 'approved' | 'rejected' | 'quarantined'
+  requestedBy: userId
+  reviewedBy: userId | 'ai-auto'
+  safetyScore: number            // 0-100, AI-assigned
+  installedAt: timestamp
+}</pre>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: RBAC MATRIX -->
+<!-- ================================================== -->
+<section class="section" id="rbac">
+  <h2>Role-Based Access Control</h2>
+  <p class="section-desc">What each role can and cannot do with plugins.</p>
+
+  <div class="card" style="overflow-x: auto;">
+    <table class="matrix-table">
+      <thead>
+        <tr>
+          <th>Action</th>
+          <th>District Admin</th>
+          <th>School Admin</th>
+          <th>Teacher</th>
+          <th>Student</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>View plugin catalog</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+          <td><span class="cross">NO</span></td>
+        </tr>
+        <tr>
+          <td>Install from approved catalog</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+          <td><span class="cross">NO</span></td>
+        </tr>
+        <tr>
+          <td>Upload/request new plugin</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+          <td><span class="limited">REQUEST</span></td>
+          <td><span class="cross">NO</span></td>
+        </tr>
+        <tr>
+          <td>Approve plugin requests</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="limited">SCHOOL</span></td>
+          <td><span class="cross">NO</span></td>
+          <td><span class="cross">NO</span></td>
+        </tr>
+        <tr>
+          <td>Use installed plugins</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+        </tr>
+        <tr>
+          <td>Manage plugin auth (OAuth)</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+          <td><span class="cross">NO</span></td>
+        </tr>
+        <tr>
+          <td>Set class-level plugin scope</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+          <td><span class="check">YES</span></td>
+          <td><span class="cross">NO</span></td>
+        </tr>
+        <tr>
+          <td>Global allowlist/denylist</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="cross">NO</span></td>
+          <td><span class="cross">NO</span></td>
+          <td><span class="cross">NO</span></td>
+        </tr>
+        <tr>
+          <td>Force-remove plugins</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="limited">SCHOOL</span></td>
+          <td><span class="cross">NO</span></td>
+          <td><span class="cross">NO</span></td>
+        </tr>
+        <tr>
+          <td>View audit logs</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="limited">SCHOOL</span></td>
+          <td><span class="limited">CLASS</span></td>
+          <td><span class="cross">NO</span></td>
+        </tr>
+        <tr>
+          <td>View AI safety reports</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="limited">SCHOOL</span></td>
+          <td><span class="cross">NO</span></td>
+          <td><span class="cross">NO</span></td>
+        </tr>
+        <tr>
+          <td>Pin plugin versions</td>
+          <td><span class="check">YES</span></td>
+          <td><span class="cross">NO</span></td>
+          <td><span class="cross">NO</span></td>
+          <td><span class="cross">NO</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: PLUGIN INSTALL FLOW -->
+<!-- ================================================== -->
+<section class="section" id="install-flow">
+  <h2>Teacher Plugin Install Flow</h2>
+  <p class="section-desc">How a teacher drops a plugin and it goes through validation, AI review, and approval.</p>
+
+  <div class="arch-diagram">
+    <svg viewBox="0 0 1000 400" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:960px">
+      <!-- Step boxes -->
+      <!-- 1. Drop -->
+      <rect x="20" y="60" width="140" height="80" rx="10" fill="rgba(61,214,140,0.1)" stroke="#3dd68c" stroke-width="1.5"/>
+      <text x="50" y="92" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">1. DROP</text>
+      <text x="36" y="116" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Teacher uploads</text>
+      <text x="36" y="130" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">plugin zip/manifest</text>
+
+      <!-- 2. Static Validate -->
+      <rect x="190" y="60" width="140" height="80" rx="10" fill="rgba(79,140,255,0.1)" stroke="#4f8cff" stroke-width="1.5"/>
+      <text x="200" y="92" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">2. VALIDATE</text>
+      <text x="200" y="116" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Schema check</text>
+      <text x="200" y="130" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Manifest parse + CSP</text>
+
+      <!-- 3. AI Review -->
+      <rect x="360" y="60" width="140" height="80" rx="10" fill="rgba(240,80,80,0.1)" stroke="#f05050" stroke-width="1.5"/>
+      <text x="374" y="92" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">3. AI REVIEW</text>
+      <text x="374" y="116" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Content safety scan</text>
+      <text x="374" y="130" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Age-appropriate check</text>
+
+      <!-- 4. Quarantine -->
+      <rect x="530" y="60" width="140" height="80" rx="10" fill="rgba(240,160,48,0.1)" stroke="#f0a030" stroke-width="1.5"/>
+      <text x="536" y="92" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">4. QUARANTINE</text>
+      <text x="536" y="116" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Sandboxed test run</text>
+      <text x="536" y="130" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Network scope audit</text>
+
+      <!-- 5. Approve -->
+      <rect x="700" y="60" width="140" height="80" rx="10" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="714" y="92" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">5. APPROVE</text>
+      <text x="714" y="116" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Human admin signs off</text>
+      <text x="714" y="130" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">or auto if score > 90</text>
+
+      <!-- 6. Live -->
+      <rect x="870" y="60" width="110" height="80" rx="10" fill="rgba(61,214,140,0.15)" stroke="#3dd68c" stroke-width="2"/>
+      <text x="895" y="92" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">6. LIVE</text>
+      <text x="880" y="116" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Available in</text>
+      <text x="880" y="130" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">school catalog</text>
+
+      <!-- Arrows -->
+      <path d="M160 100 L190 100" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+      <path d="M330 100 L360 100" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+      <path d="M500 100 L530 100" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+      <path d="M670 100 L700 100" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+      <path d="M840 100 L870 100" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+
+      <!-- Reject paths -->
+      <path d="M430 140 L430 200" stroke="#f05050" stroke-width="1.5" stroke-dasharray="4"/>
+      <rect x="370" y="200" width="120" height="40" rx="8" fill="rgba(240,80,80,0.1)" stroke="#f05050" stroke-width="1"/>
+      <text x="393" y="225" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="12">REJECTED</text>
+
+      <path d="M600 140 L600 200" stroke="#f0a030" stroke-width="1.5" stroke-dasharray="4"/>
+      <rect x="540" y="200" width="120" height="40" rx="8" fill="rgba(240,160,48,0.1)" stroke="#f0a030" stroke-width="1"/>
+      <text x="556" y="225" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="12">HELD FOR REVIEW</text>
+
+      <!-- AI Review details -->
+      <rect x="40" y="280" width="920" height="100" rx="12" fill="rgba(240,80,80,0.05)" stroke="rgba(240,80,80,0.2)" stroke-width="1"/>
+      <text x="70" y="310" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">AI Safety Review Checks</text>
+      <text x="70" y="336" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Manifest: valid schema, declared scopes match actual network calls, no excessive permissions</text>
+      <text x="70" y="354" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Content: no profanity, violence, adult content, gambling, substance references in UI/strings</text>
+      <text x="70" y="372" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Behavior: no data exfiltration patterns, no PII collection without consent, no crypto mining, no iframe escape attempts</text>
+
+      <defs>
+        <marker id="arrowGray" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#8b8fa4"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <div class="card-grid" style="margin-top: 24px;">
+    <div class="card">
+      <h3>Catalog Install (Simple Path)</h3>
+      <p>Teacher picks from pre-approved district catalog. No AI review needed. Instant activation for their class.</p>
+      <div class="pills">
+        <span class="pill pill--green">instant</span>
+        <span class="pill pill--green">pre-approved</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3>New Plugin Request (Full Path)</h3>
+      <p>Teacher uploads manifest/zip. Goes through full validation + AI review + admin approval before catalog entry.</p>
+      <div class="pills">
+        <span class="pill pill--amber">review queue</span>
+        <span class="pill pill--red">AI scan</span>
+        <span class="pill pill--purple">admin approval</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: SAFETY PIPELINE -->
+<!-- ================================================== -->
+<section class="section" id="safety">
+  <h2>Safety Pipeline</h2>
+  <p class="section-desc">Default deny. Only signed/approved plugins reach students.</p>
+
+  <div class="layer-stack">
+    <div class="layer layer--5">
+      <span class="layer-label">Layer 1: Static</span>
+      <span class="layer-desc">Manifest schema validation, CSP enforcement, sandbox attribute check, permission scope audit.</span>
+    </div>
+    <div class="layer layer--4">
+      <span class="layer-label">Layer 2: AI Pre-screen</span>
+      <span class="layer-desc">LLM reviews plugin code/content for age-inappropriate material, unsafe patterns, data exfiltration.</span>
+    </div>
+    <div class="layer layer--1">
+      <span class="layer-label">Layer 3: Sandbox Test</span>
+      <span class="layer-desc">Quarantined execution in isolated iframe. Monitor network calls, DOM access attempts, postMessage patterns.</span>
+    </div>
+    <div class="layer layer--2">
+      <span class="layer-label">Layer 4: Human Review</span>
+      <span class="layer-desc">Admin sees AI safety score + findings. Final approve/reject. Auto-approve if AI score > 90 and no flags.</span>
+    </div>
+    <div class="layer layer--3">
+      <span class="layer-label">Layer 5: Runtime</span>
+      <span class="layer-desc">Continuous monitoring. Rate limiting, network scope enforcement, output content filtering, usage logging.</span>
+    </div>
+  </div>
+
+  <div class="card-grid" style="margin-top: 24px;">
+    <div class="card">
+      <h3>Content Safety APIs</h3>
+      <ul>
+        <li>OpenAI Moderation API (free, fast)</li>
+        <li>Google Perspective API (toxicity scoring)</li>
+        <li>Azure Content Safety (age-graded)</li>
+        <li>Custom LLM classifier for K12 context</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Plugin Sandbox Rules</h3>
+      <ul>
+        <li><code>sandbox="allow-scripts"</code> only</li>
+        <li>No <code>allow-same-origin</code> for untrusted</li>
+        <li>CSP: declared domains only</li>
+        <li>postMessage origin + nonce validation</li>
+        <li>10s handshake timeout</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>COPPA / FERPA</h3>
+      <ul>
+        <li>No PII collection without district consent</li>
+        <li>Plugin data stays within tenant boundary</li>
+        <li>Student data never sent to plugin servers</li>
+        <li>Auth tokens scoped, never shared cross-plugin</li>
+        <li>Audit trail for all data access</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: AUDIT LAYER -->
+<!-- ================================================== -->
+<section class="section" id="audit">
+  <h2>Audit Layer</h2>
+  <p class="section-desc">Scheduled AI review of plugin usage and behavior. Central authority sees everything.</p>
+
+  <div class="arch-diagram">
+    <svg viewBox="0 0 1000 300" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:960px">
+      <!-- Sources -->
+      <rect x="40" y="30" width="180" height="60" rx="10" fill="rgba(79,140,255,0.08)" stroke="#4f8cff" stroke-width="1.5"/>
+      <text x="68" y="65" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="13">Plugin Usage Logs</text>
+
+      <rect x="40" y="110" width="180" height="60" rx="10" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="55" y="145" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="13">Chat Transcript Logs</text>
+
+      <rect x="40" y="190" width="180" height="60" rx="10" fill="rgba(61,214,140,0.08)" stroke="#3dd68c" stroke-width="1.5"/>
+      <text x="56" y="225" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="13">Network Activity Logs</text>
+
+      <!-- Pipeline -->
+      <rect x="300" y="80" width="200" height="120" rx="12" fill="rgba(240,160,48,0.08)" stroke="#f0a030" stroke-width="1.5"/>
+      <text x="330" y="112" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">Scheduled AI Scan</text>
+      <text x="318" y="140" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Nightly batch review</text>
+      <text x="318" y="158" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Anomaly detection</text>
+      <text x="318" y="176" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Risk scoring per plugin</text>
+
+      <!-- Outputs -->
+      <rect x="580" y="30" width="180" height="50" rx="10" fill="rgba(61,214,140,0.08)" stroke="#3dd68c" stroke-width="1.5"/>
+      <text x="620" y="60" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="13">Clean Report</text>
+
+      <rect x="580" y="100" width="180" height="50" rx="10" fill="rgba(240,160,48,0.08)" stroke="#f0a030" stroke-width="1.5"/>
+      <text x="610" y="130" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="13">Flagged Behavior</text>
+
+      <rect x="580" y="170" width="180" height="50" rx="10" fill="rgba(240,80,80,0.08)" stroke="#f05050" stroke-width="1.5"/>
+      <text x="600" y="200" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="13">Auto-Quarantine</text>
+
+      <!-- Admin dashboard -->
+      <rect x="830" y="70" width="150" height="140" rx="12" fill="rgba(79,140,255,0.1)" stroke="#4f8cff" stroke-width="2"/>
+      <text x="847" y="102" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">Admin Panel</text>
+      <text x="847" y="128" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Review flagged items</text>
+      <text x="847" y="148" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Override decisions</text>
+      <text x="847" y="168" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Cross-school view</text>
+      <text x="847" y="188" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Export reports</text>
+
+      <!-- Arrows -->
+      <path d="M220 60 L300 120" stroke="#8b8fa4" stroke-width="1.2"/>
+      <path d="M220 140 L300 140" stroke="#8b8fa4" stroke-width="1.2"/>
+      <path d="M220 220 L300 160" stroke="#8b8fa4" stroke-width="1.2"/>
+      <path d="M500 110 L580 55" stroke="#8b8fa4" stroke-width="1.2"/>
+      <path d="M500 135 L580 125" stroke="#8b8fa4" stroke-width="1.2"/>
+      <path d="M500 160 L580 195" stroke="#8b8fa4" stroke-width="1.2"/>
+      <path d="M760 55 L830 110" stroke="#8b8fa4" stroke-width="1.2"/>
+      <path d="M760 125 L830 135" stroke="#8b8fa4" stroke-width="1.2"/>
+      <path d="M760 195 L830 170" stroke="#8b8fa4" stroke-width="1.2"/>
+    </svg>
+  </div>
+
+  <div class="card-grid" style="margin-top: 24px;">
+    <div class="card">
+      <h3>What AI Scans For</h3>
+      <ul>
+        <li>Unsafe prompts from students to plugin tools</li>
+        <li>Plugin outputs containing inappropriate content</li>
+        <li>Data exfiltration patterns (PII leaving tenant)</li>
+        <li>Abnormal usage spikes (abuse indicators)</li>
+        <li>Network calls to undeclared domains</li>
+        <li>Age-inappropriate content generation</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Central Authority Powers</h3>
+      <ul>
+        <li>See all schools' plugin usage in one dashboard</li>
+        <li>Force-remove a plugin across all schools instantly</li>
+        <li>Pin plugin versions to prevent untested updates</li>
+        <li>Set district-wide content policies</li>
+        <li>Review and override AI safety decisions</li>
+        <li>Export audit reports for compliance</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: SYSTEM ARCHITECTURE -->
+<!-- ================================================== -->
+<section class="section" id="arch">
+  <h2>System Architecture</h2>
+  <p class="section-desc">How K12 features layer on top of the existing ChatBridge plugin system.</p>
+
+  <div class="arch-diagram">
+    <svg viewBox="0 0 1000 560" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:960px">
+      <!-- Client layer -->
+      <rect x="40" y="20" width="920" height="120" rx="14" fill="rgba(79,140,255,0.06)" stroke="#4f8cff" stroke-width="1"/>
+      <text x="70" y="48" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="15">ELECTRON CLIENT (existing + new)</text>
+
+      <rect x="70" y="62" width="140" height="56" rx="8" fill="rgba(61,214,140,0.1)" stroke="#3dd68c" stroke-width="1"/>
+      <text x="86" y="86" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="11">Chat UI</text>
+      <text x="86" y="102" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="10">existing</text>
+
+      <rect x="230" y="62" width="140" height="56" rx="8" fill="rgba(61,214,140,0.1)" stroke="#3dd68c" stroke-width="1"/>
+      <text x="246" y="86" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="11">Plugin Frames</text>
+      <text x="246" y="102" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="10">existing</text>
+
+      <rect x="390" y="62" width="140" height="56" rx="8" fill="rgba(240,160,48,0.1)" stroke="#f0a030" stroke-width="1"/>
+      <text x="404" y="86" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="11">Plugin Marketplace</text>
+      <text x="404" y="102" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-size="10">NEW</text>
+
+      <rect x="550" y="62" width="140" height="56" rx="8" fill="rgba(240,160,48,0.1)" stroke="#f0a030" stroke-width="1"/>
+      <text x="576" y="86" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="11">Admin Panel</text>
+      <text x="576" y="102" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-size="10">NEW</text>
+
+      <rect x="710" y="62" width="220" height="56" rx="8" fill="rgba(240,80,80,0.1)" stroke="#f05050" stroke-width="1"/>
+      <text x="732" y="86" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="11">Login / Role-based views</text>
+      <text x="732" y="102" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-size="10">NEW - platform auth</text>
+
+      <!-- Middleware -->
+      <rect x="40" y="170" width="920" height="80" rx="14" fill="rgba(167,139,250,0.06)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="70" y="198" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="15">MIDDLEWARE LAYER</text>
+
+      <text x="70" y="228" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Plugin Registry (existing)    Auth Broker (existing)    RBAC Guard (NEW)    Policy Engine (NEW)    Audit Logger (NEW)</text>
+
+      <!-- Backend services -->
+      <rect x="40" y="280" width="440" height="130" rx="14" fill="rgba(61,214,140,0.06)" stroke="#3dd68c" stroke-width="1"/>
+      <text x="70" y="308" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="15">EXISTING SERVICES</text>
+
+      <text x="70" y="340" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Plugin Protocol + Bridge</text>
+      <text x="70" y="360" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Tool Routing + Invocation</text>
+      <text x="70" y="380" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Plugin Auth (OAuth PKCE / Device Flow)</text>
+      <text x="70" y="400" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Context Retention + State Snapshots</text>
+
+      <rect x="520" y="280" width="440" height="130" rx="14" fill="rgba(240,80,80,0.06)" stroke="#f05050" stroke-width="1"/>
+      <text x="550" y="308" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="15">NEW K12 SERVICES</text>
+
+      <text x="550" y="340" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Platform User Auth (login, sessions, roles)</text>
+      <text x="550" y="360" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Tenant Service (district/school/class)</text>
+      <text x="550" y="380" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Plugin Review Pipeline (validation + AI scan)</text>
+      <text x="550" y="400" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Audit Log Service + Scheduled AI Reviewer</text>
+
+      <!-- Data layer -->
+      <rect x="40" y="440" width="920" height="100" rx="14" fill="rgba(240,160,48,0.06)" stroke="#f0a030" stroke-width="1"/>
+      <text x="70" y="468" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="15">DATA LAYER</text>
+
+      <text x="70" y="498" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Users + Roles    Tenants (district/school/class)    Plugin Catalog    Install Records    Approval Queue</text>
+      <text x="70" y="518" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Chat History    Plugin State    Auth Tokens    Audit Logs    AI Safety Reports    Policy Config</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: IMPLEMENTATION PHASES -->
+<!-- ================================================== -->
+<section class="section" id="phases">
+  <h2>Implementation Phases</h2>
+  <p class="section-desc">How to layer K12 features on the existing ChatBridge plan without blocking current deadlines.</p>
+
+  <div class="timeline">
+    <div class="timeline-item done">
+      <div class="tl-title">Phase 0: Plugin Platform (DONE)</div>
+      <div class="tl-desc">
+        Plugin protocol, registry, iframe host, bridge, tool routing, 4 plugins (chess, weather, spotify, github), auth broker. This is the existing plan's scope.
+      </div>
+      <div class="pills" style="margin-top: 8px;">
+        <span class="pill pill--green">shipped</span>
+      </div>
+    </div>
+
+    <div class="timeline-item partial">
+      <div class="tl-title">Phase 1: Platform User Auth + RBAC</div>
+      <div class="tl-desc">
+        Add login system. Simple JWT or session-based. Four roles: district-admin, school-admin, teacher, student. Role determines what UI surfaces are visible and what actions are allowed. Teacher sees catalog + install. Student sees chat + plugins only.
+      </div>
+      <div class="pills" style="margin-top: 8px;">
+        <span class="pill pill--amber">next</span>
+        <span class="pill">Supabase Auth</span>
+        <span class="pill">RLS policies</span>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="tl-title">Phase 2: Tenant Hierarchy</div>
+      <div class="tl-desc">
+        District > School > Class model. Tenant-scoped data. Plugin catalog inheritance (district sets global, school narrows, teacher activates per class).
+      </div>
+      <div class="pills" style="margin-top: 8px;">
+        <span class="pill">district model</span>
+        <span class="pill">catalog inheritance</span>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="tl-title">Phase 3: Plugin Marketplace UI</div>
+      <div class="tl-desc">
+        Teacher-facing install page. Browse approved catalog, search, filter by category. Teacher drop-install from catalog (instant). Teacher upload new plugin manifest (enters review queue).
+      </div>
+      <div class="pills" style="margin-top: 8px;">
+        <span class="pill">catalog browse</span>
+        <span class="pill">install flow</span>
+        <span class="pill">upload flow</span>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="tl-title">Phase 4: AI Safety Pipeline</div>
+      <div class="tl-desc">
+        Static validation + AI content review for new plugin submissions. Quarantine + sandbox test. Safety score (0-100). Auto-approve above threshold, human review below.
+      </div>
+      <div class="pills" style="margin-top: 8px;">
+        <span class="pill pill--red">safety critical</span>
+        <span class="pill">LLM reviewer</span>
+        <span class="pill">sandbox test</span>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="tl-title">Phase 5: Audit + Monitoring</div>
+      <div class="tl-desc">
+        Structured audit logs for all plugin actions. Scheduled AI review (nightly). Flagged behavior alerts. Central admin dashboard with cross-school visibility.
+      </div>
+      <div class="pills" style="margin-top: 8px;">
+        <span class="pill pill--purple">audit logs</span>
+        <span class="pill pill--purple">nightly AI scan</span>
+        <span class="pill pill--purple">admin dashboard</span>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="tl-title">Phase 6: Central Authority Controls</div>
+      <div class="tl-desc">
+        District admin powers: global allow/denylist, forced removals, version pinning, incident review, cross-school view, compliance export.
+      </div>
+      <div class="pills" style="margin-top: 8px;">
+        <span class="pill">policy engine</span>
+        <span class="pill">version pinning</span>
+        <span class="pill">compliance</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: PRESEARCH FINDINGS -->
+<!-- ================================================== -->
+<section class="section" id="presearch">
+  <h2>Presearch Findings</h2>
+  <p class="section-desc">Concrete patterns from K12 EdTech, compliance law, and plugin security research (2024-2025 sources).</p>
+
+  <!-- LTI Pattern -->
+  <div class="flow-container">
+    <h3>Install Pattern: LTI 1.3 Dynamic Registration (Canvas/Clever/Google)</h3>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:16px;">Every major K12 platform uses the same core pattern. We should adapt it.</p>
+    <div class="arch-diagram" style="padding:24px;border:none;">
+      <svg viewBox="0 0 900 200" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:860px">
+        <rect x="10" y="40" width="150" height="50" rx="8" fill="rgba(61,214,140,0.1)" stroke="#3dd68c" stroke-width="1.5"/>
+        <text x="32" y="70" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="12">Plugin submits</text>
+        <text x="32" y="84" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="10">manifest + scopes</text>
+
+        <rect x="190" y="40" width="150" height="50" rx="8" fill="rgba(79,140,255,0.1)" stroke="#4f8cff" stroke-width="1.5"/>
+        <text x="206" y="70" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="12">Platform validates</text>
+        <text x="206" y="84" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="10">schema + scopes</text>
+
+        <rect x="370" y="40" width="150" height="50" rx="8" fill="rgba(240,80,80,0.1)" stroke="#f05050" stroke-width="1.5"/>
+        <text x="386" y="70" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="12">AI safety scan</text>
+        <text x="386" y="84" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="10">content + behavior</text>
+
+        <rect x="550" y="40" width="150" height="50" rx="8" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="566" y="70" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="12">Admin approves</text>
+        <text x="566" y="84" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="10">+ DPA check</text>
+
+        <rect x="730" y="40" width="150" height="50" rx="8" fill="rgba(61,214,140,0.15)" stroke="#3dd68c" stroke-width="2"/>
+        <text x="762" y="70" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="12">DEPLOYED</text>
+        <text x="746" y="84" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="10">scoped to tenant</text>
+
+        <path d="M160 65 L190 65" stroke="#8b8fa4" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+        <path d="M340 65 L370 65" stroke="#8b8fa4" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+        <path d="M520 65 L550 65" stroke="#8b8fa4" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+        <path d="M700 65 L730 65" stroke="#8b8fa4" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+
+        <!-- Reference labels -->
+        <text x="10" y="130" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Canvas: Developer Key + Deployment model. Google: OU-scoped allowlist/excludelist. Clever: district-app token.</text>
+        <text x="10" y="150" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Common gate: DPA (NDPA v2) must be signed before deployment token is issued. No DPA = stuck in pending.</text>
+        <text x="10" y="170" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-size="11" font-weight="600">Key insight: Teachers cannot install without admin enabling first. This is the enforcement gate.</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- COPPA / FERPA -->
+  <div class="card-grid" style="margin-top: 24px;">
+    <div class="card" style="border-color: var(--red);">
+      <span class="badge badge--red">Legal Requirement</span>
+      <h3>COPPA 2025 Final Rule (effective Apr 22, 2026)</h3>
+      <ul>
+        <li>Default is now <strong>opt-in</strong>, not opt-out</li>
+        <li>Third-party data sharing requires <strong>separate</strong> verifiable parental consent</li>
+        <li>Penalty: <strong>$51,744 per affected child per violation</strong></li>
+        <li>Persistent identifiers (device IDs, cookies) trigger COPPA scope</li>
+        <li>Each plugin must declare data collection profile in manifest</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color: var(--amber);">
+      <span class="badge badge--amber">Compliance</span>
+      <h3>FERPA "School Official" Provision</h3>
+      <ul>
+        <li>District signs DPA designating vendor as school official</li>
+        <li>No per-parent consent needed IF DPA covers data use</li>
+        <li>Vendor cannot re-disclose or use for commercial purposes</li>
+        <li>District maintains control + deletion rights</li>
+        <li>Plugins outside DPA umbrella still need individual consent</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color: var(--accent);">
+      <span class="badge badge--blue">Manifest Extension</span>
+      <h3>Required Plugin Data Profile</h3>
+      <pre style="color:var(--muted);font-family:var(--mono);font-size:11px;line-height:1.5;margin-top:8px;">
+{
+  "data_profile": {
+    "collects_pii": false,
+    "persistent_identifiers": false,
+    "data_categories": ["usage_analytics"],
+    "retention_days": 365,
+    "third_party_sharing": [],
+    "ai_training_use": false
+  },
+  "coppa_scope": "none|limited|full",
+  "dpa_required": true,
+  "target_grades": ["K-5","6-8","9-12"],
+  "content_safety_level": "strict"
+}</pre>
+    </div>
+  </div>
+
+  <!-- Content Safety APIs -->
+  <div class="flow-container" style="margin-top: 24px;">
+    <h3>Content Safety API Pipeline</h3>
+    <p style="color:var(--muted);font-size:14px;margin-bottom:16px;">Layered approach: fast + free first, detailed second, custom third.</p>
+    <div class="layer-stack">
+      <div class="layer layer--3">
+        <span class="layer-label">Layer 1: OpenAI Mod</span>
+        <span class="layer-desc"><strong>Free, ~50ms.</strong> Categories: sexual, sexual/minors, harassment, hate, violence, self-harm, illicit. Binary flagged/not. First-pass filter.</span>
+      </div>
+      <div class="layer layer--1">
+        <span class="layer-label">Layer 2: Azure Safety</span>
+        <span class="layer-desc"><strong>Severity 0-6.</strong> Four categories (Hate, SelfHarm, Sexual, Violence). Severity >= 4: block. Severity 2-3: flag for human review. Age-based threshold tuning.</span>
+      </div>
+      <div class="layer layer--5">
+        <span class="layer-label">Layer 3: Prompt Shields</span>
+        <span class="layer-desc"><strong>Azure jailbreak detection.</strong> Catches injection attacks + indirect prompt injection. Block + increment abuse score per student account.</span>
+      </div>
+      <div class="layer layer--4">
+        <span class="layer-label">Layer 4: Custom Blocklist</span>
+        <span class="layer-desc"><strong>School/district-specific terms.</strong> Azure Blocklist API. Layered on top of base classifiers. District admin manages.</span>
+      </div>
+      <div class="layer layer--2">
+        <span class="layer-label">Layer 5: LLM Output Scan</span>
+        <span class="layer-desc"><strong>Same pipeline on responses.</strong> Run Layers 1-4 on every LLM response + plugin output before streaming to student.</span>
+      </div>
+    </div>
+    <p style="color:var(--muted);font-size:12px;margin-top:12px;"><strong>Abuse scoring:</strong> Rolling 24h counter per student. 5+ flags = temp restrict account + notify teacher. Prevents automated abuse.</p>
+  </div>
+
+  <!-- Plugin Signing -->
+  <div class="card-grid" style="margin-top: 24px;">
+    <div class="card" style="border-color: var(--purple);">
+      <span class="badge badge--purple">Security</span>
+      <h3>Plugin Signing Model (Grafana pattern)</h3>
+      <pre style="color:var(--muted);font-family:var(--mono);font-size:11px;line-height:1.5;margin-top:8px;">
+MANIFEST.txt {
+  "pluginId": "com.vendor.name",
+  "signatureType": "community|verified|district",
+  "files": {
+    "index.js": "sha256:abc123...",
+    "manifest.json": "sha256:def456..."
+  }
+}
+
+Levels:
+  community  = self-signed, district opt-in only
+  verified   = platform-reviewed, default allowed
+  district   = private to one district's key</pre>
+      <p style="margin-top:8px;">At install: verify signature with platform public key, SHA256 each file against manifest. Mismatch = reject.</p>
+    </div>
+    <div class="card" style="border-color: var(--accent);">
+      <span class="badge badge--blue">Electron</span>
+      <h3>Network Restriction (session.webRequest)</h3>
+      <pre style="color:var(--muted);font-family:var(--mono);font-size:11px;line-height:1.5;margin-top:8px;">
+// Enforce declared allowedDomains
+pluginSession.webRequest.onBeforeRequest(
+  (details, callback) => {
+    const url = new URL(details.url)
+    const allowed = plugin.manifest
+      .allowedDomains
+      .some(d => url.hostname.endsWith(d))
+    callback({ cancel: !allowed })
+  }
+)
+
+// Current: sandbox="allow-scripts allow-forms"
+// No allow-same-origin for untrusted
+// No allow-top-navigation ever</pre>
+      <p style="margin-top:8px;">Also scan bundles for embedded API keys/secrets before accepting (VS Code pattern).</p>
+    </div>
+  </div>
+
+  <!-- Plugin Lifecycle States -->
+  <div class="flow-container" style="margin-top: 24px;">
+    <h3>Full Plugin Lifecycle States</h3>
+    <div class="arch-diagram" style="padding:20px;border:none;">
+      <svg viewBox="0 0 900 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:860px">
+        <rect x="0" y="20" width="100" height="40" rx="6" fill="rgba(240,160,48,0.1)" stroke="#f0a030" stroke-width="1"/>
+        <text x="12" y="44" fill="#f0a030" font-family="var(--mono)" font-size="10">submitted</text>
+
+        <rect x="120" y="20" width="100" height="40" rx="6" fill="rgba(79,140,255,0.1)" stroke="#4f8cff" stroke-width="1"/>
+        <text x="132" y="44" fill="#4f8cff" font-family="var(--mono)" font-size="10">validated</text>
+
+        <rect x="240" y="20" width="100" height="40" rx="6" fill="rgba(240,80,80,0.1)" stroke="#f05050" stroke-width="1"/>
+        <text x="257" y="44" fill="#f05050" font-family="var(--mono)" font-size="10">scanned</text>
+
+        <rect x="360" y="20" width="100" height="40" rx="6" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="372" y="44" fill="#a78bfa" font-family="var(--mono)" font-size="10">reviewed</text>
+
+        <rect x="480" y="20" width="100" height="40" rx="6" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="492" y="44" fill="#a78bfa" font-family="var(--mono)" font-size="10">approved</text>
+
+        <rect x="600" y="20" width="100" height="40" rx="6" fill="rgba(240,160,48,0.1)" stroke="#f0a030" stroke-width="1"/>
+        <text x="610" y="44" fill="#f0a030" font-family="var(--mono)" font-size="10">dpa_signed</text>
+
+        <rect x="720" y="20" width="80" height="40" rx="6" fill="rgba(61,214,140,0.15)" stroke="#3dd68c" stroke-width="2"/>
+        <text x="740" y="44" fill="#3dd68c" font-family="var(--mono)" font-weight="700" font-size="10">active</text>
+
+        <rect x="820" y="20" width="80" height="40" rx="6" fill="rgba(240,80,80,0.1)" stroke="#f05050" stroke-width="1.5"/>
+        <text x="828" y="44" fill="#f05050" font-family="var(--mono)" font-size="10">revoked</text>
+
+        <path d="M100 40 L120 40" stroke="#8b8fa4" stroke-width="1"/>
+        <path d="M220 40 L240 40" stroke="#8b8fa4" stroke-width="1"/>
+        <path d="M340 40 L360 40" stroke="#8b8fa4" stroke-width="1"/>
+        <path d="M460 40 L480 40" stroke="#8b8fa4" stroke-width="1"/>
+        <path d="M580 40 L600 40" stroke="#8b8fa4" stroke-width="1"/>
+        <path d="M700 40 L720 40" stroke="#8b8fa4" stroke-width="1"/>
+        <path d="M800 40 L820 40" stroke="#f05050" stroke-width="1" stroke-dasharray="3"/>
+
+        <text x="0" y="85" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Each transition is gated. submitted→validated: automated. validated→scanned: AI. scanned→reviewed: platform team. reviewed→approved: district admin. approved→dpa_signed: automated DPA check.</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: CONFIRM -->
+<!-- ================================================== -->
+<section class="section" id="confirm">
+  <h2>Decisions Needed</h2>
+  <p class="section-desc">Before building, confirm these design choices.</p>
+
+  <div class="decision-box">
+    <h3>Open Questions</h3>
+    <ol>
+      <li><strong>Auth provider:</strong> Supabase Auth (already have Supabase MCP) vs. Clerk vs. custom JWT? Supabase gives us RLS for tenant isolation for free.</li>
+      <li><strong>Scope for this sprint:</strong> Full K12 (Phases 1-6) or just Phase 1-3 (auth + tenant + marketplace) for the deadline, with safety/audit as fast-follow?</li>
+      <li><strong>Plugin upload format:</strong> ZIP with manifest.json + assets? Or manifest URL pointing to hosted plugin? ZIP is simpler for teacher UX, URL is simpler for developers.</li>
+      <li><strong>AI safety model:</strong> Use Claude/GPT for content review? Or lighter-weight (OpenAI moderation API + rule engine)? Cost vs. accuracy tradeoff.</li>
+      <li><strong>Student view:</strong> Should students see which plugins are installed (read-only catalog view) or only see plugins when teacher activates them in chat?</li>
+      <li><strong>Data persistence:</strong> Keep local-first (Electron storage) or move to cloud DB for multi-device + admin visibility? K12 multi-tenant basically requires cloud.</li>
+      <li><strong>Demo scope:</strong> For the assignment deadline, do we demo the K12 flow (teacher login + install + student view) or just mention it in architecture docs?</li>
+    </ol>
+  </div>
+
+  <div class="card-grid" style="margin-top: 24px;">
+    <div class="card" style="border-color: var(--green);">
+      <span class="badge badge--green">Recommended</span>
+      <h3>Pragmatic Path</h3>
+      <p>Ship Phases 1-3 for the deadline. Auth + RBAC + marketplace UI. Document Phases 4-6 as architecture. Demo teacher install flow.</p>
+      <ul>
+        <li>Supabase Auth (fast, RLS, existing tooling)</li>
+        <li>Cloud DB for tenant data</li>
+        <li>Keep existing Electron plugin system</li>
+        <li>Manifest-only upload (no ZIP yet)</li>
+        <li>Rule-based safety (no AI review yet)</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color: var(--purple);">
+      <span class="badge badge--purple">Full Vision</span>
+      <h3>Complete K12 Platform</h3>
+      <p>Build all 6 phases. Full AI safety pipeline, audit layer, central authority. Production-grade K12 deployment.</p>
+      <ul>
+        <li>Everything in pragmatic path, plus:</li>
+        <li>AI content review pipeline</li>
+        <li>Scheduled audit scans</li>
+        <li>Central admin dashboard</li>
+        <li>ZIP plugin upload + sandboxed testing</li>
+        <li>Compliance export</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+// Scroll-based nav dot highlighting
+const sections = document.querySelectorAll('.section, .hero');
+const dots = document.querySelectorAll('.toc a');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      dots.forEach(d => d.classList.remove('active'));
+      const active = document.querySelector(`.toc a[href="#${id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+sections.forEach(s => { if (s.id) observer.observe(s); });
+</script>
+
+</body>
+</html>

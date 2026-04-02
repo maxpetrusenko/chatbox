@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map Explorer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #1a1b2e;
+    color: #e0e0e8;
+    overflow-x: hidden;
+    overflow-y: auto;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #3a3b5e; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #4a4b6e; }
+
+  #container { display: flex; flex-direction: column; min-height: 100vh; padding: 12px; }
+
+  #header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; background: #22233a; border-radius: 10px;
+    margin-bottom: 12px; border: 1px solid #2e2f4a;
+  }
+  .pin-icon {
+    width: 24px; height: 28px; position: relative; flex-shrink: 0;
+  }
+  .pin-icon::before {
+    content: '';
+    position: absolute; top: 0; left: 3px;
+    width: 18px; height: 18px;
+    background: #ff4757;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+  }
+  .pin-icon::after {
+    content: '';
+    position: absolute; top: 4px; left: 8px;
+    width: 8px; height: 8px;
+    background: #1a1b2e;
+    border-radius: 50%;
+  }
+  #header .title { font-size: 15px; font-weight: 700; letter-spacing: 0.3px; color: #fff; }
+  #header .subtitle { font-size: 11px; color: #7a7b9e; margin-left: auto; }
+
+  #search-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+  #search-input {
+    flex: 1; padding: 9px 14px; font-size: 13px;
+    background: #22233a; border: 1px solid #2e2f4a; border-radius: 8px;
+    color: #e0e0e8; outline: none; transition: border-color 0.2s;
+    font-family: inherit;
+  }
+  #search-input:focus { border-color: #5b6abf; }
+  #search-input::placeholder { color: #55567a; }
+  #back-btn {
+    display: none; padding: 9px 14px; font-size: 12px; font-weight: 600;
+    background: #2a2b48; border: 1px solid #3a3b5e; border-radius: 8px;
+    color: #a0a1c0; cursor: pointer; transition: all 0.2s; font-family: inherit;
+  }
+  #back-btn:hover { background: #33344e; color: #fff; }
+
+  #content { flex: 1; }
+
+  .location-detail { display: none; }
+  .location-detail.active { display: block; }
+
+  .detail-card {
+    background: #22233a; border-radius: 12px; border: 1px solid #2e2f4a;
+    overflow: hidden; margin-bottom: 12px;
+  }
+  .detail-map-area {
+    height: 200px; position: relative; overflow: hidden;
+    background: #181928;
+  }
+  .tile-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr);
+    width: 100%; height: 100%;
+  }
+  .tile-grid img {
+    width: 100%; height: 100%; object-fit: cover;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .tile-grid img.loaded { opacity: 1; }
+  .tile-grid img.error { display: none; }
+  .map-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(26,27,46,0.95));
+    padding: 16px 18px 12px;
+  }
+  .map-overlay .loc-name {
+    font-size: 22px; font-weight: 800; color: #fff;
+    letter-spacing: -0.3px; margin-bottom: 4px;
+  }
+  .map-pin-marker {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -100%);
+    z-index: 2;
+  }
+  .map-pin-marker::before {
+    content: '';
+    display: block; width: 24px; height: 24px;
+    background: #ff4757;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    box-shadow: 0 2px 8px rgba(255,71,87,0.5);
+  }
+  .map-pin-marker::after {
+    content: '';
+    position: absolute; top: 5px; left: 8px;
+    width: 8px; height: 8px;
+    background: #fff;
+    border-radius: 50%;
+  }
+  .map-attribution {
+    position: absolute; bottom: 2px; right: 6px;
+    font-size: 9px; color: rgba(255,255,255,0.3);
+    z-index: 3;
+  }
+  .map-attribution a { color: rgba(255,255,255,0.4); text-decoration: none; }
+
+  .detail-body { padding: 16px 18px; }
+  .badge-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; padding: 3px 10px; border-radius: 20px;
+  }
+  .badge-landmark { background: #ff475720; color: #ff6b7a; }
+  .badge-river { background: #1e90ff20; color: #5ab0ff; }
+  .badge-mountain { background: #8b5cf620; color: #a78bfa; }
+  .badge-desert { background: #f59e0b20; color: #fbbf24; }
+  .badge-city { background: #10b98120; color: #34d399; }
+  .badge-ocean { background: #0ea5e920; color: #38bdf8; }
+  .badge-island { background: #14b8a620; color: #2dd4bf; }
+  .badge-waterfall { background: #3b82f620; color: #60a5fa; }
+  .badge-region { background: #6366f120; color: #818cf8; }
+  .badge-country { background: #ec489920; color: #f472b6; }
+  .badge-continent { background: #8b5cf620; color: #a78bfa; }
+
+  .badge-africa { background: #f59e0b15; color: #d4a04a; }
+  .badge-asia { background: #ef444415; color: #e87575; }
+  .badge-europe { background: #3b82f615; color: #6b9fda; }
+  .badge-namerica { background: #10b98115; color: #4db893; }
+  .badge-samerica { background: #8b5cf615; color: #a080d0; }
+  .badge-oceania { background: #0ea5e915; color: #4bb8d8; }
+  .badge-antarctica { background: #94a3b815; color: #9aa8b8; }
+  .badge-arctic { background: #e2e8f015; color: #b0b8c8; }
+
+  .coords-line {
+    font-size: 11px; font-family: 'SF Mono', Menlo, monospace;
+    color: #6a6b8e; margin-bottom: 14px;
+  }
+  .detail-info {
+    font-size: 13px; line-height: 1.65; color: #b0b1d0;
+    margin-bottom: 14px;
+  }
+  .fun-fact {
+    background: #2a2b48; border-radius: 8px; padding: 10px 14px;
+    border-left: 3px solid #5b6abf;
+  }
+  .fun-fact-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: #5b6abf; margin-bottom: 4px;
+  }
+  .fun-fact-text { font-size: 12px; line-height: 1.55; color: #9a9bc0; }
+
+  .compare-view { display: none; }
+  .compare-view.active { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .compare-view .detail-card { margin-bottom: 0; }
+  .compare-view .detail-map-area { height: 140px; }
+  .compare-view .map-overlay .loc-name { font-size: 16px; }
+
+  #browse-view { }
+  .continent-section { margin-bottom: 16px; }
+  .continent-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.2px; color: #55567a;
+    padding: 0 4px 8px; border-bottom: 1px solid #2a2b48;
+    margin-bottom: 10px;
+  }
+  .loc-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+  }
+  .loc-card {
+    background: #22233a; border-radius: 8px; padding: 10px 12px;
+    border: 1px solid #2e2f4a; cursor: pointer;
+    transition: all 0.2s; position: relative;
+    border-left: 3px solid #3a3b5e;
+  }
+  .loc-card:hover { border-color: #4a4b6e; background: #282944; transform: translateY(-1px); }
+  .loc-card .loc-card-name {
+    font-size: 12px; font-weight: 700; color: #e0e0f0;
+    margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .loc-card .loc-card-cat {
+    font-size: 9px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.6px; color: #6a6b8e;
+  }
+  .loc-card[data-cat="landmark"] { border-left-color: #ff4757; }
+  .loc-card[data-cat="river"] { border-left-color: #1e90ff; }
+  .loc-card[data-cat="mountain"] { border-left-color: #8b5cf6; }
+  .loc-card[data-cat="desert"] { border-left-color: #f59e0b; }
+  .loc-card[data-cat="city"] { border-left-color: #10b981; }
+  .loc-card[data-cat="ocean"] { border-left-color: #0ea5e9; }
+  .loc-card[data-cat="island"] { border-left-color: #14b8a6; }
+  .loc-card[data-cat="waterfall"] { border-left-color: #3b82f6; }
+  .loc-card[data-cat="region"] { border-left-color: #6366f1; }
+  .loc-card[data-cat="country"] { border-left-color: #ec4899; }
+  .loc-card[data-cat="continent"] { border-left-color: #8b5cf6; }
+
+  .no-results {
+    text-align: center; padding: 40px 20px;
+    color: #55567a; font-size: 13px;
+  }
+
+  @media (max-width: 500px) {
+    .compare-view.active { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="container">
+  <div id="header">
+    <div class="pin-icon"></div>
+    <span class="title">Map Explorer</span>
+    <span class="subtitle" id="header-status">30 locations</span>
+  </div>
+
+  <div id="search-bar">
+    <input type="text" id="search-input" placeholder="Search locations..." autocomplete="off" />
+    <button id="back-btn">Back</button>
+  </div>
+
+  <div id="content">
+    <div id="detail-view" class="location-detail"></div>
+    <div id="compare-wrapper">
+      <div id="compare-view" class="compare-view"></div>
+    </div>
+    <div id="browse-view"></div>
+  </div>
+</div>
+
+<script>
+// ===== Location Database =====
+const LOCATIONS = {
+  "great wall of china": {
+    lat: 40.4319, lng: 116.5704, zoom: 6,
+    info: "The Great Wall of China stretches over 13,000 miles across northern China, built over many centuries to protect against invasions. It is the longest structure ever built by humans and a UNESCO World Heritage Site.",
+    funFact: "Contrary to popular myth, the Great Wall cannot be seen from space with the naked eye. However, it can be spotted from low Earth orbit with aid.",
+    category: "landmark", continent: "Asia"
+  },
+  "eiffel tower": {
+    lat: 48.8584, lng: 2.2945, zoom: 15,
+    info: "The Eiffel Tower is a wrought-iron lattice tower in Paris, built in 1889 for the World's Fair. Standing 330 meters tall, it was the world's tallest structure for 41 years.",
+    funFact: "The tower was originally intended to stand for only 20 years but was saved because it proved valuable as a radio transmission tower.",
+    category: "landmark", continent: "Europe"
+  },
+  "pyramids of giza": {
+    lat: 29.9792, lng: 31.1342, zoom: 14,
+    info: "The Pyramids of Giza are ancient monumental tombs built around 2560 BC for Egyptian pharaohs. The Great Pyramid was the tallest man-made structure for over 3,800 years.",
+    funFact: "The Great Pyramid contains roughly 2.3 million stone blocks, each weighing an average of 2.5 tons. The precision of the construction is within millimeters.",
+    category: "landmark", continent: "Africa"
+  },
+  "machu picchu": {
+    lat: -13.1631, lng: -72.5450, zoom: 14,
+    info: "Machu Picchu is a 15th-century Incan citadel set high in the Andes Mountains of Peru. It was built for Incan emperor Pachacuti and abandoned a century later during the Spanish Conquest.",
+    funFact: "No wheels were used to transport the heavy stones up the mountain. The Incas moved massive rocks by the hundreds without wheeled transport or iron tools.",
+    category: "landmark", continent: "South America"
+  },
+  "grand canyon": {
+    lat: 36.1069, lng: -112.1129, zoom: 10,
+    info: "The Grand Canyon in Arizona is a steep-sided gorge carved by the Colorado River over millions of years. It is 277 miles long, up to 18 miles wide, and over a mile deep.",
+    funFact: "The rocks at the bottom of the Grand Canyon are nearly 2 billion years old, representing almost half of Earth's estimated age.",
+    category: "landmark", continent: "North America"
+  },
+  "amazon river": {
+    lat: -3.4653, lng: -58.3800, zoom: 6,
+    info: "The Amazon River is the largest river by discharge volume of water and the second longest in the world. It flows through South America, draining an area the size of Australia.",
+    funFact: "The Amazon produces about 20% of the world's river water that flows into oceans. During wet season, its mouth can be 300 miles wide.",
+    category: "river", continent: "South America"
+  },
+  "sahara desert": {
+    lat: 23.4162, lng: 25.6628, zoom: 5,
+    info: "The Sahara is the largest hot desert in the world, spanning 3.6 million square miles across North Africa. Despite its harsh conditions, it is home to several million people.",
+    funFact: "The Sahara was once a lush green region. About 10,000 years ago, it had rivers, lakes, and abundant vegetation. Climate cycles cause it to green roughly every 20,000 years.",
+    category: "desert", continent: "Africa"
+  },
+  "great barrier reef": {
+    lat: -18.2871, lng: 147.6992, zoom: 6,
+    info: "The Great Barrier Reef off the coast of Queensland, Australia is the world's largest coral reef system, stretching over 1,400 miles. It is visible from outer space.",
+    funFact: "The reef is composed of over 2,900 individual reef systems and 900 islands, and supports around 1,500 species of fish and 400 types of coral.",
+    category: "ocean", continent: "Oceania"
+  },
+  "mount everest": {
+    lat: 27.9881, lng: 86.9250, zoom: 10,
+    info: "Mount Everest, at 29,032 feet, is the highest point on Earth above sea level. Located in the Himalayas on the border of Nepal and Tibet, it attracts hundreds of climbers each year.",
+    funFact: "Everest grows about 4 millimeters taller each year due to geological forces. The mountain's peak is roughly the cruising altitude of a commercial jet.",
+    category: "mountain", continent: "Asia"
+  },
+  "niagara falls": {
+    lat: 43.0962, lng: -79.0377, zoom: 13,
+    info: "Niagara Falls is a group of three waterfalls straddling the border between Ontario, Canada and New York, USA. It has the highest flow rate of any waterfall in North America.",
+    funFact: "About 750,000 US gallons of water flow over the falls every second. The falls erode upstream at roughly one foot per year.",
+    category: "waterfall", continent: "North America"
+  },
+  "colosseum": {
+    lat: 41.8902, lng: 12.4922, zoom: 15,
+    info: "The Colosseum in Rome is an ancient amphitheatre built in AD 70-80 that could seat 50,000 spectators. It hosted gladiatorial contests, public spectacles, and dramas.",
+    funFact: "The Colosseum had a retractable awning system called a velarium that could shade spectators from the sun, operated by a team of 1,000 sailors.",
+    category: "landmark", continent: "Europe"
+  },
+  "taj mahal": {
+    lat: 27.1751, lng: 78.0421, zoom: 15,
+    info: "The Taj Mahal in Agra, India is an ivory-white marble mausoleum built by Mughal emperor Shah Jahan in memory of his wife Mumtaz Mahal. Completed in 1653, it took 22 years to build.",
+    funFact: "The four minarets are slightly tilted outward so that in the event of an earthquake, they would fall away from the main tomb rather than onto it.",
+    category: "landmark", continent: "Asia"
+  },
+  "statue of liberty": {
+    lat: 40.6892, lng: -74.0445, zoom: 14,
+    info: "The Statue of Liberty on Liberty Island in New York Harbor was a gift from France to the United States, dedicated in 1886. It stands 305 feet tall from ground to torch tip.",
+    funFact: "The statue's copper skin is only 3/32 of an inch thick, about the thickness of two pennies. Its green patina took about 20 years to develop.",
+    category: "landmark", continent: "North America"
+  },
+  "big ben": {
+    lat: 51.5007, lng: -0.1246, zoom: 15,
+    info: "Big Ben is the nickname for the Great Bell of the Great Clock at the north end of the Palace of Westminster in London. The Elizabeth Tower housing it stands 316 feet tall.",
+    funFact: "The clock is regulated by a stack of old penny coins on the pendulum. Adding or removing a penny changes the clock's speed by 0.4 seconds per day.",
+    category: "landmark", continent: "Europe"
+  },
+  "sydney opera house": {
+    lat: -33.8568, lng: 151.2153, zoom: 15,
+    info: "The Sydney Opera House is a multi-venue performing arts center in Sydney, Australia. Its distinctive sail-shaped roofs make it one of the most recognizable buildings of the 20th century.",
+    funFact: "The roof is covered by 1,056,006 tiles. Despite its name, the Opera House's largest venue is actually a concert hall, not an opera theatre.",
+    category: "landmark", continent: "Oceania"
+  },
+  "antarctica": {
+    lat: -82.8628, lng: 135.0000, zoom: 3,
+    info: "Antarctica is Earth's southernmost continent, containing the South Pole. It is the coldest, driest, and windiest continent, with ice averaging 1.6 miles thick.",
+    funFact: "Antarctica holds about 70% of the world's fresh water in its ice sheet. If it all melted, sea levels would rise approximately 200 feet.",
+    category: "continent", continent: "Antarctica"
+  },
+  "north pole": {
+    lat: 90.0000, lng: 0.0000, zoom: 3,
+    info: "The Geographic North Pole is the northernmost point on Earth, located in the middle of the Arctic Ocean amid waters that are almost permanently covered with sea ice.",
+    funFact: "At the North Pole, all directions point south. The sun rises once and sets once per year, creating six months of continuous daylight and six months of darkness.",
+    category: "region", continent: "Arctic"
+  },
+  "dead sea": {
+    lat: 31.5, lng: 35.5, zoom: 10,
+    info: "The Dead Sea is a salt lake bordered by Jordan to the east and Israel and the West Bank to the west. Its surface is 1,412 feet below sea level, the lowest land elevation on Earth.",
+    funFact: "The Dead Sea is 9.6 times as salty as the ocean, making it one of the saltiest bodies of water on Earth. The extreme salinity allows people to float effortlessly.",
+    category: "ocean", continent: "Asia"
+  },
+  "mariana trench": {
+    lat: 11.3493, lng: 142.1996, zoom: 7,
+    info: "The Mariana Trench in the western Pacific Ocean is the deepest oceanic trench on Earth, reaching a depth of about 36,000 feet at the Challenger Deep.",
+    funFact: "If Mount Everest were dropped into the Mariana Trench, its peak would still be over a mile underwater. The water pressure at the bottom is over 1,000 atmospheres.",
+    category: "ocean", continent: "Oceania"
+  },
+  "victoria falls": {
+    lat: -17.9243, lng: 25.8572, zoom: 13,
+    info: "Victoria Falls on the border of Zambia and Zimbabwe is one of the largest waterfalls in the world, with a width of 5,604 feet and height of 354 feet. Locals call it Mosi-oa-Tunya: The Smoke That Thunders.",
+    funFact: "The spray from the falls rises up to 1,300 feet and can be seen from 30 miles away. A natural pool called Devil's Pool sits right at the edge of the falls.",
+    category: "waterfall", continent: "Africa"
+  },
+  "nile river": {
+    lat: 26.8206, lng: 30.8025, zoom: 5,
+    info: "The Nile River flows northward through northeastern Africa for about 4,132 miles, making it one of the longest rivers in the world. It was the lifeline of ancient Egyptian civilization.",
+    funFact: "The Nile is one of the few major rivers that flows from south to north. Ancient Egyptians developed their calendar based on the Nile's annual flood cycle.",
+    category: "river", continent: "Africa"
+  },
+  "mississippi river": {
+    lat: 32.3547, lng: -90.8779, zoom: 5,
+    info: "The Mississippi River is the second-longest river in North America, flowing 2,320 miles from Minnesota to the Gulf of Mexico. Its drainage basin covers 31 US states.",
+    funFact: "A single drop of water takes about 90 days to travel the full length of the Mississippi. The river carries an estimated 500 million tons of sediment each year.",
+    category: "river", continent: "North America"
+  },
+  "himalayas": {
+    lat: 28.5983, lng: 83.9311, zoom: 6,
+    info: "The Himalayas are a mountain range in Asia separating the plains of the Indian subcontinent from the Tibetan Plateau. The range is home to the world's highest peaks, including Mount Everest.",
+    funFact: "The Himalayas are still rising at a rate of about 5 millimeters per year due to the ongoing collision between the Indian and Eurasian tectonic plates.",
+    category: "mountain", continent: "Asia"
+  },
+  "alps": {
+    lat: 46.8182, lng: 8.2275, zoom: 7,
+    info: "The Alps stretch 750 miles across eight European countries. They are the highest and most extensive mountain range in Europe, with Mont Blanc at 15,774 feet as its highest peak.",
+    funFact: "The Alps were a major barrier in European history. Hannibal famously crossed them with war elephants in 218 BC to attack Rome from the north.",
+    category: "mountain", continent: "Europe"
+  },
+  "galapagos islands": {
+    lat: -0.9538, lng: -90.9656, zoom: 8,
+    info: "The Galapagos Islands are a volcanic archipelago in the Pacific Ocean, about 600 miles off the coast of Ecuador. They inspired Charles Darwin's theory of evolution by natural selection.",
+    funFact: "Marine iguanas found here are the only lizards in the world that swim in the ocean. Giant tortoises on the islands can live over 100 years.",
+    category: "island", continent: "South America"
+  },
+  "iceland": {
+    lat: 64.9631, lng: -19.0208, zoom: 6,
+    info: "Iceland is a Nordic island country in the North Atlantic, known for its dramatic volcanic landscape of geysers, hot springs, lava fields, and glaciers. It sits on the Mid-Atlantic Ridge.",
+    funFact: "Iceland has no mosquitoes despite having many other insects. It produces more electricity per capita than any other country, almost entirely from renewable sources.",
+    category: "country", continent: "Europe"
+  },
+  "tokyo": {
+    lat: 35.6762, lng: 139.6503, zoom: 11,
+    info: "Tokyo is the capital of Japan and one of the world's most populous metropolitan areas with over 37 million people. It blends ultramodern technology with traditional temples and gardens.",
+    funFact: "Tokyo's Shinjuku Station is the busiest train station in the world, handling over 3.5 million passengers per day. The city has more Michelin-starred restaurants than any other.",
+    category: "city", continent: "Asia"
+  },
+  "new york": {
+    lat: 40.7128, lng: -74.0060, zoom: 11,
+    info: "New York City is the most populous city in the United States with over 8 million residents. Its five boroughs sit at the mouth of the Hudson River and the city is a global hub for finance, culture, and media.",
+    funFact: "More than 800 languages are spoken in New York City, making it the most linguistically diverse city on the planet. The subway system has 472 stations.",
+    category: "city", continent: "North America"
+  },
+  "paris": {
+    lat: 48.8566, lng: 2.3522, zoom: 12,
+    info: "Paris is the capital of France and one of Europe's major centers of finance, art, fashion, and gastronomy. The City of Light has been a leading cultural center since the 17th century.",
+    funFact: "Paris has only one stop sign in the entire city. The Louvre Museum would require 100 days to see every piece of art if you spent 30 seconds on each.",
+    category: "city", continent: "Europe"
+  },
+  "london": {
+    lat: 51.5074, lng: -0.1278, zoom: 11,
+    info: "London is the capital of England and the United Kingdom, with a history spanning nearly two millennia. It is one of the world's most visited cities, known for its museums, theatres, and landmarks.",
+    funFact: "London's underground railway system, the Tube, was the world's first underground railway, opening in 1863. The city has over 170 museums, many of which are free.",
+    category: "city", continent: "Europe"
+  }
+};
+
+// ===== Tile Math =====
+function lonToTileX(lon, zoom) {
+  return Math.floor((lon + 180) / 360 * Math.pow(2, zoom));
+}
+function latToTileY(lat, zoom) {
+  const latRad = lat * Math.PI / 180;
+  return Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, zoom));
+}
+
+function getTileUrls(lat, lng, zoom) {
+  const z = Math.min(Math.max(Math.round(zoom), 1), 17);
+  const centerX = lonToTileX(lng, z);
+  const centerY = latToTileY(lat, z);
+  const tiles = [];
+  for (let dy = -1; dy <= 0; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const x = centerX + dx;
+      const y = centerY + dy;
+      if (x >= 0 && y >= 0) {
+        tiles.push('https://tile.openstreetmap.org/' + z + '/' + x + '/' + y + '.png');
+      }
+    }
+  }
+  return tiles;
+}
+
+// ===== Plugin Bridge =====
+let nonce = '';
+let currentView = { type: 'browse', location: null, locations: null };
+
+window.parent.postMessage({ type: 'PLUGIN_READY', nonce: '' }, '*');
+
+window.addEventListener('message', function(event) {
+  var msg = event.data;
+  if (!msg || !msg.type) return;
+
+  if (msg.type === 'PLUGIN_INIT') {
+    nonce = msg.nonce;
+  }
+
+  if (msg.type === 'TOOL_INVOKE') {
+    handleTool(msg);
+  }
+});
+
+function sendResult(callId, result) {
+  window.parent.postMessage({ type: 'TOOL_RESULT', nonce: nonce, callId: callId, result: result }, '*');
+}
+
+function handleTool(msg) {
+  var callId = msg.callId;
+  var tool = msg.tool;
+  var params = msg.params || {};
+
+  switch (tool) {
+    case 'show_location': {
+      var loc = findLocation(params.query);
+      if (loc) {
+        showLocation(loc.key, loc.data, params.zoom);
+        sendResult(callId, { success: true, location: loc.key, lat: loc.data.lat, lng: loc.data.lng });
+      } else {
+        sendResult(callId, { success: false, error: 'Location "' + params.query + '" not found in database' });
+      }
+      break;
+    }
+    case 'show_region': {
+      var loc2 = findLocation(params.region);
+      if (loc2) {
+        showLocation(loc2.key, loc2.data);
+        sendResult(callId, { success: true, region: loc2.key });
+      } else {
+        sendResult(callId, { success: false, error: 'Region "' + params.region + '" not found' });
+      }
+      break;
+    }
+    case 'compare_locations': {
+      var l1 = findLocation(params.location1);
+      var l2 = findLocation(params.location2);
+      if (l1 && l2) {
+        showCompare(l1, l2);
+        sendResult(callId, { success: true, location1: l1.key, location2: l2.key });
+      } else {
+        var missing = [];
+        if (!l1) missing.push(params.location1);
+        if (!l2) missing.push(params.location2);
+        sendResult(callId, { success: false, error: 'Could not find: ' + missing.join(', ') });
+      }
+      break;
+    }
+    case 'get_current_view': {
+      sendResult(callId, currentView);
+      break;
+    }
+    case 'finish': {
+      sendResult(callId, { success: true });
+      break;
+    }
+    default:
+      sendResult(callId, { error: 'Unknown tool: ' + tool });
+  }
+}
+
+// ===== Location Lookup =====
+function findLocation(query) {
+  if (!query) return null;
+  var q = query.toLowerCase().trim();
+
+  if (LOCATIONS[q]) return { key: q, data: LOCATIONS[q] };
+
+  for (var key in LOCATIONS) {
+    if (key.indexOf(q) !== -1 || q.indexOf(key) !== -1) return { key: key, data: LOCATIONS[key] };
+  }
+
+  var words = q.split(/\s+/);
+  for (var key2 in LOCATIONS) {
+    var keyWords = key2.split(/\s+/);
+    for (var i = 0; i < words.length; i++) {
+      for (var j = 0; j < keyWords.length; j++) {
+        if (words[i].length >= 3 && keyWords[j].indexOf(words[i]) === 0) {
+          return { key: key2, data: LOCATIONS[key2] };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+// ===== Display Functions =====
+function formatName(key) {
+  return key.replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
+
+function continentKey(continent) {
+  var map = {
+    'Africa': 'africa', 'Asia': 'asia', 'Europe': 'europe',
+    'North America': 'namerica', 'South America': 'samerica',
+    'Oceania': 'oceania', 'Antarctica': 'antarctica', 'Arctic': 'arctic'
+  };
+  return map[continent] || 'region';
+}
+
+function buildMapArea(data, name) {
+  var tiles = getTileUrls(data.lat, data.lng, data.zoom || 10);
+  var tileImgs = '';
+  for (var i = 0; i < tiles.length; i++) {
+    tileImgs += '<img src="' + tiles[i] + '" onload="this.classList.add(\'loaded\')" onerror="this.classList.add(\'error\')" alt="" crossorigin="anonymous" referrerpolicy="no-referrer" />';
+  }
+
+  return '<div class="detail-map-area">' +
+    '<div class="tile-grid">' + tileImgs + '</div>' +
+    '<div class="map-pin-marker"></div>' +
+    '<div class="map-overlay"><div class="loc-name">' + name + '</div></div>' +
+    '<div class="map-attribution">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div>' +
+    '</div>';
+}
+
+function buildDetailBody(data) {
+  var latDir = data.lat >= 0 ? 'N' : 'S';
+  var lngDir = data.lng >= 0 ? 'E' : 'W';
+  return '<div class="detail-body">' +
+    '<div class="badge-row">' +
+      '<span class="badge badge-' + data.category + '">' + data.category + '</span>' +
+      '<span class="badge badge-' + continentKey(data.continent) + '">' + data.continent + '</span>' +
+    '</div>' +
+    '<div class="coords-line">' + Math.abs(data.lat).toFixed(4) + latDir + ', ' + Math.abs(data.lng).toFixed(4) + lngDir + '</div>' +
+    '<div class="detail-info">' + data.info + '</div>' +
+    '<div class="fun-fact">' +
+      '<div class="fun-fact-label">Fun Fact</div>' +
+      '<div class="fun-fact-text">' + data.funFact + '</div>' +
+    '</div>' +
+    '</div>';
+}
+
+function showLocation(key, data, overrideZoom) {
+  var d = overrideZoom ? Object.assign({}, data, { zoom: overrideZoom }) : data;
+  var name = formatName(key);
+
+  document.getElementById('detail-view').innerHTML =
+    '<div class="detail-card">' + buildMapArea(d, name) + buildDetailBody(d) + '</div>';
+  document.getElementById('detail-view').classList.add('active');
+  document.getElementById('compare-view').classList.remove('active');
+  document.getElementById('compare-view').innerHTML = '';
+  document.getElementById('browse-view').style.display = 'none';
+  document.getElementById('back-btn').style.display = 'block';
+  document.getElementById('header-status').textContent = name;
+
+  currentView = { type: 'location', location: key, lat: data.lat, lng: data.lng };
+  window.scrollTo(0, 0);
+}
+
+function showCompare(loc1, loc2) {
+  var name1 = formatName(loc1.key);
+  var name2 = formatName(loc2.key);
+
+  document.getElementById('compare-view').innerHTML =
+    '<div class="detail-card">' + buildMapArea(loc1.data, name1) + buildDetailBody(loc1.data) + '</div>' +
+    '<div class="detail-card">' + buildMapArea(loc2.data, name2) + buildDetailBody(loc2.data) + '</div>';
+  document.getElementById('compare-view').classList.add('active');
+  document.getElementById('detail-view').classList.remove('active');
+  document.getElementById('detail-view').innerHTML = '';
+  document.getElementById('browse-view').style.display = 'none';
+  document.getElementById('back-btn').style.display = 'block';
+  document.getElementById('header-status').textContent = name1 + ' vs ' + name2;
+
+  currentView = { type: 'compare', locations: [loc1.key, loc2.key] };
+  window.scrollTo(0, 0);
+}
+
+function showBrowse(filter) {
+  document.getElementById('detail-view').classList.remove('active');
+  document.getElementById('detail-view').innerHTML = '';
+  document.getElementById('compare-view').classList.remove('active');
+  document.getElementById('compare-view').innerHTML = '';
+  document.getElementById('browse-view').style.display = 'block';
+  document.getElementById('back-btn').style.display = 'none';
+  document.getElementById('header-status').textContent = '30 locations';
+
+  var groups = {};
+  var continentOrder = ['Europe', 'Asia', 'North America', 'South America', 'Africa', 'Oceania', 'Antarctica', 'Arctic'];
+
+  for (var key in LOCATIONS) {
+    var data = LOCATIONS[key];
+    var name = formatName(key);
+    if (filter && name.toLowerCase().indexOf(filter) === -1 && data.category.indexOf(filter) === -1 && data.continent.toLowerCase().indexOf(filter) === -1) {
+      continue;
+    }
+    if (!groups[data.continent]) groups[data.continent] = [];
+    groups[data.continent].push({ key: key, data: data, name: name });
+  }
+
+  var html = '';
+  var totalShown = 0;
+
+  for (var ci = 0; ci < continentOrder.length; ci++) {
+    var continent = continentOrder[ci];
+    if (!groups[continent] || groups[continent].length === 0) continue;
+    groups[continent].sort(function(a, b) { return a.name.localeCompare(b.name); });
+    totalShown += groups[continent].length;
+    html += '<div class="continent-section">';
+    html += '<div class="continent-label">' + continent + '</div>';
+    html += '<div class="loc-grid">';
+    for (var li = 0; li < groups[continent].length; li++) {
+      var loc = groups[continent][li];
+      html += '<div class="loc-card" data-cat="' + loc.data.category + '" data-key="' + loc.key + '">' +
+        '<div class="loc-card-name">' + loc.name + '</div>' +
+        '<div class="loc-card-cat">' + loc.data.category + '</div>' +
+        '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  if (totalShown === 0) {
+    html = '<div class="no-results">No locations match "' + filter + '"</div>';
+  }
+
+  if (filter) {
+    document.getElementById('header-status').textContent = totalShown + ' result' + (totalShown !== 1 ? 's' : '');
+  }
+
+  document.getElementById('browse-view').innerHTML = html;
+  currentView = { type: 'browse', location: null };
+
+  var cards = document.querySelectorAll('.loc-card');
+  for (var ci2 = 0; ci2 < cards.length; ci2++) {
+    cards[ci2].addEventListener('click', function() {
+      var k = this.dataset.key;
+      if (LOCATIONS[k]) {
+        showLocation(k, LOCATIONS[k]);
+        document.getElementById('search-input').value = '';
+      }
+    });
+  }
+}
+
+// ===== Event Listeners =====
+document.getElementById('search-input').addEventListener('input', function(e) {
+  var val = e.target.value.toLowerCase().trim();
+  showBrowse(val || '');
+});
+
+document.getElementById('back-btn').addEventListener('click', function() {
+  document.getElementById('search-input').value = '';
+  showBrowse('');
+});
+
+// ===== Init =====
+showBrowse('');
+</script>
+</body>
+</html>

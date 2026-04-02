@@ -14,6 +14,7 @@ import { runCompactionWithUIState } from '@/packages/context-management'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
 import { estimateTokensFromMessages } from '@/packages/token'
 import platform from '@/platform'
+import { executePluginChatIntent, resolvePluginChatIntent } from '@/plugins/chat-intents'
 import * as chatStore from '../chatStore'
 import * as settingActions from '../settingActions'
 import { settingsStore } from '../settingsStore'
@@ -140,6 +141,21 @@ export async function submitNewUserMessage(
 
   // 先在聊天列表中插入发送的用户消息
   await insertMessage(sessionId, newUserMsg)
+
+  const plainText = newUserMsg.contentParts
+    ?.filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join(' ')
+    .trim()
+
+  if (needGenerating && plainText) {
+    const pluginIntent = resolvePluginChatIntent(plainText)
+    if (pluginIntent) {
+      const pluginAssistantMsg = await executePluginChatIntent(sessionId, pluginIntent)
+      await insertMessage(sessionId, pluginAssistantMsg)
+      return pluginAssistantMsg
+    }
+  }
 
   const globalSettings = settingsStore.getState().getSettings()
   const isPro = settingActions.isPro()

@@ -19,13 +19,23 @@ import path from 'path'
 import * as sourceMapSupport from 'source-map-support'
 import type { ShortcutSetting } from 'src/shared/types'
 import * as analystic from './analystic-node'
+import { AppUpdater } from './app-updater'
 import * as autoLauncher from './autoLauncher'
 import { handleDeepLink } from './deeplinks'
 import { parseFile } from './file-parser'
 import Locale from './locales'
 import * as mcpIpc from './mcp/ipc-stdio-transport'
 import MenuBuilder from './menu'
+import {
+  getPlatformProxyDashboard,
+  invokePlatformProxyRest,
+  listPlatformProxyApiKeyMetadata,
+  recordPlatformProxyUsage,
+  removePlatformProxyApiKey,
+  savePlatformProxyApiKey,
+} from './platform-proxy'
 import { deletePluginAuthSecret, getPluginAuthSecret, setPluginAuthSecret } from './plugin-auth-store'
+import { inspectPluginPackage } from './plugin-drop'
 import * as proxy from './proxy'
 import {
   delStoreBlob,
@@ -648,6 +658,40 @@ ipcMain.handle('plugin-auth:set-secret', async (_event, key: string, value: stri
 })
 ipcMain.handle('plugin-auth:delete-secret', async (_event, key: string) => {
   return deletePluginAuthSecret(key)
+})
+
+ipcMain.handle('platform-proxy:record-usage', async (_event, payloadJson: string) => {
+  return recordPlatformProxyUsage(JSON.parse(payloadJson))
+})
+
+ipcMain.handle('platform-proxy:get-dashboard', async (_event, payloadJson: string) => {
+  const payload = JSON.parse(payloadJson) as { configs: Record<string, unknown> }
+  return getPlatformProxyDashboard(payload.configs as any)
+})
+
+ipcMain.handle('platform-proxy:list-api-key-metadata', async (_event, payloadJson: string) => {
+  const payload = JSON.parse(payloadJson) as { districtId: string; pluginIds: string[] }
+  return listPlatformProxyApiKeyMetadata(payload.districtId, payload.pluginIds)
+})
+
+ipcMain.handle('platform-proxy:set-api-key', async (_event, payloadJson: string) => {
+  const payload = JSON.parse(payloadJson) as { districtId: string; pluginId: string; apiKey: string }
+  await savePlatformProxyApiKey(payload.districtId, payload.pluginId, payload.apiKey)
+  return { ok: true }
+})
+
+ipcMain.handle('platform-proxy:delete-api-key', async (_event, payloadJson: string) => {
+  const payload = JSON.parse(payloadJson) as { districtId: string; pluginId: string }
+  await removePlatformProxyApiKey(payload.districtId, payload.pluginId)
+  return { ok: true }
+})
+
+ipcMain.handle('platform-proxy:invoke-rest', async (_event, payloadJson: string) => {
+  return invokePlatformProxyRest(JSON.parse(payloadJson))
+})
+
+ipcMain.handle('plugin-drop:inspect-package', async (_event, filename: string, base64: string) => {
+  return inspectPluginPackage(filename, base64)
 })
 
 ipcMain.handle('getVersion', () => {

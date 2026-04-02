@@ -5,11 +5,12 @@
  */
 
 import { Alert, Text } from '@mantine/core'
+import type { AuthStatusMessage } from '@shared/plugin-protocol'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { type FC, memo, useCallback, useEffect, useMemo } from 'react'
 import { resolvePluginEntrypoint } from '@/plugins/resolve'
+import { getPluginAuthSetupError, usePluginAuth } from '@/stores/pluginAuthStore'
 import { usePluginRegistry } from '@/stores/pluginRegistry'
-import { usePluginAuth } from '@/stores/pluginAuthStore'
 import PluginFrame from './PluginFrame'
 
 interface Props {
@@ -32,7 +33,7 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
   }, [pluginId, manifest])
 
   useEffect(() => {
-    if (!manifest?.auth) return
+    if (!manifest?.auth || manifest.auth.type === 'api-key') return
     void hydrateAuth(pluginId, manifest.auth)
   }, [pluginId, manifest?.auth, hydrateAuth])
 
@@ -44,7 +45,7 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
   }, [authSession?.status, instance, manifest?.auth, updateInstanceAuth])
 
   const handleAuthRequest = useCallback(() => {
-    if (!manifest?.auth) return
+    if (!manifest?.auth || manifest.auth.type === 'api-key') return
     void beginAuth(pluginId, manifest.auth)
   }, [beginAuth, pluginId, manifest?.auth])
 
@@ -64,35 +65,46 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
     )
   }
 
+  const setupError = manifest.auth ? getPluginAuthSetupError(pluginId, manifest.auth) : null
+
   const authConfig = manifest.auth
     ? {
         auth: {
-          status: authSession?.status || 'required',
+          status: authSession?.status || (setupError ? 'error' : 'required'),
           accessToken: authSession?.accessToken,
           expiresAt: authSession?.expiresAt,
           verificationUri: authSession?.verificationUri,
           userCode: authSession?.userCode,
+          error: authSession?.error || setupError,
         },
       }
     : undefined
 
-  const authPayload =
+  const authPayload: AuthStatusMessage | undefined =
     manifest.auth &&
     authSession &&
-    (authSession.status === 'connected' || authSession.status === 'expired' || authSession.status === 'authorizing')
+    (authSession.status === 'connected' ||
+      authSession.status === 'expired' ||
+      authSession.status === 'authorizing' ||
+      authSession.status === 'error')
       ? {
+          type: 'AUTH_STATUS',
+          nonce: instanceId,
           status:
             authSession.status === 'connected'
               ? 'connected'
               : authSession.status === 'expired'
                 ? 'expired'
-                : 'authorizing',
+                : authSession.status === 'error'
+                  ? 'error'
+                  : 'authorizing',
           authType: manifest.auth.type,
           accessToken: authSession.accessToken,
           expiresAt: authSession.expiresAt,
           metadata: {
             verificationUri: authSession.verificationUri,
             userCode: authSession.userCode,
+            error: authSession.error || setupError || undefined,
           },
         }
       : undefined

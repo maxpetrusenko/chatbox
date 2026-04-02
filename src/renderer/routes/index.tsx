@@ -16,7 +16,6 @@ import Page from '@/components/layout/Page'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { isChessLaunchRequest } from '@/lib/chess/intents'
 import { router } from '@/router'
 import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
@@ -100,16 +99,6 @@ export function Index() {
 
   const handleSubmit = useCallback(
     async ({ constructedMessage, needGenerating = true, onUserMessageReady }: InputBoxPayload) => {
-      // Check for chess launch intent before creating a chat session
-      const plainText = constructedMessage.contentParts
-        ?.filter((p) => p.type === 'text')
-        .map((p) => p.text)
-        .join(' ') ?? ''
-      if (isChessLaunchRequest(plainText)) {
-        navigate({ to: '/chess', search: { prompt: plainText, autostart: true } })
-        return
-      }
-
       const newSession = await createSessionStore({
         name: session.name,
         type: 'chat',

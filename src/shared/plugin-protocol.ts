@@ -30,7 +30,7 @@ export interface ToolInvokeMessage {
 export interface AuthStatusMessage {
   type: 'AUTH_STATUS'
   nonce: string
-  status: 'connected' | 'expired' | 'revoked' | 'authorizing'
+  status: 'connected' | 'expired' | 'revoked' | 'authorizing' | 'error'
   authType: PluginAuthType
   accessToken?: string
   expiresAt?: number

@@ -40,6 +40,7 @@
     <div class="controls">
       <button class="btn" id="btn-undo">Undo</button>
       <button class="btn" id="btn-reset">New</button>
+      <button class="btn" id="btn-exit">Exit</button>
     </div>
   </div>
   <div id="complete-area"></div>
@@ -543,6 +544,15 @@ document.getElementById('btn-reset').addEventListener('click', () => {
   initBoard();
   render();
   sendStateUpdate();
+});
+
+document.getElementById('btn-exit').addEventListener('click', () => {
+  if (!gameOver) {
+    gameOver = true;
+    gameResult = moveHistory.length > 0 ? 'Game exited early' : 'Game closed';
+  }
+  render();
+  sendCompletion();
 });
 
 // ===== PostMessage Protocol =====

@@ -1,4 +1,5 @@
 import { SystemProviders } from '@shared/defaults'
+import { hasProviderApiKey } from '@shared/providers/env'
 import { ModelProviderEnum, type ProviderInfo } from '@shared/types'
 import { useCallback, useMemo } from 'react'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -25,7 +26,7 @@ export const useProviders = () => {
               models: chatboxAIModels,
             }
           } else if (
-            (!p.isCustom && providerSettings?.apiKey) ||
+            (!p.isCustom && hasProviderApiKey(p.id, providerSettings)) ||
             ((p.isCustom || p.id === ModelProviderEnum.Ollama || p.id === ModelProviderEnum.LMStudio) &&
               providerSettings?.models?.length)
           ) {

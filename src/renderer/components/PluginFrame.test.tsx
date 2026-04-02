@@ -221,6 +221,25 @@ describe('PluginFrame', () => {
     expect(storeState.updateInstanceStatus).toHaveBeenCalledWith('inst-r', 'loading')
   })
 
+  it('collapses completed plugins back into compact chat history', () => {
+    const { container } = renderWithMantine(
+      <PluginFrame pluginId="chess" instanceId="inst-c" nonce="inst-c" entrypointUrl="/plugins/chess/ui.html" />
+    )
+
+    expect(container.querySelector('iframe')).toBeTruthy()
+
+    act(() => {
+      channelOptionsRef.current.onCompletion({
+        pluginId: 'chess',
+        instanceId: 'inst-c',
+        summary: 'Game exited early',
+      })
+    })
+
+    expect(container.querySelector('iframe')).toBeNull()
+    expect(container.textContent).toContain('Chess — completed')
+  })
+
   it('resolves TOOL_RESULT through resolvePluginToolCall and forwards outer callback', () => {
     const onToolResult = vi.fn()
 

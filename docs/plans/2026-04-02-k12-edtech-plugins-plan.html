@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>K12 EdTech Plugins — Implementation Plan</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --bg-card: #181b24;
+  --bg-card-hover: #1e2230;
+  --accent: #4f8cff;
+  --accent-dim: rgba(79, 140, 255, 0.12);
+  --accent-glow: rgba(79, 140, 255, 0.25);
+  --green: #3dd68c;
+  --green-dim: rgba(61, 214, 140, 0.12);
+  --amber: #f0a030;
+  --amber-dim: rgba(240, 160, 48, 0.12);
+  --red: #f05050;
+  --red-dim: rgba(240, 80, 80, 0.12);
+  --purple: #a78bfa;
+  --purple-dim: rgba(167, 139, 250, 0.12);
+  --cyan: #22d3ee;
+  --cyan-dim: rgba(34, 211, 238, 0.12);
+  --ink: #e4e6ed;
+  --muted: #8b8fa4;
+  --line: rgba(255,255,255,0.06);
+  --font: "SF Pro Text", "Inter", -apple-system, system-ui, sans-serif;
+  --mono: "SF Mono", "JetBrains Mono", "Fira Code", monospace;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+.container { max-width: 1200px; margin: 0 auto; padding: 40px 24px; }
+
+/* Hero */
+.hero { text-align: center; padding: 80px 0 60px; position: relative; }
+.hero::before { content:''; position:absolute; top:0; left:50%; transform:translateX(-50%); width:600px; height:600px; background:radial-gradient(circle,var(--accent-glow) 0%,transparent 70%); pointer-events:none; opacity:0.4; }
+.hero h1 { font-size:42px; font-weight:700; letter-spacing:-0.02em; margin-bottom:12px; background:linear-gradient(135deg,#fff 30%,var(--accent)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.hero .subtitle { font-size:18px; color:var(--muted); max-width:640px; margin:0 auto; }
+
+/* Badge */
+.badge { display:inline-block; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:16px; }
+.badge--blue { background:var(--accent-dim); color:var(--accent); }
+.badge--green { background:var(--green-dim); color:var(--green); }
+.badge--amber { background:var(--amber-dim); color:var(--amber); }
+.badge--red { background:var(--red-dim); color:var(--red); }
+.badge--purple { background:var(--purple-dim); color:var(--purple); }
+.badge--cyan { background:var(--cyan-dim); color:var(--cyan); }
+
+/* Section */
+h2 { font-size:28px; font-weight:700; letter-spacing:-0.01em; margin-bottom:8px; }
+h3 { font-size:18px; font-weight:600; margin-bottom:8px; }
+.section { margin-bottom:64px; }
+.section-desc { color:var(--muted); margin-bottom:32px; max-width:680px; }
+
+/* Cards */
+.card-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+.card { background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius); padding:24px; transition:background 0.2s; }
+.card:hover { background:var(--bg-card-hover); border-color:rgba(255,255,255,0.1); }
+.card h3 { margin-bottom:8px; }
+.card p { color:var(--muted); font-size:14px; }
+.card ul { color:var(--muted); font-size:14px; padding-left:18px; margin-top:8px; }
+.card ul li { margin-bottom:4px; }
+
+/* Pills */
+.pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.pill { padding:4px 12px; border-radius:16px; font-size:12px; font-weight:500; background:var(--accent-dim); color:var(--accent); }
+.pill--green { background:var(--green-dim); color:var(--green); }
+.pill--amber { background:var(--amber-dim); color:var(--amber); }
+.pill--purple { background:var(--purple-dim); color:var(--purple); }
+.pill--red { background:var(--red-dim); color:var(--red); }
+.pill--cyan { background:var(--cyan-dim); color:var(--cyan); }
+
+/* Arch diagram */
+.arch-diagram { background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius); padding:40px; overflow-x:auto; }
+.arch-diagram svg { display:block; margin:0 auto; }
+
+/* Flow */
+.flow-container { background:var(--bg-card); border:1px solid var(--line); border-radius:var(--radius); padding:32px; margin-bottom:16px; }
+
+/* Layers */
+.layer-stack { display:flex; flex-direction:column; gap:2px; }
+.layer { display:flex; align-items:center; gap:16px; padding:16px 24px; border-radius:var(--radius-sm); font-weight:500; }
+.layer .layer-label { min-width:160px; font-weight:600; font-size:14px; }
+.layer .layer-desc { color:var(--muted); font-size:13px; }
+.layer--1 { background:rgba(79,140,255,0.08); border-left:3px solid var(--accent); }
+.layer--2 { background:rgba(167,139,250,0.08); border-left:3px solid var(--purple); }
+.layer--3 { background:rgba(61,214,140,0.08); border-left:3px solid var(--green); }
+.layer--4 { background:rgba(240,160,48,0.08); border-left:3px solid var(--amber); }
+.layer--5 { background:rgba(240,80,80,0.08); border-left:3px solid var(--red); }
+.layer--6 { background:rgba(34,211,238,0.08); border-left:3px solid var(--cyan); }
+
+/* Table */
+.spec-table { width:100%; border-collapse:collapse; font-size:14px; }
+.spec-table th,.spec-table td { padding:12px 16px; text-align:left; border-bottom:1px solid var(--line); }
+.spec-table th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.05em; }
+.spec-table tr:hover td { background:rgba(255,255,255,0.02); }
+.check { color:var(--green); font-weight:700; }
+.dash { color:var(--muted); opacity:0.4; }
+
+/* Decision box */
+.decision-box { background:var(--bg-card); border:2px solid var(--accent); border-radius:var(--radius); padding:24px; margin-top:24px; }
+.decision-box h3 { color:var(--accent); margin-bottom:12px; }
+.decision-box ol { padding-left:20px; }
+.decision-box li { margin-bottom:8px; color:var(--muted); font-size:14px; }
+
+/* Nav */
+.toc { position:fixed; right:24px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:8px; z-index:100; }
+.toc a { display:block; width:10px; height:10px; border-radius:50%; background:var(--line); transition:background 0.2s,transform 0.2s; }
+.toc a:hover,.toc a.active { background:var(--accent); transform:scale(1.3); }
+
+@media (max-width:768px) { .hero h1 { font-size:28px; } .card-grid { grid-template-columns:1fr; } .toc { display:none; } }
+</style>
+</head>
+<body>
+
+<nav class="toc">
+  <a href="#catalog" title="Plugin Catalog"></a>
+  <a href="#drop-flow" title="Drop Flow"></a>
+  <a href="#api-keys" title="API Key Model"></a>
+  <a href="#proxy" title="Platform Proxy"></a>
+  <a href="#setup-ux" title="Setup UX"></a>
+  <a href="#specs" title="Plugin Specs"></a>
+  <a href="#arch" title="Architecture"></a>
+  <a href="#phases" title="Phases"></a>
+  <a href="#confirm" title="Confirm"></a>
+</nav>
+
+<div class="container">
+
+<!-- HERO -->
+<header class="hero">
+  <span class="badge badge--cyan">Implementation Plan</span>
+  <h1>K12 EdTech Plugins</h1>
+  <p class="subtitle">GeoGebra, Desmos, PhET, Google Maps, Scratch, Wolfram Alpha, and more. Real educational tools embedded in chat with AI-controlled APIs.</p>
+</header>
+
+<!-- ================================================== -->
+<!-- SECTION: PLUGIN CATALOG -->
+<!-- ================================================== -->
+<section class="section" id="catalog">
+  <h2>Plugin Catalog</h2>
+  <p class="section-desc">9 real EdTech tools across 3 integration tiers. Every plugin follows the existing manifest + iframe + bridge pattern.</p>
+
+  <!-- Tier 1 -->
+  <h3 style="color:var(--green); margin-bottom:16px;">Tier 1: iframe + AI Control (JS API)</h3>
+  <div class="card-grid" style="margin-bottom:32px;">
+    <div class="card" style="border-color:var(--green);">
+      <span class="badge badge--green">Tier 1</span>
+      <h3>GeoGebra</h3>
+      <p>Graphing, geometry, 3D, CAS, spreadsheet. Full JS API with <code>evalCommand()</code>. No auth required.</p>
+      <div class="pills">
+        <span class="pill pill--green">no auth</span>
+        <span class="pill pill--green">JS API</span>
+        <span class="pill">free</span>
+        <span class="pill">K-5 through 9-12</span>
+      </div>
+      <ul>
+        <li><strong>Tools:</strong> plot_equation, create_geometry, evaluate_expression, export_image, get_state</li>
+        <li><strong>Embed:</strong> <code>geogebra.org/material/iframe/id/ID</code> or JS API via <code>deployggb.js</code></li>
+        <li><strong>AI control:</strong> <code>evalCommand("y = x^2")</code>, show/hide objects, set variable values</li>
+        <li><strong>Setup:</strong> Zero config. No API key. Just embed.</li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-color:var(--green);">
+      <span class="badge badge--green">Tier 1</span>
+      <h3>Desmos</h3>
+      <p>Graphing calculator. Full JS API for programmatic expression control, screenshots, state persistence.</p>
+      <div class="pills">
+        <span class="pill pill--amber">API key</span>
+        <span class="pill pill--green">JS API</span>
+        <span class="pill">free for edu</span>
+        <span class="pill">6-8, 9-12</span>
+      </div>
+      <ul>
+        <li><strong>Tools:</strong> set_expression, get_expressions, screenshot, set_bounds, save_state, load_state</li>
+        <li><strong>Embed:</strong> JS API via <code>calculator.js?apiKey=KEY</code></li>
+        <li><strong>AI control:</strong> <code>setExpression({latex: "y=sin(x)"})</code>, full state read/write</li>
+        <li><strong>Setup:</strong> School provides API key (free from desmos.com/api)</li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-color:var(--green);">
+      <span class="badge badge--green">Tier 1</span>
+      <h3>Flat.io</h3>
+      <p>Music notation editor. JS SDK for playback, navigation, score loading. OAuth2 for editing.</p>
+      <div class="pills">
+        <span class="pill pill--purple">OAuth2</span>
+        <span class="pill pill--green">JS SDK</span>
+        <span class="pill">free tier</span>
+        <span class="pill">K-5, 6-8</span>
+      </div>
+      <ul>
+        <li><strong>Tools:</strong> load_score, play, pause, go_to_measure, get_notation, create_score</li>
+        <li><strong>Embed:</strong> iframe + JS SDK via <code>flat-embed</code> npm package</li>
+        <li><strong>AI control:</strong> <code>embed.loadFlatScore(id)</code>, playback, navigation</li>
+        <li><strong>Setup:</strong> App ID (free) for embed. OAuth2 for edit (teacher connects)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Tier 2 -->
+  <h3 style="color:var(--accent); margin-bottom:16px;">Tier 2: iframe Display (AI builds URL / embeds content)</h3>
+  <div class="card-grid" style="margin-bottom:32px;">
+    <div class="card">
+      <span class="badge badge--blue">Tier 2</span>
+      <h3>PhET Simulations</h3>
+      <p>150+ science sims: physics, chemistry, biology, earth science, math. HTML5. Completely free.</p>
+      <div class="pills">
+        <span class="pill pill--green">no auth</span>
+        <span class="pill">display only</span>
+        <span class="pill">free</span>
+        <span class="pill">K-5 through 9-12</span>
+      </div>
+      <ul>
+        <li><strong>Tools:</strong> launch_simulation, list_simulations, search_by_topic</li>
+        <li><strong>Embed:</strong> <code>phet.colorado.edu/sims/html/SIM/latest/SIM_en.html</code></li>
+        <li><strong>AI role:</strong> Pick the right sim based on topic, build embed URL, explain concepts alongside</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <span class="badge badge--blue">Tier 2</span>
+      <h3>Google Maps</h3>
+      <p>Geography, history, earth science reference. Free unlimited embed API.</p>
+      <div class="pills">
+        <span class="pill pill--amber">API key</span>
+        <span class="pill">display only</span>
+        <span class="pill">free unlimited</span>
+        <span class="pill">all grades</span>
+      </div>
+      <ul>
+        <li><strong>Tools:</strong> show_place, show_directions, show_streetview, search_location</li>
+        <li><strong>Embed:</strong> <code>google.com/maps/embed/v1/place?key=KEY&q=QUERY</code></li>
+        <li><strong>AI role:</strong> Build embed URL from query. "Show me the Nile River" → place embed</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <span class="badge badge--blue">Tier 2</span>
+      <h3>Scratch</h3>
+      <p>Block-based coding projects. Embed student work. COPPA-compliant. Ages 8+.</p>
+      <div class="pills">
+        <span class="pill pill--green">no auth</span>
+        <span class="pill">display only</span>
+        <span class="pill">free</span>
+        <span class="pill">K-5, 6-8</span>
+      </div>
+      <ul>
+        <li><strong>Tools:</strong> embed_project, search_projects, get_project_info</li>
+        <li><strong>Embed:</strong> <code>scratch.mit.edu/projects/ID/embed</code></li>
+        <li><strong>AI role:</strong> Search projects by topic, embed for review/discussion</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <span class="badge badge--blue">Tier 2</span>
+      <h3>Internet Archive</h3>
+      <p>Public domain books. Classic literature, historical texts, K-12 collection.</p>
+      <div class="pills">
+        <span class="pill pill--green">no auth</span>
+        <span class="pill">display only</span>
+        <span class="pill">free</span>
+        <span class="pill">6-8, 9-12</span>
+      </div>
+      <ul>
+        <li><strong>Tools:</strong> search_books, open_book, get_book_info</li>
+        <li><strong>Embed:</strong> <code>archive.org/stream/ID?ui=embed</code></li>
+        <li><strong>AI role:</strong> Find a book, open to specific page, discuss alongside</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Tier 3 / API-only shown as supplementary -->
+  <h3 style="color:var(--purple); margin-bottom:16px;">Bonus: REST API Tools (AI calls, returns data to chat)</h3>
+  <div class="card-grid">
+    <div class="card">
+      <span class="badge badge--purple">API</span>
+      <h3>Wolfram Alpha</h3>
+      <p>Math/science computation engine. "Solve 2x+5=15" → structured answer.</p>
+      <div class="pills">
+        <span class="pill pill--amber">API key</span>
+        <span class="pill pill--purple">REST only</span>
+        <span class="pill">2k/mo free</span>
+      </div>
+    </div>
+    <div class="card">
+      <span class="badge badge--purple">API</span>
+      <h3>Merriam-Webster</h3>
+      <p>Dictionary + thesaurus. Definitions, synonyms, pronunciation.</p>
+      <div class="pills">
+        <span class="pill pill--amber">API key</span>
+        <span class="pill pill--purple">REST only</span>
+        <span class="pill">1k/day free</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: DROP FLOW -->
+<!-- ================================================== -->
+<section class="section" id="drop-flow">
+  <h2>Plugin Drop Flow</h2>
+  <p class="section-desc">School/teacher drops a plugin. AI checks it. Green check. Setup step collects what's needed.</p>
+
+  <div class="arch-diagram">
+    <svg viewBox="0 0 1100 520" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:1060px">
+      <!-- Step 1: Drop -->
+      <rect x="20" y="40" width="160" height="90" rx="12" fill="rgba(61,214,140,0.1)" stroke="#3dd68c" stroke-width="1.5"/>
+      <text x="44" y="70" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">1. DROP</text>
+      <text x="36" y="94" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Teacher/admin selects</text>
+      <text x="36" y="108" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">from catalog or pastes</text>
+      <text x="36" y="122" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">manifest URL</text>
+
+      <!-- Step 2: AI Check -->
+      <rect x="220" y="40" width="160" height="90" rx="12" fill="rgba(240,80,80,0.1)" stroke="#f05050" stroke-width="1.5"/>
+      <text x="240" y="70" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">2. AI CHECK</text>
+      <text x="236" y="94" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Safety scan</text>
+      <text x="236" y="108" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Trust level check</text>
+      <text x="236" y="122" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Content + scope audit</text>
+
+      <!-- Step 3: Green Check -->
+      <rect x="420" y="40" width="160" height="90" rx="12" fill="rgba(61,214,140,0.15)" stroke="#3dd68c" stroke-width="2"/>
+      <text x="448" y="70" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">3. APPROVED</text>
+      <text x="436" y="94" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Score >= threshold</text>
+      <text x="436" y="108" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-size="12" font-weight="600">&#10003; Safe for students</text>
+
+      <!-- Step 4: Setup -->
+      <rect x="620" y="40" width="160" height="90" rx="12" fill="rgba(240,160,48,0.1)" stroke="#f0a030" stroke-width="1.5"/>
+      <text x="648" y="70" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">4. SETUP</text>
+      <text x="636" y="94" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Plugin-specific config:</text>
+      <text x="636" y="108" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">API key, OAuth, or</text>
+      <text x="636" y="122" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">zero-config (skip)</text>
+
+      <!-- Step 5: Live -->
+      <rect x="820" y="40" width="160" height="90" rx="12" fill="rgba(79,140,255,0.15)" stroke="#4f8cff" stroke-width="2"/>
+      <text x="870" y="70" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">5. LIVE</text>
+      <text x="836" y="94" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Active in class</text>
+      <text x="836" y="108" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">AI can invoke tools</text>
+      <text x="836" y="122" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Students can interact</text>
+
+      <!-- Arrows -->
+      <path d="M180 85 L220 85" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#ag)"/>
+      <path d="M380 85 L420 85" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#ag)"/>
+      <path d="M580 85 L620 85" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#ag)"/>
+      <path d="M780 85 L820 85" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#ag)"/>
+
+      <!-- Setup branching: 3 paths based on plugin type -->
+      <text x="620" y="170" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">Setup varies by plugin type:</text>
+
+      <!-- Path A: Zero Config -->
+      <rect x="40" y="200" width="300" height="130" rx="10" fill="rgba(61,214,140,0.06)" stroke="#3dd68c" stroke-width="1"/>
+      <text x="60" y="228" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">A. Zero Config (skip setup)</text>
+      <text x="60" y="252" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">No API key, no auth. Just approve and go.</text>
+      <text x="60" y="276" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Plugins: GeoGebra, PhET, Scratch, Internet Archive</text>
+      <text x="60" y="300" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Setup step: skipped entirely. Instant activation.</text>
+      <text x="60" y="318" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-size="11" font-weight="600">Fastest path. Teacher drops, AI checks, done.</text>
+
+      <!-- Path B: API Key -->
+      <rect x="380" y="200" width="340" height="130" rx="10" fill="rgba(240,160,48,0.06)" stroke="#f0a030" stroke-width="1"/>
+      <text x="400" y="228" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">B. API Key Required</text>
+      <text x="400" y="252" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">School/district provides key. Stored encrypted.</text>
+      <text x="400" y="276" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Plugins: Desmos, Google Maps, Wolfram Alpha, MW Dict</text>
+      <text x="400" y="300" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Setup UI: text input for API key + "Test Connection" btn</text>
+      <text x="400" y="318" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-size="11" font-weight="600">School admin enters key. Teachers/students never see it.</text>
+
+      <!-- Path C: OAuth -->
+      <rect x="760" y="200" width="300" height="130" rx="10" fill="rgba(167,139,250,0.06)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="780" y="228" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">C. OAuth / User Auth</text>
+      <text x="780" y="252" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Teacher connects their account. Per-user tokens.</text>
+      <text x="780" y="276" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Plugins: Flat.io, Spotify, GitHub (existing)</text>
+      <text x="780" y="300" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Setup UI: "Connect Account" button + OAuth popup</text>
+      <text x="780" y="318" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-size="11" font-weight="600">Existing auth broker handles this. No new work.</text>
+
+      <!-- API Key Management Detail -->
+      <rect x="40" y="370" width="1020" height="130" rx="12" fill="rgba(240,160,48,0.05)" stroke="rgba(240,160,48,0.2)" stroke-width="1"/>
+      <text x="70" y="400" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">API Key Management Model</text>
+      <text x="70" y="426" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">District admin enters API key once per service. Key is encrypted, stored per-district, never exposed to teachers or students.</text>
+      <text x="70" y="446" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Teachers see "Requires API key" badge. School admin sees "Configure" button. Students see nothing about keys.</text>
+      <text x="70" y="466" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Usage tracking: platform logs calls per plugin per school. District dashboard shows consumption. Alerts at 80% of quota.</text>
+      <text x="70" y="486" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-size="12" font-weight="600">Key hierarchy: district key (shared) > school override (optional) > platform default (fallback for free-tier APIs)</text>
+
+      <defs>
+        <marker id="ag" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#8b8fa4"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: API KEY MODEL -->
+<!-- ================================================== -->
+<section class="section" id="api-keys">
+  <h2>API Key Model</h2>
+  <p class="section-desc">Who owns the key? Who pays? Who sees it?</p>
+
+  <div class="card-grid">
+    <div class="card" style="border-color: var(--green);">
+      <span class="badge badge--green">Recommended</span>
+      <h3>District-Owned Keys</h3>
+      <p>District admin enters API keys once. All schools under the district share them. Teachers never see raw keys.</p>
+      <ul>
+        <li>District pays for API usage (consolidated billing)</li>
+        <li>One key per service per district</li>
+        <li>School admin can override with own key if needed</li>
+        <li>Usage tracked per school for chargeback</li>
+        <li>Key rotation handled at district level</li>
+      </ul>
+      <div class="pills">
+        <span class="pill pill--green">simple</span>
+        <span class="pill pill--green">secure</span>
+        <span class="pill">Canvas/Google pattern</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Platform Default Keys</h3>
+      <p>For free APIs (Google Maps Embed, PhET, GeoGebra), the platform ships with built-in keys. Zero setup.</p>
+      <ul>
+        <li>Platform absorbs cost for free-tier APIs</li>
+        <li>Rate-limited per district to prevent abuse</li>
+        <li>District can upgrade to own key for higher limits</li>
+        <li>Fallback: if no district key, use platform key</li>
+      </ul>
+      <div class="pills">
+        <span class="pill">zero friction</span>
+        <span class="pill">free APIs only</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Per-Service Key Requirements</h3>
+      <table class="spec-table" style="margin-top:8px;">
+        <tr><th>Plugin</th><th>Key Needed?</th><th>Cost</th></tr>
+        <tr><td>GeoGebra</td><td><span class="check">FREE</span></td><td>None</td></tr>
+        <tr><td>Desmos</td><td>API key</td><td>Free for edu</td></tr>
+        <tr><td>PhET</td><td><span class="check">FREE</span></td><td>None</td></tr>
+        <tr><td>Google Maps</td><td>API key</td><td>Free unlimited</td></tr>
+        <tr><td>Scratch</td><td><span class="check">FREE</span></td><td>None</td></tr>
+        <tr><td>Flat.io</td><td>App ID + OAuth</td><td>Free tier</td></tr>
+        <tr><td>Internet Archive</td><td><span class="check">FREE</span></td><td>None</td></tr>
+        <tr><td>Wolfram Alpha</td><td>API key</td><td>2k/mo free</td></tr>
+        <tr><td>Merriam-Webster</td><td>API key</td><td>1k/day free</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: PLATFORM PROXY -->
+<!-- ================================================== -->
+<section class="section" id="proxy">
+  <h2>Per-User Tracking: Platform Proxy</h2>
+  <p class="section-desc">District key authenticates with the API. But how do we know which student made each call? The platform proxies every request and tags it with user context.</p>
+
+  <div class="arch-diagram">
+    <svg viewBox="0 0 1100 580" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:1060px">
+      <!-- Student action -->
+      <rect x="20" y="30" width="180" height="70" rx="10" fill="rgba(79,140,255,0.1)" stroke="#4f8cff" stroke-width="1.5"/>
+      <text x="40" y="58" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">Student Action</text>
+      <text x="40" y="78" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">"graph y = x^2"</text>
+
+      <!-- AI tool call -->
+      <rect x="240" y="30" width="180" height="70" rx="10" fill="rgba(167,139,250,0.1)" stroke="#a78bfa" stroke-width="1.5"/>
+      <text x="260" y="58" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">AI Tool Invoke</text>
+      <text x="260" y="78" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">desmos.set_expression</text>
+
+      <!-- Platform Proxy (big box) -->
+      <rect x="460" y="10" width="320" height="110" rx="12" fill="rgba(240,160,48,0.1)" stroke="#f0a030" stroke-width="2"/>
+      <text x="490" y="38" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">PLATFORM PROXY (main process)</text>
+      <text x="490" y="62" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">1. Intercepts tool call via IPC</text>
+      <text x="490" y="78" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">2. Attaches: userId, classId, schoolId, timestamp</text>
+      <text x="490" y="94" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">3. Retrieves DISTRICT API key (encrypted store)</text>
+      <text x="490" y="110" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">4. Calls external API with district key</text>
+
+      <!-- External API -->
+      <rect x="820" y="30" width="160" height="70" rx="10" fill="rgba(61,214,140,0.1)" stroke="#3dd68c" stroke-width="1.5"/>
+      <text x="844" y="58" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">External API</text>
+      <text x="840" y="78" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Desmos / Wolfram / etc</text>
+
+      <!-- Arrows -->
+      <path d="M200 65 L240 65" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#ap)"/>
+      <path d="M420 65 L460 65" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#ap)"/>
+      <path d="M780 65 L820 65" stroke="#8b8fa4" stroke-width="1.5" marker-end="url(#ap)"/>
+
+      <!-- Audit log (below proxy) -->
+      <path d="M620 120 L620 160" stroke="#f05050" stroke-width="1.5" stroke-dasharray="4"/>
+      <rect x="460" y="160" width="320" height="60" rx="10" fill="rgba(240,80,80,0.08)" stroke="#f05050" stroke-width="1"/>
+      <text x="490" y="185" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-weight="600" font-size="12">Audit Log Entry</text>
+      <text x="490" y="205" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">"Alex Johnson used desmos.set_expression at 2:31pm in Class 5A"</text>
+
+      <!-- Three tracking patterns -->
+      <text x="20" y="270" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="15">Per-User Tracking by Plugin Type</text>
+
+      <!-- Pattern A: JS API -->
+      <rect x="20" y="290" width="340" height="140" rx="12" fill="rgba(61,214,140,0.06)" stroke="#3dd68c" stroke-width="1"/>
+      <text x="40" y="318" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">A. JS API Plugins (GeoGebra, Desmos)</text>
+      <text x="40" y="342" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Every evalCommand / setExpression goes through IPC</text>
+      <text x="40" y="358" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Main process tags with userId before calling API</text>
+      <text x="40" y="378" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Logged: user, tool, params, timestamp, duration</text>
+      <text x="40" y="398" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-size="11" font-weight="600">Rate limit: 100 calls/student/hour</text>
+      <text x="40" y="418" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Student never sees API key. Key lives in main process.</text>
+
+      <!-- Pattern B: Display only -->
+      <rect x="380" y="290" width="340" height="140" rx="12" fill="rgba(79,140,255,0.06)" stroke="#4f8cff" stroke-width="1"/>
+      <text x="400" y="318" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">B. iframe Display (PhET, Maps, Scratch)</text>
+      <text x="400" y="342" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">No per-call API tracking (client-side iframe)</text>
+      <text x="400" y="358" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Track: plugin opened, session duration, user ID</text>
+      <text x="400" y="378" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Maps key baked into embed URL by main process</text>
+      <text x="400" y="398" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-size="11" font-weight="600">Log: "Alex opened PhET Pendulum at 2:15pm, 12min"</text>
+      <text x="400" y="418" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Low granularity but sufficient for FERPA audit.</text>
+
+      <!-- Pattern C: REST API -->
+      <rect x="740" y="290" width="340" height="140" rx="12" fill="rgba(167,139,250,0.06)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="760" y="318" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="13">C. REST API (Wolfram, MW Dictionary)</text>
+      <text x="760" y="342" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Every query goes through main process proxy</text>
+      <text x="760" y="358" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Logged: user, query text, response summary, cost</text>
+      <text x="760" y="378" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">District key used server-side, never exposed</text>
+      <text x="760" y="398" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-size="11" font-weight="600">Rate limit: 50 Wolfram calls/student/day</text>
+      <text x="760" y="418" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="11">Quota dashboard: calls used vs. monthly limit</text>
+
+      <!-- Student sees nothing about keys -->
+      <rect x="20" y="460" width="1060" height="100" rx="12" fill="rgba(240,160,48,0.05)" stroke="rgba(240,160,48,0.3)" stroke-width="1"/>
+      <text x="50" y="490" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">What Each Role Sees</text>
+      <text x="50" y="516" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-size="12" font-weight="600">Student:</text>
+      <text x="130" y="516" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Uses plugin. Zero setup. No keys visible. No config. Just works.</text>
+      <text x="50" y="536" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-size="12" font-weight="600">Teacher:</text>
+      <text x="130" y="536" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Assigns plugins to class. Sees "Requires API key (configured by admin)" badge. Sees per-student usage summary.</text>
+      <text x="50" y="556" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-size="12" font-weight="600">Admin:</text>
+      <text x="130" y="556" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Enters/rotates API keys. Sees usage dashboard: calls per school, per student, per plugin. Quota alerts at 80%.</text>
+
+      <defs>
+        <marker id="ap" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#8b8fa4"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <!-- Rate limiting detail -->
+  <div class="card-grid" style="margin-top:24px;">
+    <div class="card" style="border-color:var(--red);">
+      <h3>Per-Student Rate Limits</h3>
+      <p>Prevents one kid from burning the district quota. Configurable by admin.</p>
+      <table class="spec-table" style="margin-top:8px;">
+        <tr><th>Plugin</th><th>Default Limit</th><th>Scope</th></tr>
+        <tr><td>Desmos</td><td>100 calls/student/hour</td><td>Unlimited API, limit is for abuse prevention</td></tr>
+        <tr><td>Google Maps</td><td>50 embeds/student/hour</td><td>Free unlimited, limit for abuse</td></tr>
+        <tr><td>Wolfram Alpha</td><td>50 calls/student/day</td><td>2k/mo district quota, shared pool</td></tr>
+        <tr><td>Merriam-Webster</td><td>100 calls/student/day</td><td>1k/day district quota, shared pool</td></tr>
+        <tr><td>GeoGebra</td><td>No limit</td><td>Free, no quota</td></tr>
+        <tr><td>PhET</td><td>No limit</td><td>Free, client-side only</td></tr>
+      </table>
+    </div>
+    <div class="card" style="border-color:var(--accent);">
+      <h3>Usage Dashboard (Admin View)</h3>
+      <ul>
+        <li>Total calls this month per plugin (bar chart)</li>
+        <li>Per-school breakdown (table)</li>
+        <li>Per-student top users (for quota management)</li>
+        <li>Alert: "Wolfram Alpha at 80% monthly quota"</li>
+        <li>Cost estimate for paid-tier APIs</li>
+        <li>Export CSV for district reporting</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:var(--green);">
+      <h3>Why Not Per-Student Keys?</h3>
+      <ul>
+        <li>Massive setup friction (teacher helps every student?)</li>
+        <li>Most APIs don't support sub-keys or key-per-user</li>
+        <li>FERPA doesn't require per-student keys, just audit trails</li>
+        <li>Platform proxy gives same visibility with zero student setup</li>
+        <li>Kids lose keys. Teachers lose time. Proxy just works.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: SETUP UX -->
+<!-- ================================================== -->
+<section class="section" id="setup-ux">
+  <h2>Setup UX Per Plugin</h2>
+  <p class="section-desc">What the admin sees after dropping a plugin and getting the green check.</p>
+
+  <div class="layer-stack">
+    <div class="layer layer--3">
+      <span class="layer-label">GeoGebra / PhET / Scratch / Archive</span>
+      <span class="layer-desc"><strong>No setup step.</strong> Plugin approved → immediately active. Teacher can assign to class.</span>
+    </div>
+    <div class="layer layer--4">
+      <span class="layer-label">Desmos</span>
+      <span class="layer-desc"><strong>API key input.</strong> "Enter your Desmos API key" text field + "Test" button. Get free key at desmos.com/api. District-level.</span>
+    </div>
+    <div class="layer layer--4">
+      <span class="layer-label">Google Maps</span>
+      <span class="layer-desc"><strong>API key input.</strong> "Enter Google Maps API key" + "Test" button. Free from Google Cloud Console. District-level.</span>
+    </div>
+    <div class="layer layer--4">
+      <span class="layer-label">Wolfram Alpha</span>
+      <span class="layer-desc"><strong>API key input.</strong> "Enter Wolfram Alpha AppID" + "Test" button. 2k calls/mo free. District-level. Usage counter shown.</span>
+    </div>
+    <div class="layer layer--4">
+      <span class="layer-label">Merriam-Webster</span>
+      <span class="layer-desc"><strong>API key input.</strong> "Enter Dictionary API key" + "Test" button. 1k/day free. District-level.</span>
+    </div>
+    <div class="layer layer--2">
+      <span class="layer-label">Flat.io</span>
+      <span class="layer-desc"><strong>App ID + OAuth.</strong> Admin enters App ID (district-level). Teachers "Connect Account" via OAuth2 for editing.</span>
+    </div>
+  </div>
+
+  <div class="flow-container" style="margin-top:24px;">
+    <h3>Setup Step UI Mockup</h3>
+    <pre style="color:var(--muted);font-family:var(--mono);font-size:12px;line-height:1.6;">
+┌─────────────────────────────────────────────────────┐
+│  Plugin Setup: Desmos Graphing Calculator            │
+│                                                      │
+│  Status: ✓ Approved (Safety Score: 100)              │
+│  Trust:  ● Builtin                                   │
+│                                                      │
+│  ┌────────────────────────────────────────────────┐  │
+│  │  API Key (district-level)                      │  │
+│  │  ┌──────────────────────────────┐ ┌──────────┐ │  │
+│  │  │ dcm_xxxxxxxxxxxxxxxxxxxx     │ │ Test Key │ │  │
+│  │  └──────────────────────────────┘ └──────────┘ │  │
+│  │  Get free key: desmos.com/api                  │  │
+│  │  Visible to: District Admin, School Admin      │  │
+│  └────────────────────────────────────────────────┘  │
+│                                                      │
+│  Usage this month: 0 / unlimited                     │
+│  Schools using: Lincoln Elementary, Washington MS    │
+│                                                      │
+│  ┌────────────┐  ┌──────────────┐                    │
+│  │  Activate   │  │  Cancel      │                    │
+│  └────────────┘  └──────────────┘                    │
+└─────────────────────────────────────────────────────┘
+
+For zero-config plugins (GeoGebra, PhET):
+┌─────────────────────────────────────────────────────┐
+│  Plugin Setup: GeoGebra                              │
+│                                                      │
+│  Status: ✓ Approved (Safety Score: 100)              │
+│  Trust:  ● Builtin                                   │
+│  Config: No setup required                           │
+│                                                      │
+│  ┌────────────┐                                      │
+│  │  Activate   │  ← one click, done                  │
+│  └────────────┘                                      │
+└─────────────────────────────────────────────────────┘</pre>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: PLUGIN SPECS -->
+<!-- ================================================== -->
+<section class="section" id="specs">
+  <h2>Plugin Specifications</h2>
+  <p class="section-desc">Manifest + tools for each plugin. These follow the existing ChatBridge PluginManifest schema.</p>
+
+  <div class="card" style="overflow-x:auto;">
+    <table class="spec-table">
+      <thead>
+        <tr>
+          <th>Plugin</th>
+          <th>Category</th>
+          <th>Trust</th>
+          <th>Auth</th>
+          <th>Tools</th>
+          <th>Embed Method</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>GeoGebra</strong></td>
+          <td>external-public</td>
+          <td>verified</td>
+          <td>none</td>
+          <td>plot_equation, create_geometry, evaluate, export_image, get_state</td>
+          <td>JS API (<code>deployggb.js</code>)</td>
+        </tr>
+        <tr>
+          <td><strong>Desmos</strong></td>
+          <td>external-public</td>
+          <td>verified</td>
+          <td>api-key</td>
+          <td>set_expression, get_expressions, screenshot, set_bounds, save_state</td>
+          <td>JS API (<code>calculator.js</code>)</td>
+        </tr>
+        <tr>
+          <td><strong>Flat.io</strong></td>
+          <td>external-authenticated</td>
+          <td>verified</td>
+          <td>oauth2-pkce</td>
+          <td>load_score, play, pause, go_to_measure, create_score</td>
+          <td>JS SDK (<code>flat-embed</code>)</td>
+        </tr>
+        <tr>
+          <td><strong>PhET</strong></td>
+          <td>external-public</td>
+          <td>verified</td>
+          <td>none</td>
+          <td>launch_sim, list_sims, search_by_topic</td>
+          <td>Direct iframe URL</td>
+        </tr>
+        <tr>
+          <td><strong>Google Maps</strong></td>
+          <td>external-public</td>
+          <td>verified</td>
+          <td>api-key</td>
+          <td>show_place, show_directions, show_streetview, search_location</td>
+          <td>Maps Embed API URL</td>
+        </tr>
+        <tr>
+          <td><strong>Scratch</strong></td>
+          <td>external-public</td>
+          <td>verified</td>
+          <td>none</td>
+          <td>embed_project, search_projects, get_project_info</td>
+          <td>iframe <code>/embed</code></td>
+        </tr>
+        <tr>
+          <td><strong>Internet Archive</strong></td>
+          <td>external-public</td>
+          <td>verified</td>
+          <td>none</td>
+          <td>search_books, open_book, get_book_info</td>
+          <td>iframe <code>?ui=embed</code></td>
+        </tr>
+        <tr>
+          <td><strong>Wolfram Alpha</strong></td>
+          <td>external-public</td>
+          <td>verified</td>
+          <td>api-key</td>
+          <td>query, short_answer, get_image</td>
+          <td>REST API (no iframe)</td>
+        </tr>
+        <tr>
+          <td><strong>Merriam-Webster</strong></td>
+          <td>external-public</td>
+          <td>verified</td>
+          <td>api-key</td>
+          <td>define_word, find_synonyms, get_pronunciation</td>
+          <td>REST API (no iframe)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: ARCHITECTURE -->
+<!-- ================================================== -->
+<section class="section" id="arch">
+  <h2>Architecture</h2>
+  <p class="section-desc">How new plugins fit into the existing ChatBridge plugin system.</p>
+
+  <div class="arch-diagram">
+    <svg viewBox="0 0 1000 500" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:960px">
+      <!-- Existing layer -->
+      <rect x="40" y="20" width="920" height="80" rx="12" fill="rgba(61,214,140,0.06)" stroke="#3dd68c" stroke-width="1"/>
+      <text x="70" y="48" fill="#3dd68c" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">EXISTING (no changes needed)</text>
+      <text x="70" y="72" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Plugin Protocol    postMessage Bridge    PluginFrame    Tool Routing    Auth Broker    K12 RBAC    Safety Pipeline</text>
+
+      <!-- New: Plugin configs -->
+      <rect x="40" y="130" width="440" height="100" rx="12" fill="rgba(79,140,255,0.06)" stroke="#4f8cff" stroke-width="1"/>
+      <text x="70" y="155" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">NEW: Plugin Manifests + UI</text>
+      <text x="70" y="178" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">9 manifest.ts + 7 ui.html (2 REST-only: no iframe)</text>
+      <text x="70" y="196" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Registration in plugins/index.ts</text>
+      <text x="70" y="220" fill="#4f8cff" font-family="SF Pro Text,Inter,system-ui" font-size="11" font-weight="600">Same pattern as chess/weather/spotify/github</text>
+
+      <!-- New: API Key Store -->
+      <rect x="520" y="130" width="440" height="100" rx="12" fill="rgba(240,160,48,0.06)" stroke="#f0a030" stroke-width="1"/>
+      <text x="550" y="155" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">NEW: API Key + Usage Store</text>
+      <text x="550" y="178" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">pluginApiKeyStore.ts — encrypted keys per district</text>
+      <text x="550" y="196" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">pluginUsageStore.ts — calls per user/school/plugin/month</text>
+      <text x="550" y="220" fill="#f0a030" font-family="SF Pro Text,Inter,system-ui" font-size="11" font-weight="600">New auth type 'api-key' + per-student rate limits</text>
+
+      <!-- NEW: Platform Proxy (highlighted) -->
+      <rect x="40" y="260" width="920" height="100" rx="12" fill="rgba(240,80,80,0.06)" stroke="#f05050" stroke-width="2"/>
+      <text x="70" y="288" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">NEW: Platform Proxy Layer (main process)</text>
+      <text x="70" y="314" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Every API call intercepted via IPC. Tags with {userId, classId, schoolId}. Retrieves district key. Calls external API. Logs to audit.</text>
+      <text x="70" y="334" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">Rate limiter: per-student/hour + per-district/month. Quota alerts at 80%. Student never sees key.</text>
+      <text x="70" y="350" fill="#f05050" font-family="SF Pro Text,Inter,system-ui" font-size="11" font-weight="600">This is how we know WHO used WHAT without per-student keys. FERPA audit trail built in.</text>
+
+      <!-- External API adapters -->
+      <rect x="40" y="390" width="920" height="90" rx="12" fill="rgba(167,139,250,0.06)" stroke="#a78bfa" stroke-width="1"/>
+      <text x="70" y="418" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-weight="700" font-size="14">NEW: API Adapters (main process)</text>
+      <text x="70" y="442" fill="#8b8fa4" font-family="SF Pro Text,Inter,system-ui" font-size="12">geogebra.ts   desmos.ts   phet.ts   google-maps.ts   scratch.ts   flat-io.ts   wolfram.ts   merriam-webster.ts   internet-archive.ts</text>
+      <text x="70" y="464" fill="#a78bfa" font-family="SF Pro Text,Inter,system-ui" font-size="11" font-weight="600">REST-only plugins (Wolfram, MW): main process calls API, returns structured data. iframe plugins: proxy injects key into embed URL.</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: PHASES -->
+<!-- ================================================== -->
+<section class="section" id="phases">
+  <h2>Implementation Phases</h2>
+  <p class="section-desc">Build order. Start with zero-config plugins (fastest), then API-key plugins, then OAuth.</p>
+
+  <div class="layer-stack" style="margin-bottom:32px;">
+    <div class="layer layer--3">
+      <span class="layer-label">Phase 1: Zero Config</span>
+      <span class="layer-desc"><strong>GeoGebra + PhET + Scratch + Internet Archive.</strong> No keys, no auth. Just manifests + UI HTML. 4 plugins, fastest wins.</span>
+    </div>
+    <div class="layer layer--4">
+      <span class="layer-label">Phase 2: API Key Infra</span>
+      <span class="layer-desc"><strong>pluginApiKeyStore + setup UI + new auth type 'api-key'.</strong> Then: <strong>Google Maps + Desmos.</strong> Two plugins that prove the key flow.</span>
+    </div>
+    <div class="layer layer--2">
+      <span class="layer-label">Phase 3: REST API Plugins</span>
+      <span class="layer-desc"><strong>Wolfram Alpha + Merriam-Webster.</strong> No iframe. Main process calls REST API, returns data to chat. New pattern.</span>
+    </div>
+    <div class="layer layer--6">
+      <span class="layer-label">Phase 4: OAuth Plugin</span>
+      <span class="layer-desc"><strong>Flat.io.</strong> Uses existing auth broker. App ID as api-key + OAuth for teacher editing. Proves combined flow.</span>
+    </div>
+  </div>
+
+  <div class="card-grid">
+    <div class="card" style="border-color:var(--green);">
+      <h3>Phase 1 Deliverables</h3>
+      <ul>
+        <li><code>src/renderer/plugins/geogebra/</code> — manifest + ui.html (JS API)</li>
+        <li><code>src/renderer/plugins/phet/</code> — manifest + ui.html (sim loader)</li>
+        <li><code>src/renderer/plugins/scratch/</code> — manifest + ui.html (embed)</li>
+        <li><code>src/renderer/plugins/internet-archive/</code> — manifest + ui.html</li>
+        <li>Register all 4 in <code>plugins/index.ts</code></li>
+        <li>Test: "graph y=x^2" → GeoGebra renders inline</li>
+        <li>Test: "show me a pendulum sim" → PhET loads inline</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:var(--amber);">
+      <h3>Phase 2 Deliverables</h3>
+      <ul>
+        <li><code>src/renderer/stores/pluginApiKeyStore.ts</code></li>
+        <li>Add <code>'api-key'</code> to <code>PluginAuthType</code></li>
+        <li>Setup step UI in plugin settings</li>
+        <li><code>src/renderer/plugins/desmos/</code> — manifest + ui.html</li>
+        <li><code>src/renderer/plugins/google-maps/</code> — manifest + ui.html</li>
+        <li>Test: admin enters Desmos key → teacher uses graphing</li>
+      </ul>
+    </div>
+    <div class="card" style="border-color:var(--purple);">
+      <h3>Phase 3 Deliverables</h3>
+      <ul>
+        <li><code>src/main/plugins/wolfram.ts</code> — REST adapter</li>
+        <li><code>src/main/plugins/merriam-webster.ts</code> — REST adapter</li>
+        <li>Plugin manifests (no ui.html — REST only)</li>
+        <li>Results render as structured chat cards, not iframes</li>
+        <li>Test: "solve 2x+5=15" → WA returns step-by-step</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================== -->
+<!-- SECTION: CONFIRM -->
+<!-- ================================================== -->
+<section class="section" id="confirm">
+  <h2>Decisions Needed</h2>
+
+  <div class="decision-box">
+    <h3>Resolved Decisions</h3>
+    <ol>
+      <li><strong style="color:var(--green);">Per-user tracking:</strong> Platform proxy pattern. District key for API auth, userId tagged on every call. No per-student keys. FERPA audit via proxy logs.</li>
+      <li><strong style="color:var(--green);">API key ownership:</strong> District-owned keys. Encrypted in pluginApiKeyStore. School override optional. Platform defaults for free APIs.</li>
+      <li><strong style="color:var(--green);">Rate limiting:</strong> Per-student limits (configurable). Quota alerts at 80%. Prevents abuse without per-student keys.</li>
+    </ol>
+  </div>
+
+  <div class="decision-box" style="border-color:var(--amber); margin-top:16px;">
+    <h3>Still Open</h3>
+    <ol>
+      <li><strong>Plugin count:</strong> All 9 plugins? Or start smaller (GeoGebra + PhET + Google Maps + Wolfram = 4)?</li>
+      <li><strong>REST-only plugins (Wolfram, MW):</strong> Show results as formatted chat cards? Or build a simple result viewer widget?</li>
+      <li><strong>GeoGebra JS API vs iframe:</strong> JS API = AI full control. Pure iframe = simpler but display-only. Recommend JS API.</li>
+      <li><strong>Phase order:</strong> Phase 1-4 as shown, or reprioritize?</li>
+    </ol>
+  </div>
+</section>
+
+</div>
+
+<script>
+const sections = document.querySelectorAll('.section, .hero');
+const dots = document.querySelectorAll('.toc a');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      dots.forEach(d => d.classList.remove('active'));
+      const active = document.querySelector(`.toc a[href="#${id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+sections.forEach(s => { if (s.id) observer.observe(s); });
+</script>
+</body>
+</html>

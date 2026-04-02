@@ -1,3 +1,4 @@
+import { hasProviderApiKey } from '@shared/providers/env'
 import { ModelProviderEnum } from '@shared/types'
 import { getDefaultStore } from 'jotai'
 import * as atoms from './atoms'
@@ -15,7 +16,7 @@ export function needEditSetting() {
     const providers = settings.providers
     const keys = Object.keys(settings.providers)
     // 有任何一个供应商配置了api key
-    if (keys.filter((key) => !!providers[key].apiKey).length > 0) {
+    if (keys.filter((key) => hasProviderApiKey(key, providers[key])).length > 0) {
       return false
     }
     // Ollama / LMStudio/ custom provider 配置了至少一个模型

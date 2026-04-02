@@ -10,11 +10,13 @@
  */
 
 import { Button, Loader, Paper, Stack, Text } from '@mantine/core'
+import type { PluginAuthType, PluginCompletionPayload } from '@shared/plugin-types'
 import { IconAlertCircle, IconPuzzle, IconRefresh } from '@tabler/icons-react'
 import { type FC, memo, useCallback, useEffect, useRef, useState } from 'react'
-import type { PluginAuthType, PluginCompletionPayload } from '@shared/plugin-types'
 import { usePluginChannel } from '@/hooks/usePluginChannel'
 import { consumeQueuedPluginToolInvocations, resolvePluginToolCall } from '@/packages/model-calls/toolsets/plugin-tools'
+import { useCurrentUser } from '@/stores/k12Store'
+import { platformProxyStore } from '@/stores/platformProxyStore'
 import { usePluginRegistry } from '@/stores/pluginRegistry'
 
 interface PluginFrameProps {
@@ -29,7 +31,7 @@ interface PluginFrameProps {
   onToolResult?: (callId: string, result: unknown, error?: string) => void
   onAuthRequest?: () => void
   authPayload?: {
-    status: 'connected' | 'expired' | 'revoked' | 'authorizing'
+    status: 'connected' | 'expired' | 'revoked' | 'authorizing' | 'error'
     authType: PluginAuthType
     accessToken?: string
     expiresAt?: number
@@ -64,11 +66,13 @@ const PluginFrame: FC<PluginFrameProps> = ({
   const [status, setStatus] = useState<'loading' | 'ready' | 'active' | 'completed' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
+  const activeStartRef = useRef<number | null>(null)
 
   const manifest = usePluginRegistry((s) => s.getManifest(pluginId))
   const updateInstanceStatus = usePluginRegistry((s) => s.updateInstanceStatus)
   const updateInstanceState = usePluginRegistry((s) => s.updateInstanceState)
   const updateInstanceCompletion = usePluginRegistry((s) => s.updateInstanceCompletion)
+  const currentUser = useCurrentUser()
 
   const handleReady = useCallback(() => {
     setStatus('active')
@@ -153,6 +157,37 @@ const PluginFrame: FC<PluginFrameProps> = ({
       metadata: authPayload.metadata,
     })
   }, [authPayload, channel, status])
+
+  useEffect(() => {
+    if (status !== 'active' || !manifest?.proxy || !currentUser) return
+    activeStartRef.current = Date.now()
+    void platformProxyStore.getState().recordUsage({
+      pluginId,
+      action: 'iframe-open',
+      trackingPattern: manifest.proxy.trackingPattern,
+      userId: currentUser.id,
+      classId: currentUser.classId,
+      schoolId: currentUser.schoolId,
+      districtId: currentUser.districtId,
+      proxyConfig: manifest.proxy,
+    })
+
+    return () => {
+      const startedAt = activeStartRef.current
+      if (!startedAt) return
+      void platformProxyStore.getState().recordUsage({
+        pluginId,
+        action: 'iframe-close',
+        trackingPattern: manifest.proxy.trackingPattern,
+        userId: currentUser.id,
+        classId: currentUser.classId,
+        schoolId: currentUser.schoolId,
+        districtId: currentUser.districtId,
+        durationMs: Date.now() - startedAt,
+        proxyConfig: manifest.proxy,
+      })
+    }
+  }, [currentUser, manifest?.proxy, pluginId, status])
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -260,20 +295,22 @@ const PluginFrame: FC<PluginFrameProps> = ({
           </Text>
         </div>
       )}
-      <iframe
-        key={retryCount}
-        ref={iframeRef}
-        src={entrypointUrl}
-        sandbox={sandboxAttrs}
-        onError={handleIframeLoadError}
-        style={{
-          width: width || '100%',
-          height,
-          border: 'none',
-          display: 'block',
-        }}
-        title={manifest?.name || pluginId}
-      />
+      {status !== 'completed' && (
+        <iframe
+          key={retryCount}
+          ref={iframeRef}
+          src={entrypointUrl}
+          sandbox={sandboxAttrs}
+          onError={handleIframeLoadError}
+          style={{
+            width: width || '100%',
+            height,
+            border: 'none',
+            display: 'block',
+          }}
+          title={manifest?.name || pluginId}
+        />
+      )}
     </Paper>
   )
 }
@@ -288,7 +325,7 @@ export function getPluginChannelFromIframe(iframe: HTMLIFrameElement) {
   return (iframe as any).__pluginChannel as {
     invokePluginTool: (callId: string, toolName: string, parameters: Record<string, unknown>) => void
     sendAuthStatus: (
-      status: 'connected' | 'expired' | 'revoked' | 'authorizing',
+      status: 'connected' | 'expired' | 'revoked' | 'authorizing' | 'error',
       authType: 'none' | 'oauth2-pkce' | 'device-flow',
       extra?: { accessToken?: string; expiresAt?: number; metadata?: Record<string, unknown> }
     ) => void

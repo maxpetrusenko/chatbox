@@ -6,6 +6,7 @@ export const weatherManifest: PluginManifest = {
   version: '1.0.0',
   description: 'Live weather and air quality for a city using public APIs.',
   category: 'external-public',
+  trustLevel: 'builtin',
   tools: [
     {
       name: 'lookup_forecast',
@@ -26,5 +27,14 @@ export const weatherManifest: PluginManifest = {
   widget: {
     entrypoint: 'ui.html',
     defaultHeight: 420,
+  },
+  proxy: {
+    trackingPattern: 'js-api',
+    usageUnit: 'call',
+    rateLimits: {
+      perStudentHour: 60,
+      perStudentDay: 120,
+      perDistrictMonth: 5000,
+    },
   },
 }
