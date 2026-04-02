@@ -241,15 +241,15 @@ function analyzeMessageAttachments(
     const contentMode: ContentMode = usePreview ? 'preview' : 'full'
     const cacheKey = getTokenCacheKey({ tokenizerType, contentMode })
 
-    if (isCurrentInput) {
-      totalTokens += attachment.tokenCountMap?.[cacheKey] ?? 0
+    const cachedTokens = attachment.tokenCountMap?.[cacheKey] ?? 0
+    const cacheValid = isAttachmentCacheValid(attachment, cacheKey)
+
+    if (cacheValid) {
+      totalTokens += cachedTokens
       continue
     }
 
-    if (isAttachmentCacheValid(attachment, cacheKey)) {
-      totalTokens += attachment.tokenCountMap?.[cacheKey] ?? 0
-    } else {
-      // Needs calculation
+    if (isCurrentInput) {
       tasks.push({
         type: 'attachment',
         messageId: message.id,
@@ -259,7 +259,19 @@ function analyzeMessageAttachments(
         contentMode,
         priority: getPriority(isCurrentInput, 'attachment', messageIndex),
       })
+      continue
     }
+
+    // Needs calculation
+    tasks.push({
+      type: 'attachment',
+      messageId: message.id,
+      attachmentId: attachment.id,
+      attachmentType: type,
+      tokenizerType,
+      contentMode,
+      priority: getPriority(isCurrentInput, 'attachment', messageIndex),
+    })
   }
 
   return { tokens: totalTokens, tasks }

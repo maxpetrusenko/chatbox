@@ -52,6 +52,7 @@ import PluginFrameInline from '../PluginFrameInline'
 import { MessageAttachmentGrid } from './MessageAttachmentGrid'
 import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
+import { getMessageModelName, getMessageTokensUsed } from './message-metadata'
 
 interface Props {
   id?: string
@@ -191,7 +192,7 @@ const _Message: FC<Props> = (props) => {
       tips.push(`token count: ${msg.tokenCount}`)
     }
     if (showTokenUsed && msg.role === 'assistant' && !msg.generating) {
-      tips.push(`tokens used: ${msg.usage?.totalTokens ? msg.usage.totalTokens : msg.tokensUsed || 'unknown'}`)
+      tips.push(`tokens used: ${getMessageTokensUsed(msg)}`)
       // `tokens used: ${msg.usage?.totalTokens ? `${msg.usage.totalTokens}${msg.usage.cachedInputTokens ? `(cached: ${msg.usage.cachedInputTokens})` : ''}` : msg.tokensUsed || 'unknown'}`
     }
     if (showFirstTokenLatency && msg.role === 'assistant' && !msg.generating) {
@@ -199,11 +200,11 @@ const _Message: FC<Props> = (props) => {
       tips.push(`first token latency: ${latency}`)
     }
     if (showModelName && props.msg.role === 'assistant') {
-      tips.push(`model: ${props.msg.model || 'unknown'}`)
+      tips.push(`model: ${getMessageModelName(props.msg)}`)
     }
   } else if (props.sessionType === 'picture') {
     if (showModelName && props.msg.role === 'assistant') {
-      tips.push(`model: ${props.msg.model || 'unknown'}`)
+      tips.push(`model: ${getMessageModelName(props.msg)}`)
       tips.push(`style: ${props.msg.style || 'unknown'}`)
     }
   }

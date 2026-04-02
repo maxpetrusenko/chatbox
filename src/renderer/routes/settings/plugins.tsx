@@ -27,7 +27,7 @@ import {
 } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { reviewPluginSafety, runApprovalPipeline } from '@/stores/k12Safety'
+import { reviewPluginSafety } from '@/stores/k12Safety'
 import { k12Store, useK12 } from '@/stores/k12Store'
 import { getPluginAuthSetupError, pluginAuthStore, usePluginAuth } from '@/stores/pluginAuthStore'
 import { usePluginRegistry } from '@/stores/pluginRegistry'
@@ -104,7 +104,9 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
   const isApiKeyPlugin = manifest.auth?.type === 'api-key' || manifest.proxy?.requiresDistrictKey === true
 
   const isPluginAllowed = useK12((s) => s.isPluginAllowed)
+  const isPluginActiveForCurrentScope = useK12((s) => s.isPluginActiveForCurrentScope)
   const isAllowed = isPluginAllowed(manifest.id, currentUser?.schoolId)
+  const isActive = isPluginActiveForCurrentScope(manifest.id)
 
   const handleConnect = () => {
     if (!manifest.auth) return
@@ -115,16 +117,13 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
     void pluginAuthStore.getState().disconnect(manifest.id)
   }
 
-  const handleEnablePlugin = () => {
-    if (!currentUser) return
-    const record = k12Store.getState().requestPlugin(manifest, currentUser.schoolId ?? 'school-1')
-    // Auto-run safety pipeline
-    const pipeline = runApprovalPipeline(manifest, k12Store.getState().district?.settings.autoApproveThreshold)
-    k12Store.getState().updateInstallStatus(record.id, pipeline.status, {
-      safetyScore: pipeline.result.score,
-      safetyFindings: pipeline.result.findings,
-      reviewedBy: pipeline.status === 'approved' ? 'ai-auto' : undefined,
-    })
+  const handleTogglePlugin = () => {
+    if (isActive) {
+      k12Store.getState().deactivatePluginForCurrentScope(manifest.id)
+      return
+    }
+
+    k12Store.getState().activatePluginForCurrentScope(manifest.id)
   }
 
   return (
@@ -211,15 +210,16 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
           )}
 
           {/* Enable approved plugin for current scope */}
-          {!needsAuth && !isApiKeyPlugin && canInstall && isAllowed && (
+          {canInstall && isAllowed && (
             <Button
               size="xs"
-              variant="light"
-              color="green"
-              leftSection={<IconDownload size={14} />}
-              onClick={handleEnablePlugin}
+              variant={isActive ? 'default' : 'light'}
+              color={isActive ? 'gray' : 'green'}
+              leftSection={isActive ? <IconX size={14} /> : <IconDownload size={14} />}
+              onClick={handleTogglePlugin}
+              disabled={authStatus === 'authorizing' || !!setupError}
             >
-              Enable
+              {isActive ? 'Disable' : 'Enable'}
             </Button>
           )}
 
@@ -251,7 +251,7 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
           {/* No auth, not student: active */}
           {!needsAuth && !canInstall && !isStudent && (
             <Badge size="sm" variant="light" color="green">
-              Active
+              {isActive ? 'Active' : 'Available'}
             </Badge>
           )}
 

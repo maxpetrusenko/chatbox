@@ -57,6 +57,11 @@ interface ReviewState {
   pipelineStatus: 'approved' | 'quarantined' | 'rejected'
 }
 
+interface SetupSubmission {
+  apiKey?: string
+  enabled: boolean
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -320,13 +325,13 @@ function CheckItem({ label, ok }: { label: string; ok: boolean }) {
 // Step 3: Setup (API key, enable/disable)
 // ---------------------------------------------------------------------------
 
-function SetupPanel({
+export function SetupPanel({
   review,
   onActivate,
   onBack,
 }: {
   review: ReviewState
-  onActivate: (apiKey?: string) => void
+  onActivate: (submission: SetupSubmission) => void
   onBack: () => void
 }) {
   const { manifest } = review
@@ -409,7 +414,7 @@ function SetupPanel({
         <Button
           color="green"
           leftSection={<IconPlugConnected size={14} />}
-          onClick={() => onActivate(needsKey ? apiKey : undefined)}
+          onClick={() => onActivate({ apiKey: needsKey ? apiKey : undefined, enabled })}
           disabled={needsKey && !apiKey.trim()}
         >
           {enabled ? 'Activate Plugin' : 'Save (Disabled)'}
@@ -424,7 +429,15 @@ function SetupPanel({
 // Step 4: Done
 // ---------------------------------------------------------------------------
 
-function DonePanel({ review, onReset }: { review: ReviewState; onReset: () => void }) {
+function DonePanel({
+  review,
+  onReset,
+  activated,
+}: {
+  review: ReviewState
+  onReset: () => void
+  activated: boolean
+}) {
   const wasQuarantined = review.pipelineStatus === 'quarantined'
 
   return (
@@ -432,9 +445,11 @@ function DonePanel({ review, onReset }: { review: ReviewState; onReset: () => vo
       {!wasQuarantined ? (
         <>
           <IconCheck size={48} color="var(--mantine-color-green-6)" />
-          <Title order={4}>Plugin Installed</Title>
+          <Title order={4}>{activated ? 'Plugin Installed' : 'Plugin Saved'}</Title>
           <Text size="sm" c="dimmed" ta="center">
-            {review.manifest.name} is now active. The AI can invoke its tools in chat.
+            {activated
+              ? `${review.manifest.name} is now active. The AI can invoke its tools in chat.`
+              : `${review.manifest.name} is installed but disabled for your scope. Enable it later from Plugins settings.`}
           </Text>
         </>
       ) : (
@@ -465,6 +480,7 @@ function PluginDropPage() {
 
   const [step, setStep] = useState<DropStep>('drop')
   const [review, setReview] = useState<ReviewState | null>(null)
+  const [activatedOnSave, setActivatedOnSave] = useState(true)
 
   const stepIndex = step === 'drop' ? 0 : step === 'review' ? 1 : step === 'setup' ? 2 : 3
 
@@ -512,6 +528,7 @@ function PluginDropPage() {
   const handleApproveReview = () => {
     if (!review) return
     if (review.pipelineStatus === 'approved') {
+      setActivatedOnSave(true)
       setStep('setup')
     } else {
       // Quarantined — submit to approval queue
@@ -533,12 +550,12 @@ function PluginDropPage() {
     }
   }
 
-  const handleActivate = (apiKey?: string) => {
+  const handleActivate = ({ enabled }: SetupSubmission) => {
     if (!review) return
     const record = k12Store.getState().requestPlugin(review.manifest, currentUser.schoolId ?? 'school-1')
     if (!record?.id) return
 
-    k12Store.getState().updateInstallStatus(record.id, 'active', {
+    k12Store.getState().updateInstallStatus(record.id, enabled ? 'active' : 'approved', {
       safetyScore: review.safetyResult.score,
       safetyFindings: review.safetyResult.findings,
       reviewedBy: 'ai-auto',
@@ -552,13 +569,18 @@ function PluginDropPage() {
       })
     }
 
-    k12Store.getState().activatePluginForCurrentScope(review.manifest.id)
+    if (enabled) {
+      k12Store.getState().activatePluginForCurrentScope(review.manifest.id)
+    }
+
+    setActivatedOnSave(enabled)
     setStep('done')
   }
 
   const handleReset = () => {
     setStep('drop')
     setReview(null)
+    setActivatedOnSave(true)
   }
 
   return (
@@ -589,7 +611,7 @@ function PluginDropPage() {
       {step === 'setup' && review && (
         <SetupPanel review={review} onActivate={handleActivate} onBack={() => setStep('review')} />
       )}
-      {step === 'done' && review && <DonePanel review={review} onReset={handleReset} />}
+      {step === 'done' && review && <DonePanel review={review} onReset={handleReset} activated={activatedOnSave} />}
     </Stack>
   )
 }

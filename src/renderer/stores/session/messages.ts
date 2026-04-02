@@ -148,16 +148,19 @@ export async function submitNewUserMessage(
     .join(' ')
     .trim()
 
+  const globalSettings = settingsStore.getState().getSettings()
+
   if (needGenerating && plainText) {
     const pluginIntent = resolvePluginChatIntent(plainText)
     if (pluginIntent) {
-      const pluginAssistantMsg = await executePluginChatIntent(sessionId, pluginIntent)
+      const pluginAssistantMsg = await executePluginChatIntent(sessionId, pluginIntent, {
+        aiProvider: settings.provider,
+        model: await getModelDisplayName(settings, globalSettings, 'chat'),
+      })
       await insertMessage(sessionId, pluginAssistantMsg)
       return pluginAssistantMsg
     }
   }
-
-  const globalSettings = settingsStore.getState().getSettings()
   const isPro = settingActions.isPro()
   const remoteConfig = settingActions.getRemoteConfig()
 

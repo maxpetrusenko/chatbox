@@ -115,6 +115,7 @@ interface K12Actions {
   addClass: (cls: K12Class) => void
   updateClassPlugins: (classId: string, plugins: string[]) => void
   activatePluginForCurrentScope: (pluginId: string) => void
+  deactivatePluginForCurrentScope: (pluginId: string) => void
   activatePluginForInstallRecord: (recordId: string) => boolean
 
   // Plugin approval pipeline
@@ -129,6 +130,7 @@ interface K12Actions {
 
   // Plugin access control
   isPluginAllowed: (pluginId: string, schoolId?: string) => boolean
+  isPluginActiveForCurrentScope: (pluginId: string) => boolean
   getAvailablePlugins: (manifests: PluginManifest[]) => PluginManifest[]
 
   // Audit
@@ -314,6 +316,33 @@ export function createK12Store() {
           get().logAction('plugin.installed', { pluginId, scope: user.role }, 'info', pluginId)
         },
 
+        deactivatePluginForCurrentScope: (pluginId) => {
+          const user = get().currentUser
+          if (!user || !get().hasPermission('plugin.install')) return
+
+          let removed = false
+
+          set((s) => {
+            const targetClasses =
+              user.role === 'teacher'
+                ? s.classes.filter((cls) => cls.teacherId === user.id)
+                : user.role === 'school-admin'
+                  ? s.classes.filter((cls) => cls.schoolId === user.schoolId)
+                  : s.classes
+
+            for (const cls of targetClasses) {
+              if (cls.activePlugins.includes(pluginId)) {
+                cls.activePlugins = cls.activePlugins.filter((id) => id !== pluginId)
+                removed = true
+              }
+            }
+          })
+
+          if (removed) {
+            get().logAction('plugin.revoked', { pluginId, scope: user.role }, 'info', pluginId)
+          }
+        },
+
         activatePluginForInstallRecord: (recordId) => {
           const record = get().installRecords.find((entry) => entry.id === recordId)
           if (!record) return false
@@ -450,6 +479,28 @@ export function createK12Store() {
             }
           }
           return true
+        },
+
+        isPluginActiveForCurrentScope: (pluginId) => {
+          const user = get().currentUser
+          if (!user) return false
+
+          if (user.role === 'teacher') {
+            return get().classes.some((cls) => cls.teacherId === user.id && cls.activePlugins.includes(pluginId))
+          }
+
+          if (user.role === 'school-admin') {
+            return get().classes.some((cls) => cls.schoolId === user.schoolId && cls.activePlugins.includes(pluginId))
+          }
+
+          if (user.role === 'student') {
+            const scopedClasses = user.classId
+              ? get().classes.filter((cls) => cls.id === user.classId)
+              : get().classes.filter((cls) => cls.schoolId === user.schoolId)
+            return scopedClasses.some((cls) => cls.activePlugins.includes(pluginId))
+          }
+
+          return get().classes.some((cls) => cls.activePlugins.includes(pluginId))
         },
 
         getAvailablePlugins: (manifests) => {

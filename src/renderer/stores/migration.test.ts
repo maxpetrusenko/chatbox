@@ -297,6 +297,7 @@ vi.mock('../platform/storages', () => ({
 
 vi.mock('../../shared/defaults', () => ({
   settings: vi.fn(() => ({})),
+  newConfigs: vi.fn(() => ({ uuid: 'test-config' })),
   SystemProviders: vi.fn(() => []),
 }))
 
@@ -391,16 +392,15 @@ describe('migrateStorage test', () => {
   it('should skip migration when config version is already current', async () => {
     const { initData } = await import('@/setup/init_data')
 
-    // Setup: Desktop v1.17.0 - configVersion = 13 (current) in IPC file storage
-    ipcFileData[StorageKey.ConfigVersion] = JSON.stringify(13)
+    // Setup: storage already at current config version
+    ipcFileData[StorageKey.ConfigVersion] = JSON.stringify(14)
 
     const migration = await import('./migration')
     await migration._migrateStorageForTest()
 
     // Should not initialize data or set version when already at current version
     expect(initData).not.toHaveBeenCalled()
-    // configVersion should remain 13
-    expect(ipcFileData[StorageKey.ConfigVersion]).toBe(JSON.stringify(13))
+    expect(ipcFileData[StorageKey.ConfigVersion]).toBe(JSON.stringify(14))
   })
 
   it('should initialize data on first run (configVersion = 0, no old storage)', async () => {
@@ -417,8 +417,8 @@ describe('migrateStorage test', () => {
     const migration = await import('./migration')
     await migration._migrateStorageForTest()
 
-    // Should set current version (13) to IPC file storage (Desktop platform)
-    expect(ipcFileData[StorageKey.ConfigVersion]).toBe(JSON.stringify(13))
+    // Should set current version to IPC file storage (Desktop platform)
+    expect(ipcFileData[StorageKey.ConfigVersion]).toBe(JSON.stringify(14))
     expect(initData).toHaveBeenCalled()
   })
 

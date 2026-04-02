@@ -1,13 +1,25 @@
 import { createMessage, type Message } from '@shared/types'
-import { isPluginMountToolResult, getPluginToolSet } from '@/packages/model-calls/toolsets/plugin-tools'
+import { getPluginToolSet, isPluginMountToolResult } from '@/packages/model-calls/toolsets/plugin-tools'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
 
+const DEFAULT_PLUGIN_ALIASES: Array<{ pluginId: string; aliases: string[] }> = [
+  { pluginId: 'chess', aliases: ['chess', 'chess game'] },
+  { pluginId: 'weather', aliases: ['weather', 'weather lab', 'forecast'] },
+  { pluginId: 'spotify', aliases: ['spotify', 'spotify study dj', 'study dj'] },
+  { pluginId: 'github', aliases: ['github', 'github repo coach', 'repo coach'] },
+]
+
 export interface PluginChatIntent {
-  pluginId: 'chess' | 'weather' | 'spotify' | 'github'
+  pluginId: string
   assistantText: string
   toolName?: string
   parameters?: Record<string, unknown>
   requiresActiveInstance?: boolean
+}
+
+export interface PluginIntentMessageMetadata {
+  aiProvider?: string
+  model?: string
 }
 
 function normalize(text: string): string {
@@ -22,27 +34,38 @@ function extractDifficulty(text: string): 'easy' | 'medium' | 'hard' | undefined
 }
 
 function hasWholePhrase(text: string, phrase: string): boolean {
-  const escapedPhrase = phrase.replace(/[-/\^$*+?.()|[\]{}]/g, '\\$&')
+  const escapedPhrase = phrase.replace(/[-/^$*+?.()|[\]{}]/g, '\\$&')
   return new RegExp(`(?:^|\\b)${escapedPhrase}(?:\\b|$)`).test(text)
 }
 
-function resolveExplicitAppAlias(text: string): PluginChatIntent['pluginId'] | null {
-  const normalized = normalize(text)
-  const aliases: Array<[PluginChatIntent['pluginId'], string[]]> = [
-    ['chess', ['chess', 'chess game']],
-    ['weather', ['weather', 'weather lab', 'forecast']],
-    ['spotify', ['spotify', 'spotify study dj', 'study dj']],
-    ['github', ['github', 'github repo coach', 'repo coach']],
-  ]
+function getPluginAliasEntries(): Array<{ pluginId: string; aliases: string[] }> {
+  const entries = new Map<string, Set<string>>()
 
-  for (const [pluginId, names] of aliases) {
+  for (const { pluginId, aliases } of DEFAULT_PLUGIN_ALIASES) {
+    entries.set(pluginId, new Set(aliases.map(normalize)))
+  }
+
+  for (const manifest of pluginRegistryStore.getState().manifests) {
+    const aliasSet = entries.get(manifest.id) || new Set<string>()
+    aliasSet.add(normalize(manifest.id))
+    aliasSet.add(normalize(manifest.name))
+    entries.set(manifest.id, aliasSet)
+  }
+
+  return Array.from(entries.entries()).map(([pluginId, aliases]) => ({ pluginId, aliases: Array.from(aliases) }))
+}
+
+function resolveExplicitAppAlias(text: string): string | null {
+  const normalized = normalize(text)
+
+  for (const { pluginId, aliases } of getPluginAliasEntries()) {
     if (
-      names.some(
+      aliases.some(
         (name) =>
           normalized === name ||
           normalized.includes(`"${name}"`) ||
           normalized.includes(`'${name}'`) ||
-          hasWholePhrase(normalized, name),
+          hasWholePhrase(normalized, name)
       )
     ) {
       return pluginId
@@ -52,7 +75,25 @@ function resolveExplicitAppAlias(text: string): PluginChatIntent['pluginId'] | n
   return null
 }
 
-function getPluginDisplayName(pluginId: PluginChatIntent['pluginId']): string {
+function applyPluginIntentMessageMetadata(message: Message, metadata?: PluginIntentMessageMetadata): Message {
+  const totalTokens = message.usage?.totalTokens ?? message.tokensUsed ?? 0
+
+  return {
+    ...message,
+    aiProvider: metadata?.aiProvider ?? message.aiProvider,
+    model: metadata?.model ?? message.model,
+    tokensUsed: totalTokens,
+    usage: {
+      ...message.usage,
+      totalTokens,
+    },
+  }
+}
+
+function getPluginDisplayName(pluginId: string): string {
+  const manifest = pluginRegistryStore.getState().getManifest(pluginId)
+  if (manifest?.name) return manifest.name
+
   switch (pluginId) {
     case 'chess':
       return 'Chess'
@@ -62,10 +103,15 @@ function getPluginDisplayName(pluginId: PluginChatIntent['pluginId']): string {
       return 'Spotify Study DJ'
     case 'github':
       return 'GitHub Repo Coach'
+    default:
+      return pluginId
+        .split('-')
+        .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
+        .join(' ')
   }
 }
 
-function getPluginCloseIntent(pluginId: PluginChatIntent['pluginId']): PluginChatIntent {
+function getPluginCloseIntent(pluginId: string): PluginChatIntent | null {
   if (pluginId === 'chess') {
     return {
       pluginId,
@@ -74,6 +120,11 @@ function getPluginCloseIntent(pluginId: PluginChatIntent['pluginId']): PluginCha
       parameters: { reason: 'Closed from chat command' },
       requiresActiveInstance: true,
     }
+  }
+
+  const manifest = pluginRegistryStore.getState().getManifest(pluginId)
+  if (!manifest?.tools.some((tool) => tool.name === 'finish')) {
+    return null
   }
 
   return {
@@ -110,7 +161,10 @@ export function resolvePluginChatIntent(text: string): PluginChatIntent | null {
   const closeIntent = resolveCloseIntent(normalized)
   if (closeIntent) return closeIntent
 
-  if (/(^|\b)(let'?s play|lets play|play|start|open)(?: .*?)?\bchess\b/.test(normalized) || /\bchess game\b/.test(normalized)) {
+  if (
+    /(^|\b)(let'?s play|lets play|play|start|open)(?: .*?)?\bchess\b/.test(normalized) ||
+    /\bchess game\b/.test(normalized)
+  ) {
     return {
       pluginId: 'chess',
       assistantText: 'Starting Chess.',
@@ -119,7 +173,9 @@ export function resolvePluginChatIntent(text: string): PluginChatIntent | null {
     }
   }
 
-  const weatherMatch = normalized.match(/(?:^|\b)(?:what(?:'s| is) the weather|show weather|weather|forecast)(?:\s+(?:in|for))\s+(.+)$/)
+  const weatherMatch = normalized.match(
+    /(?:^|\b)(?:what(?:'s| is) the weather|show weather|weather|forecast)(?:\s+(?:in|for))\s+(.+)$/
+  )
   if (weatherMatch?.[1]) {
     const city = weatherMatch[1].trim().replace(/[?.!]+$/, '')
     if (city) {
@@ -132,7 +188,9 @@ export function resolvePluginChatIntent(text: string): PluginChatIntent | null {
     }
   }
 
-  const spotifySearchMatch = normalized.match(/(?:^|\b)(?:find|search|show)(?: me)?\s+(.+?)\s+playlists?(?:\s+on\s+spotify|\s+in\s+spotify|\s+spotify)?$/)
+  const spotifySearchMatch = normalized.match(
+    /(?:^|\b)(?:find|search|show)(?: me)?\s+(.+?)\s+playlists?(?:\s+on\s+spotify|\s+in\s+spotify|\s+spotify)?$/
+  )
   if (spotifySearchMatch?.[1] && normalized.includes('spotify')) {
     const query = spotifySearchMatch[1].trim()
     return {
@@ -152,17 +210,12 @@ export function resolvePluginChatIntent(text: string): PluginChatIntent | null {
     }
   }
 
-  if (/(^|\b)(open|launch|start|use|chat with|let'?s chat with)\s+.*\b(spotify|weather|weather lab|github|github repo coach)\b/.test(normalized)) {
+  if (/(^|\b)(open|launch|start|use|chat with|let'?s chat with)(?:\b|\s)/.test(normalized)) {
     const pluginId = resolveExplicitAppAlias(normalized)
     if (pluginId) {
       return {
         pluginId,
-        assistantText:
-          pluginId === 'spotify'
-            ? 'Opening Spotify Study DJ.'
-            : pluginId === 'weather'
-              ? 'Opening Weather Lab.'
-              : 'Opening GitHub Repo Coach.',
+        assistantText: `Opening ${getPluginDisplayName(pluginId)}.`,
       }
     }
   }
@@ -181,26 +234,34 @@ function buildPluginAssistantMessage(pluginId: string, instanceId: string, assis
   return message
 }
 
-export async function executePluginChatIntent(sessionId: string, intent: PluginChatIntent): Promise<Message> {
+export async function executePluginChatIntent(
+  sessionId: string,
+  intent: PluginChatIntent,
+  metadata?: PluginIntentMessageMetadata
+): Promise<Message> {
   const store = pluginRegistryStore.getState()
   const activeInstance = store.getActiveInstanceForPlugin(intent.pluginId, sessionId)
 
   if (intent.requiresActiveInstance && !activeInstance) {
     const subject = intent.pluginId === 'chess' ? 'Chess game' : getPluginDisplayName(intent.pluginId)
-    return createMessage('assistant', `No active ${subject} to close.`)
+    return applyPluginIntentMessageMetadata(createMessage('assistant', `No active ${subject} to close.`), metadata)
   }
 
   if (intent.toolName) {
     const tools = getPluginToolSet(sessionId)
     const namespacedName = `plugin__${intent.pluginId}__${intent.toolName}`
     const pluginTool = tools[namespacedName]
-    const execute = (pluginTool as { execute?: (input: Record<string, unknown>) => Promise<unknown> } | undefined)?.execute
+    const execute = (pluginTool as { execute?: (input: Record<string, unknown>) => Promise<unknown> } | undefined)
+      ?.execute
     if (execute) {
       const result = await execute(intent.parameters || {})
       if (isPluginMountToolResult(result)) {
-        return buildPluginAssistantMessage(intent.pluginId, result.pluginMount.instanceId, intent.assistantText)
+        return applyPluginIntentMessageMetadata(
+          buildPluginAssistantMessage(intent.pluginId, result.pluginMount.instanceId, intent.assistantText),
+          metadata
+        )
       }
-      return createMessage('assistant', intent.assistantText)
+      return applyPluginIntentMessageMetadata(createMessage('assistant', intent.assistantText), metadata)
     }
   }
 
@@ -212,5 +273,8 @@ export async function executePluginChatIntent(sessionId: string, intent: PluginC
     throw new Error(`Failed to open plugin: ${intent.pluginId}`)
   }
 
-  return buildPluginAssistantMessage(intent.pluginId, instance.instanceId, intent.assistantText)
+  return applyPluginIntentMessageMetadata(
+    buildPluginAssistantMessage(intent.pluginId, instance.instanceId, intent.assistantText),
+    metadata
+  )
 }

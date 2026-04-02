@@ -1,0 +1,16 @@
+.git
+.github
+.husky
+.vscode
+.idea
+node_modules
+release
+dist
+out
+coverage
+.turbo
+.pnpm-store
+.env
+.env.*
+plugins-export
+

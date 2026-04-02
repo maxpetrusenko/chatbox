@@ -2,7 +2,39 @@ import type { Session, SessionMeta } from '@shared/types'
 import { mapValues } from 'lodash'
 import { migrateMessage } from '../../shared/utils/message'
 
+function backfillPluginIntentMessageMetadata(
+  message: ReturnType<typeof migrateMessage>,
+  defaults: { aiProvider?: string; model?: string }
+) {
+  const isPluginIntentMessage =
+    message.role === 'assistant' && message.contentParts.some((part) => part.type === 'plugin')
+
+  if (!isPluginIntentMessage) {
+    return message
+  }
+
+  return {
+    ...message,
+    aiProvider: message.aiProvider ?? defaults.aiProvider,
+    model: message.model ?? defaults.model,
+    tokensUsed: message.tokensUsed ?? message.usage?.totalTokens ?? 0,
+    usage: {
+      ...message.usage,
+      totalTokens: message.usage?.totalTokens ?? message.tokensUsed ?? 0,
+    },
+  }
+}
+
+function migrateSessionMessages(messages: Session['messages'], defaults: { aiProvider?: string; model?: string }) {
+  return messages?.map((message) => backfillPluginIntentMessageMetadata(migrateMessage(message), defaults)) || []
+}
+
 export function migrateSession(session: Session): Session {
+  const defaults = {
+    aiProvider: session.settings?.provider,
+    model: session.settings?.modelId,
+  }
+
   return {
     ...session,
     settings: {
@@ -10,17 +42,17 @@ export function migrateSession(session: Session): Session {
       temperature: undefined,
       ...session.settings,
     },
-    messages: session.messages?.map((m) => migrateMessage(m)) || [],
+    messages: migrateSessionMessages(session.messages, defaults),
     threads: session.threads?.map((t) => ({
       ...t,
-      messages: t.messages.map((m) => migrateMessage(m)) || [],
+      messages: migrateSessionMessages(t.messages, defaults),
     })),
     messageForksHash: mapValues(session.messageForksHash || {}, (forks) => ({
       ...forks,
       lists:
         forks.lists?.map((list) => ({
           ...list,
-          messages: list.messages?.map((m) => migrateMessage(m)) || [],
+          messages: migrateSessionMessages(list.messages, defaults),
         })) || [],
     })),
   }

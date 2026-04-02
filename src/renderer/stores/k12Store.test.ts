@@ -94,6 +94,22 @@ describe('k12Store access control', () => {
     expect(teacherClass?.activePlugins).toContain('drop-lab')
   })
 
+  it('can disable a plugin for the current teacher scope', () => {
+    const store = createK12Store()
+    const teacher = DEMO_USERS.find((user) => user.role === 'teacher')
+    if (!teacher) throw new Error('Demo teacher is required for this test')
+
+    store.getState().login(teacher)
+
+    expect(store.getState().isPluginActiveForCurrentScope('weather')).toBe(true)
+
+    store.getState().deactivatePluginForCurrentScope('weather')
+
+    expect(store.getState().isPluginActiveForCurrentScope('weather')).toBe(false)
+    const teacherClass = store.getState().classes.find((cls) => cls.teacherId === teacher.id)
+    expect(teacherClass?.activePlugins).not.toContain('weather')
+  })
+
   it('scopes pending approvals to school admins', () => {
     const store = createK12Store()
     const teacher = DEMO_USERS.find((user) => user.role === 'teacher')

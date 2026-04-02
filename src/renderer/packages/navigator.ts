@@ -3,7 +3,7 @@ import copyToClipboardFallback from 'copy-to-clipboard'
 
 export function copyToClipboard(text: string) {
   try {
-    navigator?.clipboard?.writeText(text)
+    void globalThis.navigator?.clipboard?.writeText?.(text)
   } catch (e) {
     Sentry.captureException(e)
   }
@@ -14,7 +14,7 @@ export function copyToClipboard(text: string) {
   }
 }
 
-const ua = navigator.userAgent
+const ua = globalThis.navigator?.userAgent || ''
 
 export const getBrowser = (): 'Opera' | 'Chrome' | 'Firefox' | 'Safari' | 'IE' | 'Edge' | 'Unknown' | undefined => {
   if (ua.indexOf('Opera') > -1) {
