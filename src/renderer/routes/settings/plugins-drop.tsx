@@ -443,7 +443,7 @@ function DonePanel({ review, onReset }: { review: ReviewState; onReset: () => vo
           <Title order={4}>Submitted for Review</Title>
           <Text size="sm" c="dimmed" ta="center">
             {review.manifest.name} has been submitted to the admin approval queue.
-            Check K12 Admin > Approval Queue for status.
+            Check K12 Admin {'>'} Approval Queue for status.
           </Text>
         </>
       )}
@@ -592,4 +592,9 @@ function PluginDropPage() {
       {step === 'done' && review && <DonePanel review={review} onReset={handleReset} />}
     </Stack>
   )
+}
+
+
+export function PluginDropForm() {
+  return <PluginDropPage />
 }
