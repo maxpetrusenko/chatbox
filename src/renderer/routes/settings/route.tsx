@@ -135,6 +135,8 @@ function getSettingsRoutePath(key: string) {
       return '/settings/k12-login'
     case 'plugins':
       return '/settings/plugins'
+    case 'plugins-drop':
+      return '/settings/plugins-drop'
     case 'k12-admin':
       return '/settings/k12-admin'
     case 'document-parser':

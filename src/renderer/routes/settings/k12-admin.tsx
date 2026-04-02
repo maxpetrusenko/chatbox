@@ -31,6 +31,7 @@ import {
 import { createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import PlatformProxyAdminPanel from '@/components/settings/k12/PlatformProxyAdminPanel'
+import { reviewPluginRequestInTellMe } from '@/packages/tellme/k12'
 import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
 import { k12Store, useK12 } from '@/stores/k12Store'
 
@@ -91,19 +92,18 @@ function ApprovalQueueTab() {
   const handleApprove = useCallback(
     (record: PluginInstallRecord) => {
       if (!currentUser) return
-      const staged = droppedPluginsStore.getState().getStagedPackage(record.id)
-      if (staged) {
-        droppedPluginsStore.getState().installStagedPackage(record.id)
-        k12Store.getState().activatePluginForInstallRecord(record.id)
-        k12Store.getState().updateInstallStatus(record.id, 'active', {
+      void (async () => {
+        const staged = droppedPluginsStore.getState().getStagedPackage(record.id)
+        const nextStatus = staged ? 'active' : 'approved'
+        await reviewPluginRequestInTellMe({
+          recordId: record.id,
+          status: nextStatus,
           reviewedBy: currentUser.id,
         })
-        return
-      }
-
-      k12Store.getState().updateInstallStatus(record.id, 'approved', {
-        reviewedBy: currentUser.id,
-      })
+        if (staged) {
+          droppedPluginsStore.getState().installStagedPackage(record.id)
+        }
+      })()
     },
     [currentUser]
   )
@@ -111,12 +111,16 @@ function ApprovalQueueTab() {
   const handleReject = useCallback(
     (id: string) => {
       if (!currentUser) return
-      k12Store.getState().updateInstallStatus(id, 'rejected', {
-        reviewedBy: currentUser.id,
-        rejectionReason: rejectReason || undefined,
-      })
-      setRejectId(null)
-      setRejectReason('')
+      void (async () => {
+        await reviewPluginRequestInTellMe({
+          recordId: id,
+          status: 'rejected',
+          reviewedBy: currentUser.id,
+          rejectionReason: rejectReason || undefined,
+        })
+        setRejectId(null)
+        setRejectReason('')
+      })()
     },
     [currentUser, rejectReason]
   )

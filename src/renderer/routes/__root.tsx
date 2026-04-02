@@ -56,6 +56,7 @@ import * as atoms from '@/stores/atoms'
 import { initPluginAuthBroker } from '@/stores/pluginAuthStore'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
 import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
+import { initTellMeK12AuthSync } from '@/packages/tellme/k12'
 import * as premiumActions from '@/stores/premiumActions'
 import * as settingActions from '@/stores/settingActions'
 import { settingsStore, useLanguage, useSettingsStore, useTheme } from '@/stores/settingsStore'
@@ -66,6 +67,7 @@ initPlugins()
 droppedPluginsStore.getState().hydrateIntoRuntime()
 pluginRegistryStore.getState().loadBuiltins()
 initPluginAuthBroker()
+initTellMeK12AuthSync()
 
 function Root() {
   const location = useLocation()

@@ -17,21 +17,25 @@ import {
   TextInput,
   Title,
 } from '@mantine/core'
+import type { PluginPackageAudit, PluginRuntimeValidation } from '@shared/plugin-security'
+import type { K12Role, PluginManifest } from '@shared/plugin-types'
 import {
+  IconAlertTriangle,
   IconCheck,
+  IconPlugConnected,
+  IconSettings,
   IconShieldCheck,
   IconUpload,
   IconX,
-  IconAlertTriangle,
-  IconPlugConnected,
-  IconSettings,
 } from '@tabler/icons-react'
-import { createFileRoute } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
-import type { PluginManifest } from '@shared/plugin-types'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
+import { validatePluginRuntime } from '@/packages/plugin-runtime-validation'
+import { submitPluginRequestToTellMe } from '@/packages/tellme/k12'
 import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
-import { k12Store, useK12 } from '@/stores/k12Store'
 import { reviewPluginSafety, runApprovalPipeline, type SafetyResult } from '@/stores/k12Safety'
+import { k12Store, useK12 } from '@/stores/k12Store'
+import { usePlatformProxy } from '@/stores/platformProxyStore'
 
 export const Route = createFileRoute('/settings/plugins-drop')({
   component: PluginDropPage,
@@ -45,6 +49,7 @@ interface InspectedPluginPackage {
   manifest: PluginManifest
   uiHtml?: string
   sourceType: 'manifest' | 'package'
+  audit: PluginPackageAudit
 }
 
 type DropStep = 'drop' | 'review' | 'setup' | 'done'
@@ -54,6 +59,8 @@ interface ReviewState {
   uiHtml?: string
   sourceName?: string
   safetyResult: SafetyResult
+  packageAudit: PluginPackageAudit
+  runtimeValidation: PluginRuntimeValidation
   pipelineStatus: 'approved' | 'quarantined' | 'rejected'
 }
 
@@ -81,13 +88,18 @@ async function inspectPluginFile(file: File): Promise<InspectedPluginPackage> {
   if (window.electronAPI?.invoke) {
     return window.electronAPI.invoke('plugin-drop:inspect-package', file.name, base64)
   }
-  if (file.name.toLowerCase().endsWith('.json')) {
-    return { manifest: JSON.parse(await file.text()) as PluginManifest, sourceType: 'manifest' }
-  }
   throw new Error('Plugin package install requires the desktop app runtime')
 }
 
 const SCORE_COLOR = (s: number) => (s >= 90 ? 'green' : s >= 60 ? 'yellow' : 'red')
+
+function collectReviewFindings(review: ReviewState): string[] {
+  return [
+    ...review.safetyResult.findings,
+    ...review.packageAudit.findings.map((finding) => finding.message),
+    ...review.runtimeValidation.findings.map((finding) => finding.message),
+  ]
+}
 
 // ---------------------------------------------------------------------------
 // Step 1: Drop Zone
@@ -96,7 +108,7 @@ const SCORE_COLOR = (s: number) => (s >= 90 ? 'green' : s >= 60 ? 'yellow' : 're
 function DropZone({
   onInspected,
 }: {
-  onInspected: (pkg: InspectedPluginPackage, sourceName: string) => void
+  onInspected: (pkg: InspectedPluginPackage, sourceName: string) => Promise<void>
 }) {
   const [manifestJson, setManifestJson] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -110,7 +122,7 @@ function DropZone({
     setLoading(true)
     try {
       const inspected = await inspectPluginFile(file)
-      onInspected(inspected, file.name)
+      await onInspected(inspected, file.name)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -118,7 +130,7 @@ function DropZone({
     }
   }
 
-  const handlePaste = () => {
+  const handlePaste = async () => {
     setError(null)
     try {
       const manifest = JSON.parse(manifestJson) as PluginManifest
@@ -126,9 +138,14 @@ function DropZone({
         setError('Missing required fields: id, name, tools')
         return
       }
-      onInspected({ manifest, sourceType: 'manifest' }, 'pasted manifest')
-    } catch {
-      setError('Invalid JSON')
+      if (!window.electronAPI?.invoke) {
+        throw new Error('Manifest review requires the desktop app runtime')
+      }
+      const base64 = btoa(unescape(encodeURIComponent(JSON.stringify(manifest))))
+      const inspected = await window.electronAPI.invoke('plugin-drop:inspect-package', 'plugin.json', base64)
+      await onInspected(inspected, 'pasted manifest')
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Invalid JSON')
     }
   }
 
@@ -139,11 +156,24 @@ function DropZone({
         tabIndex={0}
         onClick={() => fileRef.current?.click()}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click() }
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            fileRef.current?.click()
+          }
         }}
-        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-        onDragLeave={(e) => { e.preventDefault(); setDragging(false) }}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); void handleFile(e.dataTransfer.files?.[0] || null) }}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setDragging(true)
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault()
+          setDragging(false)
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          setDragging(false)
+          void handleFile(e.dataTransfer.files?.[0] || null)
+        }}
         style={{
           border: `2px dashed ${dragging ? 'var(--mantine-color-blue-5)' : 'var(--mantine-color-gray-6)'}`,
           borderRadius: 16,
@@ -156,16 +186,28 @@ function DropZone({
       >
         <Stack gap={8} align="center">
           <IconUpload size={32} style={{ opacity: 0.4 }} />
-          <Text size="md" fw={600}>Drop plugin file here</Text>
-          <Text size="xs" c="dimmed">
-            Accepts <Code>.cbplugin</Code>, <Code>.zip</Code>, or <Code>.json</Code> manifest
+          <Text size="md" fw={600}>
+            Drop plugin file here
           </Text>
-          <Button size="sm" variant="light" mt={8} loading={loading}>Choose File</Button>
+          <Text size="xs" c="dimmed">
+            Accepts <Code>.cbplugin</Code> or <Code>.zip</Code>. <Code>.json</Code> manifest review is contract only.
+          </Text>
+          <Button size="sm" variant="light" mt={8} loading={loading}>
+            Choose File
+          </Button>
         </Stack>
-        <input ref={fileRef} hidden type="file" accept=".cbplugin,.zip,.json" onChange={(e) => void handleFile(e.currentTarget.files?.[0] || null)} />
+        <input
+          ref={fileRef}
+          hidden
+          type="file"
+          accept=".cbplugin,.zip,.json"
+          onChange={(e) => void handleFile(e.currentTarget.files?.[0] || null)}
+        />
       </div>
 
-      <Text size="xs" c="dimmed" ta="center">or paste a manifest JSON below</Text>
+      <Text size="xs" c="dimmed" ta="center">
+        or paste a manifest JSON below for contract review only
+      </Text>
 
       <Textarea
         minRows={3}
@@ -175,11 +217,15 @@ function DropZone({
         onChange={(e) => setManifestJson(e.currentTarget.value)}
         size="xs"
       />
-      <Button size="xs" variant="light" onClick={handlePaste} disabled={!manifestJson.trim()}>
+      <Button size="xs" variant="light" onClick={() => void handlePaste()} disabled={!manifestJson.trim()}>
         Submit Manifest
       </Button>
 
-      {error && <Alert color="red" variant="light" icon={<IconX size={14} />}>{error}</Alert>}
+      {error && (
+        <Alert color="red" variant="light" icon={<IconX size={14} />}>
+          {error}
+        </Alert>
+      )}
     </Stack>
   )
 }
@@ -188,7 +234,7 @@ function DropZone({
 // Step 2: AI Review Results
 // ---------------------------------------------------------------------------
 
-function ReviewPanel({
+export function ReviewPanel({
   review,
   onApprove,
   onReject,
@@ -200,8 +246,9 @@ function ReviewPanel({
   onBack: () => void
 }) {
   const { manifest, safetyResult, pipelineStatus } = review
+  const isManifestOnly = !review.uiHtml
   const isApproved = pipelineStatus === 'approved'
-  const isRejected = pipelineStatus === 'rejected'
+  const isRejected = pipelineStatus === 'rejected' && !isManifestOnly
   const isQuarantined = pipelineStatus === 'quarantined'
 
   return (
@@ -214,34 +261,73 @@ function ReviewPanel({
       <Card padding="md" radius="md" withBorder>
         <Group justify="space-between" align="flex-start">
           <Box>
-            <Text fw={700} size="lg">{manifest.name}</Text>
-            <Text size="xs" c="dimmed">{manifest.id} v{manifest.version}</Text>
-            <Text size="sm" c="dimmed" mt={4}>{manifest.description}</Text>
+            <Text fw={700} size="lg">
+              {manifest.name}
+            </Text>
+            <Text size="xs" c="dimmed">
+              {manifest.id} v{manifest.version}
+            </Text>
+            <Text size="sm" c="dimmed" mt={4}>
+              {manifest.description}
+            </Text>
             <Group gap={6} mt={8}>
-              <Badge size="xs" variant="light">{manifest.category}</Badge>
-              <Badge size="xs" variant="light" color={manifest.trustLevel === 'builtin' || manifest.trustLevel === 'verified' ? 'green' : 'gray'}>
+              <Badge size="xs" variant="light">
+                {manifest.category}
+              </Badge>
+              <Badge
+                size="xs"
+                variant="light"
+                color={manifest.trustLevel === 'builtin' || manifest.trustLevel === 'verified' ? 'green' : 'gray'}
+              >
                 {manifest.trustLevel || 'untrusted'}
               </Badge>
-              <Badge size="xs" variant="outline">{manifest.tools.length} tools</Badge>
-              {review.uiHtml && <Badge size="xs" variant="light" color="teal">Has UI</Badge>}
-              {!review.uiHtml && <Badge size="xs" variant="light" color="orange">Manifest only</Badge>}
+              <Badge size="xs" variant="outline">
+                {manifest.tools.length} tools
+              </Badge>
+              {review.uiHtml && (
+                <Badge size="xs" variant="light" color="teal">
+                  Has UI
+                </Badge>
+              )}
+              {!review.uiHtml && (
+                <Badge size="xs" variant="light" color="orange">
+                  Manifest only
+                </Badge>
+              )}
             </Group>
           </Box>
         </Group>
       </Card>
 
       {/* Safety score */}
-      <Card padding="md" radius="md" withBorder style={{ borderColor: isApproved ? 'var(--mantine-color-green-6)' : isRejected ? 'var(--mantine-color-red-6)' : 'var(--mantine-color-orange-6)' }}>
+      <Card
+        padding="md"
+        radius="md"
+        withBorder
+        style={{
+          borderColor: isManifestOnly
+            ? 'var(--mantine-color-orange-6)'
+            : isApproved
+            ? 'var(--mantine-color-green-6)'
+            : isRejected
+              ? 'var(--mantine-color-red-6)'
+              : 'var(--mantine-color-orange-6)',
+        }}
+      >
         <Group justify="space-between" mb="xs">
           <Group gap="xs">
             <IconShieldCheck size={18} />
-            <Text fw={600} size="sm">AI Safety Review</Text>
+            <Text fw={600} size="sm">
+              AI Safety Review
+            </Text>
           </Group>
           <Badge
             size="lg"
             variant="filled"
             color={SCORE_COLOR(safetyResult.score)}
-            leftSection={isApproved ? <IconCheck size={12} /> : isRejected ? <IconX size={12} /> : <IconAlertTriangle size={12} />}
+            leftSection={
+              isManifestOnly ? <IconAlertTriangle size={12} /> : isApproved ? <IconCheck size={12} /> : isRejected ? <IconX size={12} /> : <IconAlertTriangle size={12} />
+            }
           >
             {safetyResult.score}/100
           </Badge>
@@ -257,25 +343,93 @@ function ReviewPanel({
           <CheckItem label="Age appropriate" ok={safetyResult.details.ageAppropriate} />
         </Group>
 
-        {(safetyResult.findings.length > 0) && (
+        {safetyResult.findings.length > 0 && (
           <Box>
-            <Text size="xs" fw={600} mb={4}>Findings:</Text>
+            <Text size="xs" fw={600} mb={4}>
+              Findings:
+            </Text>
             <List size="xs" c="dimmed" spacing={2}>
-              {safetyResult.findings.map((f, i) => (
-                <List.Item key={i}>{f}</List.Item>
+              {safetyResult.findings.map((finding) => (
+                <List.Item key={finding}>{finding}</List.Item>
               ))}
             </List>
           </Box>
         )}
 
         {safetyResult.findings.length === 0 && (
-          <Text size="xs" c="green">All safety checks passed. No findings.</Text>
+          <Text size="xs" c="green">
+            All safety checks passed. No findings.
+          </Text>
+        )}
+      </Card>
+
+      <Card padding="md" radius="md" withBorder>
+        <Group justify="space-between" mb="xs">
+          <Text fw={600} size="sm">
+            Package Security Audit
+          </Text>
+          <Badge size="sm" color={review.packageAudit.passed ? 'green' : 'red'} variant="light">
+            {review.packageAudit.passed ? 'Pass' : 'Fail'}
+          </Badge>
+        </Group>
+        <Text size="xs" c="dimmed" mb="xs">
+          {review.packageAudit.fileCount} files • {(review.packageAudit.totalBytes / 1024).toFixed(1)} KB • entrypoint{' '}
+          {review.packageAudit.entrypoint || 'n/a'}
+        </Text>
+        {review.packageAudit.findings.length > 0 ? (
+          <List size="xs" c="dimmed" spacing={2}>
+            {review.packageAudit.findings.map((finding) => (
+              <List.Item key={`audit-${finding.severity}-${finding.message}`}>
+                [{finding.severity}] {finding.message}
+              </List.Item>
+            ))}
+          </List>
+        ) : (
+          <Text size="xs" c="green">
+            Archive policy checks passed.
+          </Text>
+        )}
+      </Card>
+
+      <Card padding="md" radius="md" withBorder>
+        <Group justify="space-between" mb="xs">
+          <Text fw={600} size="sm">
+            Runtime Boot Validation
+          </Text>
+          <Badge size="sm" color={isManifestOnly ? 'orange' : review.runtimeValidation.passed ? 'green' : 'red'} variant="light">
+            {isManifestOnly ? 'Skipped' : review.runtimeValidation.passed ? 'Pass' : 'Fail'}
+          </Badge>
+        </Group>
+        <Text size="xs" c="dimmed" mb="xs">
+          {isManifestOnly ? 'Manifest review only' : review.runtimeValidation.ready ? 'PLUGIN_READY received' : 'No boot handshake'} •{' '}
+          {review.runtimeValidation.durationMs} ms
+        </Text>
+        {review.runtimeValidation.findings.length > 0 ? (
+          <List size="xs" c="dimmed" spacing={2}>
+            {review.runtimeValidation.findings.map((finding) => (
+              <List.Item key={`runtime-${finding.severity}-${finding.message}`}>
+                [{finding.severity}] {finding.message}
+              </List.Item>
+            ))}
+          </List>
+        ) : (
+          <Text size="xs" c="green">
+            Plugin booted in sandbox without policy violations.
+          </Text>
         )}
       </Card>
 
       {/* Pipeline decision */}
       <Card padding="md" radius="md" withBorder>
-        <Text fw={600} size="sm" mb="xs">Decision</Text>
+        <Text fw={600} size="sm" mb="xs">
+          Decision
+        </Text>
+        {isManifestOnly && (
+          <Alert color="orange" variant="light" icon={<IconAlertTriangle size={16} />} title="Contract review only">
+            Manifest shape reviewed. Installation is blocked until you upload a full <Code>.cbplugin</Code> or <Code>.zip</Code>
+            with widget assets for runtime validation.
+          </Alert>
+        )}
         {isApproved && (
           <Alert color="green" variant="light" icon={<IconCheck size={16} />} title="Approved">
             Plugin passed AI safety review. Ready for setup and activation.
@@ -303,6 +457,11 @@ function ReviewPanel({
               Submit for Admin Review
             </Button>
           )}
+          {isManifestOnly && (
+            <Button variant="light" color="orange" onClick={onBack}>
+              Upload Package
+            </Button>
+          )}
           <Button variant="light" color="gray" onClick={onReject}>
             Cancel
           </Button>
@@ -315,8 +474,14 @@ function ReviewPanel({
 function CheckItem({ label, ok }: { label: string; ok: boolean }) {
   return (
     <Group gap={4}>
-      {ok ? <IconCheck size={14} color="var(--mantine-color-green-6)" /> : <IconX size={14} color="var(--mantine-color-red-6)" />}
-      <Text size="xs" c={ok ? 'green' : 'red'}>{label}</Text>
+      {ok ? (
+        <IconCheck size={14} color="var(--mantine-color-green-6)" />
+      ) : (
+        <IconX size={14} color="var(--mantine-color-red-6)" />
+      )}
+      <Text size="xs" c={ok ? 'green' : 'red'}>
+        {label}
+      </Text>
     </Group>
   )
 }
@@ -329,17 +494,29 @@ export function SetupPanel({
   review,
   onActivate,
   onBack,
+  currentRole,
+  districtKeyConfigured,
 }: {
   review: ReviewState
   onActivate: (submission: SetupSubmission) => void
   onBack: () => void
+  currentRole: K12Role
+  districtKeyConfigured: boolean
 }) {
   const { manifest } = review
   const needsKey = manifest.auth?.type === 'api-key' || manifest.proxy?.requiresDistrictKey
+  const canConfigureDistrictKey = currentRole === 'district-admin' || currentRole === 'school-admin'
+  const requiresAdminSetup = needsKey && !districtKeyConfigured && !canConfigureDistrictKey
   const [apiKey, setApiKey] = useState('')
-  const [enabled, setEnabled] = useState(true)
+  const [enabled, setEnabled] = useState(!requiresAdminSetup)
 
   const setupLabel = manifest.proxy?.setupLabel || 'API Key'
+
+  useEffect(() => {
+    if (requiresAdminSetup) {
+      setEnabled(false)
+    }
+  }, [requiresAdminSetup])
 
   return (
     <Stack gap="md">
@@ -350,7 +527,9 @@ export function SetupPanel({
       <Card padding="md" radius="md" withBorder>
         <Group gap="xs" mb="md">
           <IconSettings size={18} />
-          <Text fw={600} size="sm">Plugin Setup: {manifest.name}</Text>
+          <Text fw={600} size="sm">
+            Plugin Setup: {manifest.name}
+          </Text>
           <Badge size="xs" color="green" variant="light" leftSection={<IconCheck size={10} />}>
             Approved
           </Badge>
@@ -362,9 +541,17 @@ export function SetupPanel({
           </Alert>
         )}
 
-        {needsKey && (
+        {needsKey && districtKeyConfigured && (
+          <Alert color="green" variant="light" icon={<IconCheck size={16} />} mb="md">
+            District key already configured. You can enable this plugin without entering credentials again.
+          </Alert>
+        )}
+
+        {needsKey && canConfigureDistrictKey && !districtKeyConfigured && (
           <Stack gap="sm" mb="md">
-            <Text size="sm" fw={500}>{setupLabel}</Text>
+            <Text size="sm" fw={500}>
+              {setupLabel}
+            </Text>
             <Text size="xs" c="dimmed">
               This key is stored encrypted at the district level. Teachers and students never see it.
             </Text>
@@ -381,12 +568,19 @@ export function SetupPanel({
                 Test Key
               </Button>
             </Group>
-            {manifest.proxy?.rateLimits?.perDistrictMonth && (manifest.proxy.rateLimits.perDistrictMonth > 0) && (
+            {manifest.proxy?.rateLimits?.perDistrictMonth && manifest.proxy.rateLimits.perDistrictMonth > 0 && (
               <Text size="xs" c="dimmed">
                 Monthly quota: {manifest.proxy.rateLimits.perDistrictMonth.toLocaleString()} calls/district
               </Text>
             )}
           </Stack>
+        )}
+
+        {requiresAdminSetup && (
+          <Alert color="orange" variant="light" icon={<IconAlertTriangle size={16} />} mb="md">
+            District API keys are admin managed. Save this plugin disabled, then ask a school or district admin to
+            configure {manifest.name} in K12 Admin before enabling it for class use.
+          </Alert>
         )}
 
         <Flex gap="md" align="center" py="sm" style={{ borderTop: '1px solid var(--mantine-color-gray-8)' }}>
@@ -395,15 +589,20 @@ export function SetupPanel({
             checked={enabled}
             onChange={(e) => setEnabled(e.currentTarget.checked)}
             size="md"
+            disabled={requiresAdminSetup}
           />
         </Flex>
 
-        {(manifest.tools.length > 0) && (
+        {manifest.tools.length > 0 && (
           <Box mt="sm">
-            <Text size="xs" fw={600} mb={4}>Tools that will be available to AI:</Text>
+            <Text size="xs" fw={600} mb={4}>
+              Tools that will be available to AI:
+            </Text>
             <Group gap={6}>
               {manifest.tools.map((t) => (
-                <Badge key={t.name} size="xs" variant="outline">{t.name}</Badge>
+                <Badge key={t.name} size="xs" variant="outline">
+                  {t.name}
+                </Badge>
               ))}
             </Group>
           </Box>
@@ -414,12 +613,14 @@ export function SetupPanel({
         <Button
           color="green"
           leftSection={<IconPlugConnected size={14} />}
-          onClick={() => onActivate({ apiKey: needsKey ? apiKey : undefined, enabled })}
-          disabled={needsKey && !apiKey.trim()}
+          onClick={() => onActivate({ apiKey: needsKey && canConfigureDistrictKey ? apiKey.trim() || undefined : undefined, enabled })}
+          disabled={needsKey && !districtKeyConfigured && canConfigureDistrictKey && !apiKey.trim()}
         >
-          {enabled ? 'Activate Plugin' : 'Save (Disabled)'}
+          {requiresAdminSetup ? 'Save for Admin Setup' : enabled ? 'Activate Plugin' : 'Save (Disabled)'}
         </Button>
-        <Button variant="light" color="gray" onClick={onBack}>Cancel</Button>
+        <Button variant="light" color="gray" onClick={onBack}>
+          Cancel
+        </Button>
       </Group>
     </Stack>
   )
@@ -429,15 +630,7 @@ export function SetupPanel({
 // Step 4: Done
 // ---------------------------------------------------------------------------
 
-function DonePanel({
-  review,
-  onReset,
-  activated,
-}: {
-  review: ReviewState
-  onReset: () => void
-  activated: boolean
-}) {
+function DonePanel({ review, onReset, activated }: { review: ReviewState; onReset: () => void; activated: boolean }) {
   const wasQuarantined = review.pipelineStatus === 'quarantined'
 
   return (
@@ -457,8 +650,8 @@ function DonePanel({
           <IconAlertTriangle size={48} color="var(--mantine-color-orange-6)" />
           <Title order={4}>Submitted for Review</Title>
           <Text size="sm" c="dimmed" ta="center">
-            {review.manifest.name} has been submitted to the admin approval queue.
-            Check K12 Admin {'>'} Approval Queue for status.
+            {review.manifest.name} has been submitted to the admin approval queue. Check K12 Admin {'>'} Approval Queue
+            for status.
           </Text>
         </>
       )}
@@ -474,13 +667,18 @@ function DonePanel({
 // ---------------------------------------------------------------------------
 
 function PluginDropPage() {
+  const navigate = useNavigate()
   const currentUser = useK12((s) => s.currentUser)
   const isAuthenticated = useK12((s) => s.isAuthenticated)
   const hasPermission = useK12((s) => s.hasPermission)
+  const apiKeyMetadata = usePlatformProxy((s) => s.apiKeyMetadata)
+  const hydrateApiKeyMetadata = usePlatformProxy((s) => s.hydrateApiKeyMetadata)
+  const setApiKey = usePlatformProxy((s) => s.setApiKey)
 
   const [step, setStep] = useState<DropStep>('drop')
   const [review, setReview] = useState<ReviewState | null>(null)
   const [activatedOnSave, setActivatedOnSave] = useState(true)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const stepIndex = step === 'drop' ? 0 : step === 'review' ? 1 : step === 'setup' ? 2 : 3
 
@@ -491,9 +689,21 @@ function PluginDropPage() {
           <IconUpload size={20} />
           <Title order={5}>Plugin Drop Install</Title>
         </Group>
-        <Alert color="blue" variant="light">
-          Log in via K12 Login to install plugins. Students cannot install plugins.
-        </Alert>
+        <Card padding="lg" radius="md" withBorder>
+          <Stack gap="sm">
+            <Alert color="blue" variant="light">
+              Log in via K12 Login to install plugins. Students cannot install plugins.
+            </Alert>
+            <Group>
+              <Button size="sm" onClick={() => void navigate({ to: '/settings/k12-login' })}>
+                Open K12 Login
+              </Button>
+              <Button size="sm" variant="light" onClick={() => void navigate({ to: '/settings/plugins' })}>
+                Open Plugin Marketplace
+              </Button>
+            </Group>
+          </Stack>
+        </Card>
       </Stack>
     )
   }
@@ -505,76 +715,134 @@ function PluginDropPage() {
           <IconUpload size={20} />
           <Title order={5}>Plugin Drop Install</Title>
         </Group>
-        <Alert color="orange" variant="light">
-          Your role ({currentUser.role}) does not have permission to install plugins.
-        </Alert>
+        <Card padding="lg" radius="md" withBorder>
+          <Stack gap="sm">
+            <Alert color="orange" variant="light">
+              Your role ({currentUser.role}) does not have permission to install plugins.
+            </Alert>
+            <Group>
+              <Button size="sm" variant="light" onClick={() => void navigate({ to: '/settings/plugins' })}>
+                Open Plugin Marketplace
+              </Button>
+            </Group>
+          </Stack>
+        </Card>
       </Stack>
     )
   }
 
-  const handleInspected = (pkg: InspectedPluginPackage, sourceName: string) => {
+  const needsDistrictKey = !!review && (review.manifest.auth?.type === 'api-key' || review.manifest.proxy?.requiresDistrictKey)
+  const districtKeyConfigured = review ? !!apiKeyMetadata[review.manifest.id]?.configured : false
+
+  useEffect(() => {
+    if (!review || !currentUser?.districtId || !needsDistrictKey) return
+    void hydrateApiKeyMetadata(currentUser.districtId, [review.manifest.id])
+  }, [currentUser?.districtId, hydrateApiKeyMetadata, needsDistrictKey, review])
+
+  const handleInspected = async (pkg: InspectedPluginPackage, sourceName: string) => {
     const safetyResult = reviewPluginSafety(pkg.manifest)
-    const pipeline = runApprovalPipeline(pkg.manifest, k12Store.getState().district?.settings.autoApproveThreshold)
+    const runtimeValidation = pkg.uiHtml
+      ? await validatePluginRuntime({ html: pkg.uiHtml })
+      : {
+          passed: false,
+          ready: false,
+          findings: [
+            {
+              code: 'missing-runtime',
+              severity: 'warning',
+              message: 'Manifest-only review skips runtime validation. Upload a package with widget assets to continue.',
+            },
+          ],
+          durationMs: 0,
+        }
+    const pipeline =
+      pkg.audit.passed && runtimeValidation.passed
+        ? runApprovalPipeline(pkg.manifest, k12Store.getState().district?.settings.autoApproveThreshold)
+        : { status: 'rejected' as const, result: safetyResult }
     setReview({
       manifest: pkg.manifest,
       uiHtml: pkg.uiHtml,
       sourceName,
       safetyResult,
+      packageAudit: pkg.audit,
+      runtimeValidation,
       pipelineStatus: pipeline.status,
     })
     setStep('review')
   }
 
-  const handleApproveReview = () => {
+  const handleApproveReview = async () => {
     if (!review) return
+    setSubmitError(null)
     if (review.pipelineStatus === 'approved') {
       setActivatedOnSave(true)
       setStep('setup')
-    } else {
-      // Quarantined — submit to approval queue
-      const record = k12Store.getState().requestPlugin(review.manifest, currentUser.schoolId ?? 'school-1')
-      if (record?.id) {
-        if (review.uiHtml) {
-          droppedPluginsStore.getState().stagePackage(record.id, {
-            manifest: review.manifest,
-            uiHtml: review.uiHtml,
-            sourceName: review.sourceName,
-          })
-        }
-        k12Store.getState().updateInstallStatus(record.id, 'quarantined', {
-          safetyScore: review.safetyResult.score,
-          safetyFindings: review.safetyResult.findings,
+      return
+    }
+
+    try {
+      const record = await submitPluginRequestToTellMe({
+        manifest: review.manifest,
+        schoolId: currentUser.schoolId ?? '',
+        uiHtml: review.uiHtml,
+        sourceName: review.sourceName,
+        safetyScore: review.safetyResult.score,
+        safetyFindings: collectReviewFindings(review),
+        requestedByLabel: currentUser.name,
+        chatboxStatus: 'quarantined',
+        enableForCurrentScope: false,
+        currentUser,
+      })
+
+      if (review.uiHtml) {
+        droppedPluginsStore.getState().stagePackage(record.id, {
+          manifest: review.manifest,
+          uiHtml: review.uiHtml,
+          sourceName: review.sourceName,
         })
       }
       setStep('done')
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : String(error))
     }
   }
 
-  const handleActivate = ({ enabled }: SetupSubmission) => {
+  const handleActivate = async ({ apiKey, enabled }: SetupSubmission) => {
     if (!review) return
-    const record = k12Store.getState().requestPlugin(review.manifest, currentUser.schoolId ?? 'school-1')
-    if (!record?.id) return
+    setSubmitError(null)
+    const needsKey = review.manifest.auth?.type === 'api-key' || review.manifest.proxy?.requiresDistrictKey
 
-    k12Store.getState().updateInstallStatus(record.id, enabled ? 'active' : 'approved', {
-      safetyScore: review.safetyResult.score,
-      safetyFindings: review.safetyResult.findings,
-      reviewedBy: 'ai-auto',
-    })
+    if (needsKey && apiKey && currentUser.districtId) {
+      await setApiKey(currentUser.districtId, review.manifest.id, apiKey)
+    }
 
-    if (review.uiHtml) {
-      droppedPluginsStore.getState().installPackage({
+    try {
+      await submitPluginRequestToTellMe({
         manifest: review.manifest,
+        schoolId: currentUser.schoolId ?? '',
         uiHtml: review.uiHtml,
         sourceName: review.sourceName,
+        safetyScore: review.safetyResult.score,
+        safetyFindings: collectReviewFindings(review),
+        requestedByLabel: currentUser.name,
+        chatboxStatus: enabled ? 'active' : 'approved',
+        enableForCurrentScope: enabled,
+        currentUser,
       })
-    }
 
-    if (enabled) {
-      k12Store.getState().activatePluginForCurrentScope(review.manifest.id)
-    }
+      if (review.uiHtml) {
+        droppedPluginsStore.getState().installPackage({
+          manifest: review.manifest,
+          uiHtml: review.uiHtml,
+          sourceName: review.sourceName,
+        })
+      }
 
-    setActivatedOnSave(enabled)
-    setStep('done')
+      setActivatedOnSave(enabled)
+      setStep('done')
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : String(error))
+    }
   }
 
   const handleReset = () => {
@@ -603,19 +871,30 @@ function PluginDropPage() {
         <Stepper.Step label="Done" description="Active" icon={<IconCheck size={16} />} />
       </Stepper>
 
+      {submitError && (
+        <Alert color="red" variant="light">
+          {submitError}
+        </Alert>
+      )}
+
       {/* Step content */}
       {step === 'drop' && <DropZone onInspected={handleInspected} />}
       {step === 'review' && review && (
-        <ReviewPanel review={review} onApprove={handleApproveReview} onReject={handleReset} onBack={handleReset} />
+        <ReviewPanel review={review} onApprove={() => void handleApproveReview()} onReject={handleReset} onBack={handleReset} />
       )}
       {step === 'setup' && review && (
-        <SetupPanel review={review} onActivate={handleActivate} onBack={() => setStep('review')} />
+        <SetupPanel
+          review={review}
+          onActivate={(submission) => void handleActivate(submission)}
+          onBack={() => setStep('review')}
+          currentRole={currentUser.role}
+          districtKeyConfigured={districtKeyConfigured}
+        />
       )}
       {step === 'done' && review && <DonePanel review={review} onReset={handleReset} activated={activatedOnSave} />}
     </Stack>
   )
 }
-
 
 export function PluginDropForm() {
   return <PluginDropPage />

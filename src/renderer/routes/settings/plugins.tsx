@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Card,
+  Code,
   Flex,
   Group,
   SegmentedControl,
@@ -25,10 +26,12 @@ import {
   IconShieldCheck,
   IconX,
 } from '@tabler/icons-react'
-import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
 import { reviewPluginSafety } from '@/stores/k12Safety'
+import { setPluginEnabledForCurrentScopeInTellMe } from '@/packages/tellme/k12'
 import { k12Store, useK12 } from '@/stores/k12Store'
+import { usePlatformProxy } from '@/stores/platformProxyStore'
 import { getPluginAuthSetupError, pluginAuthStore, usePluginAuth } from '@/stores/pluginAuthStore'
 import { usePluginRegistry } from '@/stores/pluginRegistry'
 import { PluginDropForm } from './plugins-drop'
@@ -102,11 +105,20 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
   const canManageAuth = hasPermission('plugin.manage-auth')
   const isStudent = currentUser?.role === 'student'
   const isApiKeyPlugin = manifest.auth?.type === 'api-key' || manifest.proxy?.requiresDistrictKey === true
+  const apiKeyMetadata = usePlatformProxy((s) => s.apiKeyMetadata[manifest.id])
+  const hydrateApiKeyMetadata = usePlatformProxy((s) => s.hydrateApiKeyMetadata)
 
   const isPluginAllowed = useK12((s) => s.isPluginAllowed)
   const isPluginActiveForCurrentScope = useK12((s) => s.isPluginActiveForCurrentScope)
   const isAllowed = isPluginAllowed(manifest.id, currentUser?.schoolId)
   const isActive = isPluginActiveForCurrentScope(manifest.id)
+  const districtKeyConfigured = !!apiKeyMetadata?.configured
+  const districtKeyMissing = isApiKeyPlugin && !districtKeyConfigured
+
+  useEffect(() => {
+    if (!isApiKeyPlugin || !currentUser?.districtId) return
+    void hydrateApiKeyMetadata(currentUser.districtId, [manifest.id])
+  }, [currentUser?.districtId, hydrateApiKeyMetadata, isApiKeyPlugin, manifest.id])
 
   const handleConnect = () => {
     if (!manifest.auth) return
@@ -118,12 +130,18 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
   }
 
   const handleTogglePlugin = () => {
-    if (isActive) {
-      k12Store.getState().deactivatePluginForCurrentScope(manifest.id)
-      return
-    }
+    void (async () => {
+      try {
+        await setPluginEnabledForCurrentScopeInTellMe(manifest.id, !isActive)
+      } catch {
+        if (isActive) {
+          k12Store.getState().deactivatePluginForCurrentScope(manifest.id)
+          return
+        }
 
-    k12Store.getState().activatePluginForCurrentScope(manifest.id)
+        k12Store.getState().activatePluginForCurrentScope(manifest.id)
+      }
+    })()
   }
 
   return (
@@ -179,35 +197,34 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
 
         <Stack gap={4} align="flex-end" style={{ flexShrink: 0 }}>
           {/* Auth controls for authenticated plugins */}
-          {needsAuth && !isApiKeyPlugin && canManageAuth && (
-            <>
-              {authStatus === 'connected' ? (
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="red"
-                  leftSection={<IconPlugConnectedX size={14} />}
-                  onClick={handleDisconnect}
-                >
-                  Disconnect
-                </Button>
-              ) : authStatus === 'authorizing' ? (
-                <Button size="xs" variant="light" color="yellow" loading>
-                  Connecting
-                </Button>
-              ) : (
-                <Button
-                  size="xs"
-                  variant="filled"
-                  leftSection={<IconPlugConnected size={14} />}
-                  onClick={handleConnect}
-                  disabled={!!setupError}
-                >
-                  Connect
-                </Button>
-              )}
-            </>
-          )}
+          {needsAuth &&
+            !isApiKeyPlugin &&
+            canManageAuth &&
+            (authStatus === 'connected' ? (
+              <Button
+                size="xs"
+                variant="light"
+                color="red"
+                leftSection={<IconPlugConnectedX size={14} />}
+                onClick={handleDisconnect}
+              >
+                Disconnect
+              </Button>
+            ) : authStatus === 'authorizing' ? (
+              <Button size="xs" variant="light" color="yellow" loading>
+                Connecting
+              </Button>
+            ) : (
+              <Button
+                size="xs"
+                variant="filled"
+                leftSection={<IconPlugConnected size={14} />}
+                onClick={handleConnect}
+                disabled={!!setupError}
+              >
+                Connect
+              </Button>
+            ))}
 
           {/* Enable approved plugin for current scope */}
           {canInstall && isAllowed && (
@@ -217,27 +234,19 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
               color={isActive ? 'gray' : 'green'}
               leftSection={isActive ? <IconX size={14} /> : <IconDownload size={14} />}
               onClick={handleTogglePlugin}
-              disabled={authStatus === 'authorizing' || !!setupError}
+              disabled={authStatus === 'authorizing' || !!setupError || districtKeyMissing}
             >
               {isActive ? 'Disable' : 'Enable'}
             </Button>
           )}
 
-          {isApiKeyPlugin && currentUser?.role === 'student' && (
-            <Badge size="xs" variant="light" color="gray">
-              Zero config
-            </Badge>
-          )}
-
-          {isApiKeyPlugin && currentUser?.role === 'teacher' && (
-            <Badge size="xs" variant="light" color="blue">
-              Uses district key
-            </Badge>
-          )}
-
-          {isApiKeyPlugin && canManageAuth && (
-            <Badge size="xs" variant="light" color="orange">
-              Configure in K12 Admin
+          {isApiKeyPlugin && (
+            <Badge size="xs" variant="light" color={districtKeyConfigured ? 'green' : 'orange'}>
+              {districtKeyConfigured
+                ? 'District key ready'
+                : currentUser?.role === 'teacher'
+                  ? 'Admin config required'
+                  : 'Configure in K12 Admin'}
             </Badge>
           )}
 
@@ -271,6 +280,11 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
               Token expired
             </Text>
           )}
+          {districtKeyMissing && (
+            <Text size="xs" c="orange">
+              Enable after district key setup.
+            </Text>
+          )}
         </Stack>
       </Flex>
     </Card>
@@ -285,7 +299,8 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
 // Main page
 // ---------------------------------------------------------------------------
 
-function RouteComponent() {
+export function RouteComponent() {
+  const navigate = useNavigate()
   const allManifests = usePluginRegistry((s) => s.manifests)
   const currentUser = useK12((s) => s.currentUser)
   const isAuthenticated = useK12((s) => s.isAuthenticated)
@@ -295,6 +310,7 @@ function RouteComponent() {
 
   const [search, setSearch] = useState('')
   const [view, setView] = useState<string>('all')
+  const uploadRef = useRef<HTMLDivElement | null>(null)
 
   // Filter plugins based on role
   const availableManifests = isAuthenticated ? getAvailablePlugins(allManifests) : allManifests
@@ -326,7 +342,7 @@ function RouteComponent() {
       <Flex align="center" justify="space-between" gap="xs">
         <Group gap="xs">
           <IconPuzzle size={20} />
-          <Title order={5}>Plugin Drop</Title>
+          <Title order={5}>Plugin Marketplace</Title>
           {isAuthenticated && currentUser && (
             <Badge size="sm" variant="light" color="blue">
               {ROLE_LABELS[currentUser.role] || currentUser.role}
@@ -350,6 +366,71 @@ function RouteComponent() {
               ? 'Drop plugin packages for your class, or submit manifests for review.'
               : 'Manage dropped plugins for your organization. Approve, reject, or configure plugin access.'}
       </Text>
+
+      {!isAuthenticated && (
+        <Card padding="lg" radius="md" withBorder>
+          <Stack gap="sm">
+            <Group justify="space-between" align="flex-start">
+              <Box>
+                <Text fw={700} size="lg">
+                  Demo path
+                </Text>
+                <Text size="sm" c="dimmed">
+                  Login as teacher. Then upload a <Code>.zip</Code> plugin package for AI review.
+                </Text>
+              </Box>
+              <Badge size="sm" variant="light" color="teal">
+                Best demo: Teacher
+              </Badge>
+            </Group>
+            <Group>
+              <Button size="sm" onClick={() => void navigate({ to: '/settings/k12-login' })}>
+                Open K12 Login
+              </Button>
+              <Button size="sm" variant="light" onClick={() => void navigate({ to: '/settings/plugins-drop' })}>
+                Open Plugin Drop
+              </Button>
+            </Group>
+            <Text size="xs" c="dimmed">
+              Accepted files: <Code>.zip</Code>, <Code>.cbplugin</Code>, <Code>.json</Code>.
+            </Text>
+          </Stack>
+        </Card>
+      )}
+
+      {isAuthenticated && hasPermission('plugin.request') && (
+        <Card padding="lg" radius="md" withBorder>
+          <Stack gap="sm">
+            <Group justify="space-between" align="flex-start">
+              <Box>
+                <Text fw={700} size="lg">
+                  Upload your game plugin
+                </Text>
+                <Text size="sm" c="dimmed">
+                  Drop a <Code>.zip</Code> plugin package below. AI reviews safety, then you enable it for class scope.
+                </Text>
+              </Box>
+              <Badge size="sm" variant="light" color="green">
+                AI review ready
+              </Badge>
+            </Group>
+            <Group>
+              <Button
+                size="sm"
+                onClick={() => uploadRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              >
+                Jump to uploader
+              </Button>
+              <Button size="sm" variant="light" onClick={() => void navigate({ to: '/settings/plugins-drop' })}>
+                Open full upload page
+              </Button>
+            </Group>
+            <Text size="xs" c="dimmed">
+              After review, the plugin shows up here and can be enabled or disabled.
+            </Text>
+          </Stack>
+        </Card>
+      )}
 
       {/* Search + filter */}
       <Group gap="xs">
@@ -375,7 +456,14 @@ function RouteComponent() {
       </Group>
 
       {/* Upload form for teacher+ */}
-      {isAuthenticated && hasPermission('plugin.request') && <PluginDropForm />}
+      {isAuthenticated && hasPermission('plugin.request') && (
+        <Box ref={uploadRef}>
+          <Text fw={600} size="sm" mb="xs">
+            Plugin Package Upload
+          </Text>
+          <PluginDropForm />
+        </Box>
+      )}
 
       {/* Available plugins */}
       {internal.length > 0 && (
