@@ -27,4 +27,10 @@ export function handleDeepLink(mainWindow: BrowserWindow, link: string) {
   //   log.info('✅ Auth callback received:', { ticketId, status })
   //   mainWindow.webContents.send('navigate-to', `/settings/provider/chatbox-ai?ticket_id=${ticketId}&status=${status}`)
   // }
+
+  if (url.hostname === 'plugin-auth' && url.pathname === '/callback') {
+    const query = url.searchParams.toString()
+    log.info('Plugin auth callback received', { query })
+    mainWindow.webContents.send('navigate-to', `/plugin-auth/callback?${query}`)
+  }
 }

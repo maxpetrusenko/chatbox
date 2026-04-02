@@ -32,6 +32,7 @@ import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { trackEvent } from '@/utils/track'
 import * as chatStore from '../chatStore'
+import { pluginRegistryStore } from '../pluginRegistry'
 import { settingsStore } from '../settingsStore'
 import { uiStore } from '../uiStore'
 import { createNewFork, findMessageLocation } from './forks'
@@ -53,6 +54,42 @@ export function getSessionWebBrowsing(sessionId: string, provider: string | unde
 /**
  * Track generation event
  */
+
+function buildPluginContextText(sessionId: string): string | null {
+  const store = pluginRegistryStore.getState()
+  const instances = store.getInstancesForSession(sessionId)
+  if (instances.length === 0) return null
+
+  const lines: string[] = ['Active app context:']
+  for (const instance of instances) {
+    const manifest = store.getManifest(instance.pluginId)
+    const name = manifest?.name || instance.pluginId
+    const authSegment = instance.authStatus && instance.authStatus !== 'none' ? ` auth=${instance.authStatus}.` : ''
+    if (instance.lastCompletion) {
+      lines.push(`- ${name}: completed.${authSegment} Summary: ${instance.lastCompletion.summary}`)
+      continue
+    }
+    if (instance.lastState) {
+      const summary = JSON.stringify(instance.lastState).slice(0, 1200)
+      lines.push(`- ${name}: status=${instance.status}.${authSegment} Latest state: ${summary}`)
+      continue
+    }
+    lines.push(`- ${name}: status=${instance.status}.${authSegment} Widget mounted and awaiting interaction.`)
+  }
+
+  return lines.join('\n')
+}
+
+function injectPluginContext(messages: Message[], sessionId: string): Message[] {
+  const pluginContextText = buildPluginContextText(sessionId)
+  if (!pluginContextText) return messages
+
+  const pluginContextMessage = createMessage('system', pluginContextText)
+  if (messages[0]?.role === 'system') {
+    return [mergeMessages(messages[0], pluginContextMessage), ...messages.slice(1)]
+  }
+  return [pluginContextMessage, ...messages]
+}
 function trackGenerateEvent(
   sessionId: string,
   settings: SessionSettings,
@@ -181,12 +218,13 @@ export async function generate(
         let firstTokenLatency: number | undefined
         const persistInterval = 2000
         let lastPersistTimestamp = Date.now()
-        const promptMsgs = await genMessageContext(
+        const promptMsgsBase = await genMessageContext(
           settings,
           messages.slice(0, targetMsgIx),
           model.isSupportToolUse('read-file'),
           { compactionPoints: session.compactionPoints }
         )
+        const promptMsgs = injectPluginContext(promptMsgsBase, session.id)
         const modifyMessageCache: OnResultChangeWithCancel = async (updated) => {
           const textLength = getMessageText(targetMsg, true, true).length
           if (!firstTokenLatency && textLength > 0) {
@@ -435,7 +473,7 @@ export async function genMessageContext(
     const keys = Array.from(allStorageKeys)
     const contents = await Promise.all(keys.map((key) => storageGetBlob(key)))
     keys.forEach((key, index) => {
-      blobContents.set(key, contents[index])
+      blobContents.set(key, contents[index] || '')
     })
   }
 

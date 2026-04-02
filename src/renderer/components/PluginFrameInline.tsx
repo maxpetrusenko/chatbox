@@ -6,9 +6,10 @@
 
 import { Alert, Text } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
-import { type FC, memo, useMemo } from 'react'
-import { usePluginRegistry } from '@/stores/pluginRegistry'
+import { type FC, memo, useCallback, useEffect, useMemo } from 'react'
 import { resolvePluginEntrypoint } from '@/plugins/resolve'
+import { usePluginRegistry } from '@/stores/pluginRegistry'
+import { usePluginAuth } from '@/stores/pluginAuthStore'
 import PluginFrame from './PluginFrame'
 
 interface Props {
@@ -19,11 +20,33 @@ interface Props {
 const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
   const manifest = usePluginRegistry((s) => s.getManifest(pluginId))
   const instance = usePluginRegistry((s) => s.getInstance(instanceId))
+  const updateInstanceAuth = usePluginRegistry((s) => s.updateInstanceAuth)
+
+  const authSession = usePluginAuth((s) => s.sessions[pluginId])
+  const hydrateAuth = usePluginAuth((s) => s.hydrate)
+  const beginAuth = usePluginAuth((s) => s.beginAuth)
 
   const entrypointUrl = useMemo(() => {
     if (!manifest) return null
     return resolvePluginEntrypoint(pluginId, manifest.widget.entrypoint)
   }, [pluginId, manifest])
+
+  useEffect(() => {
+    if (!manifest?.auth) return
+    void hydrateAuth(pluginId, manifest.auth)
+  }, [pluginId, manifest?.auth, hydrateAuth])
+
+  useEffect(() => {
+    if (!manifest?.auth || !instance) return
+    const mappedStatus =
+      authSession?.status === 'connected' ? 'connected' : authSession?.status === 'expired' ? 'expired' : 'required'
+    updateInstanceAuth(instance.instanceId, mappedStatus)
+  }, [authSession?.status, instance, manifest?.auth, updateInstanceAuth])
+
+  const handleAuthRequest = useCallback(() => {
+    if (!manifest?.auth) return
+    void beginAuth(pluginId, manifest.auth)
+  }, [beginAuth, pluginId, manifest?.auth])
 
   if (!manifest) {
     return (
@@ -41,15 +64,50 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
     )
   }
 
-  // Use instanceId as nonce for simplicity — each instance is unique
+  const authConfig = manifest.auth
+    ? {
+        auth: {
+          status: authSession?.status || 'required',
+          accessToken: authSession?.accessToken,
+          expiresAt: authSession?.expiresAt,
+          verificationUri: authSession?.verificationUri,
+          userCode: authSession?.userCode,
+        },
+      }
+    : undefined
+
+  const authPayload =
+    manifest.auth &&
+    authSession &&
+    (authSession.status === 'connected' || authSession.status === 'expired' || authSession.status === 'authorizing')
+      ? {
+          status:
+            authSession.status === 'connected'
+              ? 'connected'
+              : authSession.status === 'expired'
+                ? 'expired'
+                : 'authorizing',
+          authType: manifest.auth.type,
+          accessToken: authSession.accessToken,
+          expiresAt: authSession.expiresAt,
+          metadata: {
+            verificationUri: authSession.verificationUri,
+            userCode: authSession.userCode,
+          },
+        }
+      : undefined
+
   return (
     <PluginFrame
       pluginId={pluginId}
       instanceId={instanceId}
       nonce={instanceId}
       entrypointUrl={entrypointUrl}
+      config={authConfig}
+      authPayload={authPayload}
       height={manifest.widget.defaultHeight || 400}
       width={manifest.widget.defaultWidth}
+      onAuthRequest={manifest.auth ? handleAuthRequest : undefined}
     />
   )
 }

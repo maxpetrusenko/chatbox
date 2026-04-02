@@ -25,6 +25,7 @@ import { parseFile } from './file-parser'
 import Locale from './locales'
 import * as mcpIpc from './mcp/ipc-stdio-transport'
 import MenuBuilder from './menu'
+import { deletePluginAuthSecret, getPluginAuthSecret, setPluginAuthSecret } from './plugin-auth-store'
 import * as proxy from './proxy'
 import {
   delStoreBlob,
@@ -331,7 +332,9 @@ async function createWindow() {
 
   const loadRenderer = () => {
     if (devServerUrl) {
-      log.info(`[window] Loading renderer dev server (attempt ${devServerRetryCount + 1}/${DEV_SERVER_RETRY_LIMIT + 1}): ${devServerUrl}`)
+      log.info(
+        `[window] Loading renderer dev server (attempt ${devServerRetryCount + 1}/${DEV_SERVER_RETRY_LIMIT + 1}): ${devServerUrl}`
+      )
       void mainWindow?.loadURL(devServerUrl).catch((error) => {
         log.error('[window] Failed to load renderer dev server:', error)
       })
@@ -344,9 +347,7 @@ async function createWindow() {
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     if (!isMainFrame || !devServerUrl || validatedURL !== devServerUrl) return
 
-    log.error(
-      `[window] Renderer failed to load: ${errorDescription} (${errorCode}) ${validatedURL}`,
-    )
+    log.error(`[window] Renderer failed to load: ${errorDescription} (${errorCode}) ${validatedURL}`)
 
     if (devServerRetryCount >= DEV_SERVER_RETRY_LIMIT) {
       loadRendererFallback()
@@ -638,6 +639,15 @@ ipcMain.handle('delStoreBlob', async (event, key) => {
 })
 ipcMain.handle('listStoreBlobKeys', async (event) => {
   return listStoreBlobKeys()
+})
+ipcMain.handle('plugin-auth:get-secret', async (_event, key: string) => {
+  return getPluginAuthSecret(key)
+})
+ipcMain.handle('plugin-auth:set-secret', async (_event, key: string, value: string) => {
+  return setPluginAuthSecret(key, value)
+})
+ipcMain.handle('plugin-auth:delete-secret', async (_event, key: string) => {
+  return deletePluginAuthSecret(key)
 })
 
 ipcMain.handle('getVersion', () => {

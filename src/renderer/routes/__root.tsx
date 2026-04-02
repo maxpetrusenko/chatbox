@@ -49,10 +49,11 @@ import PictureDialog from '@/pages/PictureDialog'
 import RemoteDialogWindow from '@/pages/RemoteDialogWindow'
 import SearchDialog from '@/pages/SearchDialog'
 import platform from '@/platform'
+import { initPlugins } from '@/plugins'
 import { router } from '@/router'
 import Sidebar from '@/Sidebar'
 import * as atoms from '@/stores/atoms'
-import { initPlugins } from '@/plugins'
+import { initPluginAuthBroker } from '@/stores/pluginAuthStore'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
 import * as premiumActions from '@/stores/premiumActions'
 import * as settingActions from '@/stores/settingActions'
@@ -62,6 +63,7 @@ import { useUIStore } from '@/stores/uiStore'
 // Initialize plugins at module load time (before first render)
 initPlugins()
 pluginRegistryStore.getState().loadBuiltins()
+initPluginAuthBroker()
 
 function Root() {
   const location = useLocation()
@@ -139,8 +141,11 @@ function Root() {
       return platform.onNavigate((path) => {
         // 如果是 settings 路径，使用 navigateToSettings 以保持与主页面设置按钮一致的行为
         // 在桌面端会打开 Modal，在移动端会正常导航
+        if (path.startsWith('/plugin-auth/callback')) {
+          window.dispatchEvent(new CustomEvent('plugin-auth-callback', { detail: { path } }))
+          return
+        }
         if (path.startsWith('/settings')) {
-          // 提取 settings 之后的路径部分（包含查询参数）
           const settingsPath = path.substring('/settings'.length)
           navigateToSettings(settingsPath || '/')
         } else {

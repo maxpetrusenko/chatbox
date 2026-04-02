@@ -6,12 +6,17 @@
  */
 
 import type { PluginManifest } from '@shared/plugin-types'
-import { chessManifest } from './chess/manifest'
+import { registerPluginAuth } from '@/stores/pluginAuthStore'
 import { registerChessPlugin } from './chess'
+import { chessManifest } from './chess/manifest'
+import { registerGitHubPlugin } from './github'
+import { githubManifest } from './github/manifest'
+import { registerSpotifyPlugin } from './spotify'
+import { spotifyManifest } from './spotify/manifest'
+import { registerWeatherPlugin } from './weather'
+import { weatherManifest } from './weather/manifest'
 
-const builtinManifests: PluginManifest[] = [
-  chessManifest,
-]
+const builtinManifests: PluginManifest[] = [chessManifest, weatherManifest, spotifyManifest, githubManifest]
 
 let initialized = false
 
@@ -19,6 +24,9 @@ export function initPlugins(): void {
   if (initialized) return
   initialized = true
   registerChessPlugin()
+  registerWeatherPlugin()
+  registerSpotifyPlugin()
+  registerGitHubPlugin()
 }
 
 export function getBuiltinManifests(): PluginManifest[] {
@@ -31,5 +39,8 @@ export function registerBuiltinManifest(manifest: PluginManifest): void {
     builtinManifests[existing] = manifest
   } else {
     builtinManifests.push(manifest)
+  }
+  if (manifest.auth) {
+    registerPluginAuth(manifest.id, manifest.auth)
   }
 }

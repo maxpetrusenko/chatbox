@@ -9,11 +9,12 @@
  * 5. On COMPLETION the frame stays visible but stops accepting new messages
  */
 
-import { Alert, Loader, Paper, Text } from '@mantine/core'
-import { IconAlertCircle, IconPuzzle } from '@tabler/icons-react'
-import { type FC, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { PluginCompletionPayload } from '@shared/plugin-types'
+import { Button, Loader, Paper, Stack, Text } from '@mantine/core'
+import { IconAlertCircle, IconPuzzle, IconRefresh } from '@tabler/icons-react'
+import { type FC, memo, useCallback, useEffect, useRef, useState } from 'react'
+import type { PluginAuthType, PluginCompletionPayload } from '@shared/plugin-types'
 import { usePluginChannel } from '@/hooks/usePluginChannel'
+import { consumeQueuedPluginToolInvocations, resolvePluginToolCall } from '@/packages/model-calls/toolsets/plugin-tools'
 import { usePluginRegistry } from '@/stores/pluginRegistry'
 
 interface PluginFrameProps {
@@ -27,9 +28,24 @@ interface PluginFrameProps {
   height?: number
   onToolResult?: (callId: string, result: unknown, error?: string) => void
   onAuthRequest?: () => void
+  authPayload?: {
+    status: 'connected' | 'expired' | 'revoked' | 'authorizing'
+    authType: PluginAuthType
+    accessToken?: string
+    expiresAt?: number
+    metadata?: Record<string, unknown>
+  }
 }
 
 const HANDSHAKE_TIMEOUT_MS = 10_000
+
+interface PluginToolInvokeDetail {
+  pluginId: string
+  instanceId?: string
+  callId: string
+  toolName: string
+  parameters: Record<string, unknown>
+}
 
 const PluginFrame: FC<PluginFrameProps> = ({
   pluginId,
@@ -41,10 +57,13 @@ const PluginFrame: FC<PluginFrameProps> = ({
   height = 400,
   onToolResult,
   onAuthRequest,
+  authPayload,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null)
+  const pendingToolInvocationsRef = useRef<PluginToolInvokeDetail[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'active' | 'completed' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   const manifest = usePluginRegistry((s) => s.getManifest(pluginId))
   const updateInstanceStatus = usePluginRegistry((s) => s.updateInstanceStatus)
@@ -60,7 +79,7 @@ const PluginFrame: FC<PluginFrameProps> = ({
     (state: Record<string, unknown>) => {
       updateInstanceState(instanceId, state)
     },
-    [instanceId, updateInstanceState],
+    [instanceId, updateInstanceState]
   )
 
   const handleCompletion = useCallback(
@@ -68,7 +87,15 @@ const PluginFrame: FC<PluginFrameProps> = ({
       setStatus('completed')
       updateInstanceCompletion(instanceId, payload)
     },
-    [instanceId, updateInstanceCompletion],
+    [instanceId, updateInstanceCompletion]
+  )
+
+  const handleToolResult = useCallback(
+    (callId: string, result: unknown, error?: string) => {
+      resolvePluginToolCall(callId, result, error)
+      onToolResult?.(callId, result, error)
+    },
+    [onToolResult]
   )
 
   const handleError = useCallback(
@@ -77,8 +104,21 @@ const PluginFrame: FC<PluginFrameProps> = ({
       setErrorMessage(`[${code}] ${message}`)
       updateInstanceStatus(instanceId, 'error')
     },
-    [instanceId, updateInstanceStatus],
+    [instanceId, updateInstanceStatus]
   )
+
+  const handleIframeLoadError = useCallback(() => {
+    setStatus('error')
+    setErrorMessage('Plugin iframe failed to load')
+    updateInstanceStatus(instanceId, 'error')
+  }, [instanceId, updateInstanceStatus])
+
+  const handleRetry = useCallback(() => {
+    setStatus('loading')
+    setErrorMessage(null)
+    setRetryCount((c) => c + 1)
+    updateInstanceStatus(instanceId, 'loading')
+  }, [instanceId, updateInstanceStatus])
 
   const channel = usePluginChannel({
     instanceId,
@@ -88,10 +128,56 @@ const PluginFrame: FC<PluginFrameProps> = ({
     onReady: handleReady,
     onStateUpdate: handleStateUpdate,
     onCompletion: handleCompletion,
-    onToolResult,
+    onToolResult: handleToolResult,
     onError: handleError,
     onAuthRequest,
   })
+
+  useEffect(() => {
+    if (status !== 'active') return
+
+    const pendingInvocations = [
+      ...consumeQueuedPluginToolInvocations(instanceId),
+      ...pendingToolInvocationsRef.current.splice(0),
+    ]
+    for (const invocation of pendingInvocations) {
+      channel.invokePluginTool(invocation.callId, invocation.toolName, invocation.parameters || {})
+    }
+  }, [channel, status])
+
+  useEffect(() => {
+    if (status !== 'active' || !authPayload) return
+    channel.sendAuthStatus(authPayload.status, authPayload.authType, {
+      accessToken: authPayload.accessToken,
+      expiresAt: authPayload.expiresAt,
+      metadata: authPayload.metadata,
+    })
+  }, [authPayload, channel, status])
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<PluginToolInvokeDetail>).detail
+      if (!detail) return
+      if (detail.pluginId !== pluginId) return
+      if (detail.instanceId && detail.instanceId !== instanceId) return
+      if (status === 'completed' || status === 'error') {
+        resolvePluginToolCall(detail.callId, null, `Plugin ${pluginId} is not available`)
+        return
+      }
+
+      if (status === 'loading') {
+        pendingToolInvocationsRef.current.push(detail)
+        return
+      }
+
+      channel.invokePluginTool(detail.callId, detail.toolName, detail.parameters || {})
+    }
+
+    window.addEventListener('plugin-tool-invoke', handler as EventListener)
+    return () => {
+      window.removeEventListener('plugin-tool-invoke', handler as EventListener)
+    }
+  }, [channel, instanceId, pluginId, status])
 
   // Handshake timeout
   useEffect(() => {
@@ -107,7 +193,10 @@ const PluginFrame: FC<PluginFrameProps> = ({
   }, [status, instanceId, updateInstanceStatus])
 
   // Expose channel to parent for tool invocation
-  const frameRef = useRef<{ invokePluginTool: typeof channel.invokePluginTool; sendAuthStatus: typeof channel.sendAuthStatus } | null>(null)
+  const frameRef = useRef<{
+    invokePluginTool: typeof channel.invokePluginTool
+    sendAuthStatus: typeof channel.sendAuthStatus
+  } | null>(null)
   frameRef.current = { invokePluginTool: channel.invokePluginTool, sendAuthStatus: channel.sendAuthStatus }
 
   // Store the channel ref on the iframe element for external access
@@ -116,20 +205,40 @@ const PluginFrame: FC<PluginFrameProps> = ({
     if (iframe) {
       ;(iframe as any).__pluginChannel = frameRef.current
     }
+    return () => {
+      if (iframe) {
+        delete (iframe as any).__pluginChannel
+      }
+    }
   })
 
   const sandboxAttrs = 'allow-scripts allow-forms'
 
   if (errorMessage) {
     return (
-      <Alert
-        icon={<IconAlertCircle size={16} />}
-        color="red"
-        title={`Plugin error: ${manifest?.name || pluginId}`}
-        className="my-2"
-      >
-        {errorMessage}
-      </Alert>
+      <Paper shadow="xs" radius="md" className="my-2 overflow-hidden" withBorder p="md">
+        <Stack gap="xs">
+          <div className="flex items-center gap-2">
+            <IconAlertCircle size={18} color="var(--mantine-color-red-6)" />
+            <Text size="sm" fw={600}>
+              {manifest?.name || pluginId} failed
+            </Text>
+          </div>
+          <Text size="xs" c="dimmed">
+            {errorMessage}
+          </Text>
+          <Button
+            variant="light"
+            color="gray"
+            size="xs"
+            leftSection={<IconRefresh size={14} />}
+            onClick={handleRetry}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            Retry
+          </Button>
+        </Stack>
+      </Paper>
     )
   }
 
@@ -152,9 +261,11 @@ const PluginFrame: FC<PluginFrameProps> = ({
         </div>
       )}
       <iframe
+        key={retryCount}
         ref={iframeRef}
         src={entrypointUrl}
         sandbox={sandboxAttrs}
+        onError={handleIframeLoadError}
         style={{
           width: width || '100%',
           height,
@@ -176,6 +287,10 @@ export default memo(PluginFrame)
 export function getPluginChannelFromIframe(iframe: HTMLIFrameElement) {
   return (iframe as any).__pluginChannel as {
     invokePluginTool: (callId: string, toolName: string, parameters: Record<string, unknown>) => void
-    sendAuthStatus: (status: 'connected' | 'expired' | 'revoked', authType: 'none' | 'oauth2-pkce' | 'device-flow') => void
+    sendAuthStatus: (
+      status: 'connected' | 'expired' | 'revoked' | 'authorizing',
+      authType: 'none' | 'oauth2-pkce' | 'device-flow',
+      extra?: { accessToken?: string; expiresAt?: number; metadata?: Record<string, unknown> }
+    ) => void
   } | null
 }

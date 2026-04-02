@@ -35,7 +35,33 @@ import {
 } from './tools'
 import fileToolSet from './toolsets/file'
 import { getToolSet } from './toolsets/knowledge-base'
+import { getPluginToolSet, isPluginMountToolResult } from './toolsets/plugin-tools'
 import websearchToolSet, { parseLinkTool, webSearchTool } from './toolsets/web-search'
+
+
+function decoratePluginContentParts(contentParts: StreamTextResult['contentParts']): StreamTextResult['contentParts'] {
+  const nextParts = [...contentParts]
+  const seenPluginKeys = new Set(
+    nextParts
+      .filter((part) => part.type === 'plugin')
+      .map((part) => `${part.pluginId}:${part.instanceId}:${part.toolCallId}`)
+  )
+
+  for (const part of contentParts) {
+    if (part.type !== 'tool-call' || part.state !== 'result' || !isPluginMountToolResult(part.result)) continue
+    const key = `${part.result.pluginMount.pluginId}:${part.result.pluginMount.instanceId}:${part.toolCallId}`
+    if (seenPluginKeys.has(key)) continue
+    nextParts.push({
+      type: 'plugin',
+      pluginId: part.result.pluginMount.pluginId,
+      instanceId: part.result.pluginMount.instanceId,
+      toolCallId: part.toolCallId,
+    })
+    seenPluginKeys.add(key)
+  }
+
+  return nextParts
+}
 
 /**
  * 处理搜索结果并返回模型响应的通用函数
@@ -316,12 +342,26 @@ export async function streamText(
       }
     }
 
+    // Plugin tools — inject tools from all registered plugins
+    const pluginTools = getPluginToolSet(sessionId)
+    if (Object.keys(pluginTools).length > 0) {
+      tools = { ...tools, ...pluginTools }
+    }
+
+    const onPluginAwareResultChange: OnResultChange = (data) => {
+      if (data.contentParts) {
+        onResultChange({ ...data, contentParts: decoratePluginContentParts(data.contentParts) })
+      } else {
+        onResultChange(data)
+      }
+    }
+
     console.debug('tools', tools)
 
     result = await model.chat(coreMessages, {
       sessionId,
       signal: controller.signal,
-      onResultChange,
+      onResultChange: onPluginAwareResultChange,
       onStatusChange: params.onStatusChange,
       providerOptions: params.providerOptions,
       tools,

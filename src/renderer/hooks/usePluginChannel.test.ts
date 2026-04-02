@@ -19,8 +19,8 @@ describe('usePluginChannel', () => {
     iframeRef = { current: mockIframe }
   })
 
-  function firePluginMessage(data: any) {
-    const event = new MessageEvent('message', { data })
+  function firePluginMessage(data: any, source?: WindowProxy | MessageEventSource | null) {
+    const event = new MessageEvent('message', { data, source: source ?? (mockIframe.contentWindow as unknown as MessageEventSource) })
     window.dispatchEvent(event)
   }
 
@@ -52,6 +52,32 @@ describe('usePluginChannel', () => {
     )
   })
 
+  it('accepts initial PLUGIN_READY from the iframe before nonce is established', () => {
+    const onReady = vi.fn()
+    renderHook(() =>
+      usePluginChannel({
+        instanceId,
+        nonce,
+        iframeRef,
+        onReady,
+      }),
+    )
+
+    act(() => {
+      firePluginMessage({ type: 'PLUGIN_READY', nonce: '' })
+    })
+
+    expect(onReady).toHaveBeenCalledOnce()
+    expect(mockIframe.contentWindow.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'PLUGIN_INIT',
+        nonce,
+        instanceId,
+      }),
+      '*',
+    )
+  })
+
   it('ignores messages with wrong nonce', () => {
     const onReady = vi.fn()
     renderHook(() =>
@@ -64,7 +90,7 @@ describe('usePluginChannel', () => {
     )
 
     act(() => {
-      firePluginMessage({ type: 'PLUGIN_READY', nonce: 'wrong-nonce' })
+      firePluginMessage({ type: 'PLUGIN_READY', nonce: 'wrong-nonce' }, window)
     })
 
     expect(onReady).not.toHaveBeenCalled()
@@ -141,7 +167,6 @@ describe('usePluginChannel', () => {
 
     expect(onCompletion).toHaveBeenCalledOnce()
 
-    // Subsequent STATE_UPDATE should be ignored (completed)
     act(() => {
       firePluginMessage({ type: 'STATE_UPDATE', nonce, state: { late: true } })
     })
@@ -162,7 +187,6 @@ describe('usePluginChannel', () => {
       }),
     )
 
-    // Complete first
     act(() => {
       firePluginMessage({
         type: 'COMPLETION',
@@ -171,7 +195,6 @@ describe('usePluginChannel', () => {
       })
     })
 
-    // Error should still come through
     act(() => {
       firePluginMessage({ type: 'ERROR', nonce, code: 'LATE_ERROR', message: 'oops' })
     })

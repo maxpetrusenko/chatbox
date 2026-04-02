@@ -65,12 +65,19 @@ export function usePluginChannel(options: UsePluginChannelOptions) {
 
   // Send auth status update
   const sendAuthStatus = useCallback(
-    (status: 'connected' | 'expired' | 'revoked', authType: 'none' | 'oauth2-pkce' | 'device-flow') => {
+    (
+      status: 'connected' | 'expired' | 'revoked' | 'authorizing',
+      authType: 'none' | 'oauth2-pkce' | 'device-flow',
+      extra?: { accessToken?: string; expiresAt?: number; metadata?: Record<string, unknown> },
+    ) => {
       postToPlugin({
         type: 'AUTH_STATUS',
         nonce,
         status,
         authType,
+        accessToken: extra?.accessToken,
+        expiresAt: extra?.expiresAt,
+        metadata: extra?.metadata,
       })
     },
     [postToPlugin, nonce],
@@ -80,6 +87,23 @@ export function usePluginChannel(options: UsePluginChannelOptions) {
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       const data = event.data
+
+      if (
+        data &&
+        typeof data === 'object' &&
+        (data as { type?: string }).type === 'PLUGIN_READY' &&
+        event.source === iframeRef.current?.contentWindow
+      ) {
+        postToPlugin({
+          type: 'PLUGIN_INIT',
+          nonce,
+          instanceId,
+          config,
+        })
+        onReady?.()
+        return
+      }
+
       if (!isPluginToHostMessage(data)) return
       if (data.nonce !== nonce) return
       if (completedRef.current && data.type !== 'ERROR') return
