@@ -10,6 +10,7 @@ import {
   IconFileText,
   IconKeyboard,
   IconMessages,
+  IconPuzzle,
   IconSparkles,
   IconWorldWww,
 } from '@tabler/icons-react'
@@ -64,6 +65,11 @@ const ITEMS = [
         },
       ]
     : []),
+  {
+    key: 'plugins',
+    label: 'Plugins',
+    icon: <IconPuzzle className="w-full h-full" />,
+  },
   {
     key: 'document-parser',
     label: 'Document Parser',
