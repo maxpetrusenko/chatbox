@@ -13,4 +13,5 @@ coverage
 .env
 .env.*
 plugins-export
+!release/app/package.json
 
