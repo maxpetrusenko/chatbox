@@ -26,6 +26,7 @@ export interface PluginToolDefinition {
 }
 
 export type PluginAuthType = 'none' | 'oauth2-pkce' | 'device-flow' | 'api-key'
+export type PluginAppAuthType = 'chatbox-ai-login' | 'k12-login'
 
 export interface PluginAuthDefinition {
   type: PluginAuthType
@@ -34,6 +35,10 @@ export interface PluginAuthDefinition {
   scopes?: string[]
   clientId?: string
   deviceAuthorizationUrl?: string
+}
+
+export interface PluginAppAuthDefinition {
+  type: PluginAppAuthType
 }
 
 export interface PluginWidgetDefinition {
@@ -70,6 +75,7 @@ export interface PluginManifest {
   tools: PluginToolDefinition[]
   widget: PluginWidgetDefinition
   auth?: PluginAuthDefinition
+  appAuth?: PluginAppAuthDefinition
   proxy?: PluginProxyConfig
   // K12 fields (optional for backwards compat with existing plugins)
   trustLevel?: PluginTrustLevel

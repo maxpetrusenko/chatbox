@@ -24,6 +24,15 @@ export function registerPluginHtml(pluginId: string, html: string): void {
   }
 }
 
+export function unregisterPluginHtml(pluginId: string): void {
+  pluginHtmlSources.delete(pluginId)
+  const old = blobUrlCache.get(pluginId)
+  if (old) {
+    URL.revokeObjectURL(old)
+    blobUrlCache.delete(pluginId)
+  }
+}
+
 export function resolvePluginEntrypoint(pluginId: string, _entrypoint: string): string | null {
   // Check for registered HTML source
   const html = pluginHtmlSources.get(pluginId)

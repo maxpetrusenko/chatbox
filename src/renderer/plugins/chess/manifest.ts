@@ -7,6 +7,9 @@ export const chessManifest: PluginManifest = {
   description:
     'Play chess with an AI opponent inline in the chat. Supports hints, position evaluation, and difficulty levels.',
   category: 'internal',
+  appAuth: {
+    type: 'k12-login',
+  },
   trustLevel: 'builtin',
   tools: [
     {

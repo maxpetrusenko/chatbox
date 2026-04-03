@@ -57,7 +57,7 @@ export function getSessionWebBrowsing(sessionId: string, provider: string | unde
 
 function buildPluginContextText(sessionId: string): string | null {
   const store = pluginRegistryStore.getState()
-  const instances = store.getInstancesForSession(sessionId)
+  const instances = store.getInstancesForSession(sessionId).filter((instance) => instance.status !== 'error')
   if (instances.length === 0) return null
 
   const lines: string[] = ['Active app context:']

@@ -11,7 +11,13 @@
   #header { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: #f8f9fa; border-radius: 8px; margin-bottom: 8px; }
   #header .title { font-size: 13px; font-weight: 600; }
   #header .status { font-size: 11px; color: #666; }
+  #auth-banner { display: none; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; margin-bottom: 8px; border-radius: 10px; background: linear-gradient(135deg, #111827 0%, #1f2937 100%); color: #f9fafb; }
+  #auth-banner.visible { display: flex; }
+  #auth-banner .copy { min-width: 0; }
+  #auth-banner .title { font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
+  #auth-banner .detail { font-size: 11px; color: #d1d5db; margin-top: 2px; }
   #board-wrapper { display: flex; justify-content: center; flex: 1; min-height: 0; }
+  #board-wrapper.locked { opacity: 0.45; }
   canvas { cursor: pointer; border-radius: 4px; }
   #footer { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; background: #f8f9fa; border-radius: 8px; margin-top: 8px; }
   #footer .status-line { font-size: 11px; font-family: monospace; color: #444; }
@@ -19,6 +25,8 @@
   .btn { font-size: 11px; padding: 3px 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; color: #333; }
   .btn:hover { background: #f0f0f0; }
   .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn.primary { border-color: #f59e0b; background: #f59e0b; color: #111827; font-weight: 700; }
+  .btn.primary:hover { background: #fbbf24; }
   #move-log { font-size: 10px; font-family: monospace; color: #888; padding: 4px 8px; max-height: 40px; overflow-y: auto; }
   .complete-banner { background: #e8f5e9; border-radius: 8px; padding: 8px 12px; margin-top: 8px; text-align: center; }
   .complete-banner .result { font-size: 14px; font-weight: 700; }
@@ -30,6 +38,13 @@
   <div id="header">
     <span class="title">♟ Chess</span>
     <span class="status" id="difficulty-label">Medium</span>
+  </div>
+  <div id="auth-banner">
+    <div class="copy">
+      <div class="title">Sign in to play</div>
+      <div class="detail" id="auth-detail">Sign in to Chatbox AI to start a chess game.</div>
+    </div>
+    <button class="btn primary" id="btn-sign-in">Sign in</button>
   </div>
   <div id="board-wrapper">
     <canvas id="board"></canvas>
@@ -68,6 +83,15 @@ let selectedSquare = null;
 let legalMovesForSelected = [];
 let nonce = null;
 let instanceId = null;
+let authState = { status: 'required', message: 'Sign in to Chatbox AI to start a chess game.' };
+
+function isSignedIn() {
+  return authState.status === 'connected';
+}
+
+function requestSignIn() {
+  sendMsg({ type: 'AUTH_REQUEST' });
+}
 
 function initBoard() {
   const back = ['r','n','b','q','k','b','n','r'];
@@ -421,6 +445,14 @@ function resizeBoard() {
 
 function render() {
   resizeBoard();
+  const authBanner = document.getElementById('auth-banner');
+  const authDetail = document.getElementById('auth-detail');
+  const boardWrapper = document.getElementById('board-wrapper');
+  const signInRequired = !isSignedIn();
+  authBanner.classList.toggle('visible', signInRequired);
+  boardWrapper.classList.toggle('locked', signInRequired);
+  authDetail.textContent = authState.message || 'Sign in to Chatbox AI to start a chess game.';
+
   // Draw squares
   for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
     const light = (r + c) % 2 === 0;
@@ -462,7 +494,9 @@ function render() {
 
   // Update status
   const statusEl = document.getElementById('status-line');
-  if (gameOver) {
+  if (signInRequired) {
+    statusEl.textContent = 'Sign in to play Chess';
+  } else if (gameOver) {
     statusEl.textContent = gameResult;
   } else {
     const side = turn === 'w' ? 'White' : 'Black';
@@ -485,11 +519,16 @@ function render() {
   }
 
   // Buttons
-  document.getElementById('btn-undo').disabled = moveHistory.length === 0 || gameOver;
+  document.getElementById('btn-undo').disabled = signInRequired || moveHistory.length === 0 || gameOver;
+  document.getElementById('btn-reset').disabled = signInRequired;
 }
 
 // ===== Interaction =====
 canvas.addEventListener('click', (e) => {
+  if (!isSignedIn()) {
+    requestSignIn();
+    return;
+  }
   if (gameOver || turn !== 'w') return;
   const rect = canvas.getBoundingClientRect();
   const c = Math.floor((e.clientX - rect.left) / sqSize);
@@ -526,6 +565,7 @@ canvas.addEventListener('click', (e) => {
 });
 
 document.getElementById('btn-undo').addEventListener('click', () => {
+  if (!isSignedIn()) { requestSignIn(); return; }
   if (moveHistory.length === 0 || gameOver) return;
   // Undo 2 moves (user + AI)
   // Simplest: reset and replay
@@ -541,9 +581,14 @@ document.getElementById('btn-undo').addEventListener('click', () => {
 });
 
 document.getElementById('btn-reset').addEventListener('click', () => {
+  if (!isSignedIn()) { requestSignIn(); return; }
   initBoard();
   render();
   sendStateUpdate();
+});
+
+document.getElementById('btn-sign-in').addEventListener('click', () => {
+  requestSignIn();
 });
 
 document.getElementById('btn-exit').addEventListener('click', () => {
@@ -595,6 +640,13 @@ function sendCompletion() {
 function handleToolInvoke(callId, toolName, params) {
   let result;
   let error;
+
+  if (!isSignedIn() && toolName !== 'finish_game') {
+    error = 'Sign in to Chatbox AI before using Chess.';
+    sendMsg({ type: 'TOOL_RESULT', callId, result: null, error });
+    render();
+    return;
+  }
 
   switch (toolName) {
     case 'start_game':
@@ -716,8 +768,24 @@ window.addEventListener('message', (event) => {
     case 'PLUGIN_INIT':
       nonce = data.nonce;
       instanceId = data.instanceId;
+      if (data.config?.auth) {
+        authState = {
+          status: data.config.auth.status || 'required',
+          message: data.config.auth.message || authState.message,
+        };
+      }
       if (data.config?.difficulty) difficulty = data.config.difficulty;
       initBoard();
+      render();
+      sendStateUpdate();
+      break;
+
+    case 'AUTH_STATUS':
+      if (data.nonce !== nonce) return;
+      authState = {
+        status: data.status,
+        message: data.metadata?.message || authState.message,
+      };
       render();
       sendStateUpdate();
       break;

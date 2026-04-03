@@ -1,17 +1,13 @@
-import { useCallback, useMemo } from 'react'
-import { authInfoStore, useAuthInfoStore } from '@/stores/authInfoStore'
+import { useCallback } from 'react'
+import { authInfoStore } from '@/stores/authInfoStore'
+import { useChatboxAuthStore } from '@/stores/chatboxAuthStore'
 import * as premiumActions from '@/stores/premiumActions'
 import queryClient from '@/stores/queryClient'
 import { settingsStore } from '@/stores/settingsStore'
 import type { AuthTokens } from './types'
 
 export function useAuthTokens() {
-  const accessToken = useAuthInfoStore((state) => state.accessToken)
-  const refreshToken = useAuthInfoStore((state) => state.refreshToken)
-
-  const isLoggedIn = useMemo(() => {
-    return !!accessToken && !!refreshToken
-  }, [accessToken, refreshToken])
+  const isLoggedIn = useChatboxAuthStore((state) => state.status === 'signed_in')
 
   const saveAuthTokens = useCallback(async (tokens: AuthTokens) => {
     try {

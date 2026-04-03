@@ -8,6 +8,7 @@ import { Chessboard } from 'react-chessboard'
 import type { Square } from 'react-chessboard/dist/chessboard/types'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
+import ChatboxAuthGate from '@/components/ChatboxAuthGate'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import Page from '@/components/layout/Page'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -81,10 +82,26 @@ function getAssistantResponse(game: Chess, moveHistory: string[], userMessage: s
   return `It's ${turnSide}'s turn (move ${Math.floor(moveCount / 2) + 1}).${lastMove ? ` Last move: ${lastMove}.` : ''} Ask me for a hint, position evaluation, or anything about the game!`
 }
 
-function ChessPage() {
+export function ChessPage() {
+  const { prompt, autostart } = Route.useSearch()
+
+  return (
+    <Page title="Chess">
+      <ChatboxAuthGate authType="k12-login" appName="Chess" mode="page" message="Sign in via K12 Login before playing Chess.">
+        <ChessGame prompt={prompt} autostart={autostart} />
+      </ChatboxAuthGate>
+    </Page>
+  )
+}
+
+interface ChessGameProps {
+  prompt?: string
+  autostart?: boolean
+}
+
+function ChessGame({ prompt, autostart }: ChessGameProps) {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
-  const { prompt, autostart } = Route.useSearch()
   const [game, setGame] = useState(() => new Chess())
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [moveHistory, setMoveHistory] = useState<string[]>([])
@@ -273,8 +290,7 @@ function ChessPage() {
   const boardWidth = isSmallScreen ? Math.max(260, Math.min(window.innerWidth - 32, 360)) : 340
 
   return (
-    <Page title={t('Chess')}>
-      <Flex className="h-full overflow-hidden" direction={isSmallScreen ? 'column' : 'row'}>
+    <Flex className="h-full overflow-hidden" direction={isSmallScreen ? 'column' : 'row'}>
         {/* Left: Board widget */}
         <Box
           className={isSmallScreen ? 'w-full' : 'flex-shrink-0'}
@@ -494,7 +510,6 @@ function ChessPage() {
           </Box>
         </Box>
       </Flex>
-    </Page>
   )
 }
 

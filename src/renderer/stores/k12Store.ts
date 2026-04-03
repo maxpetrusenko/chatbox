@@ -19,6 +19,7 @@ import type {
   PluginInstallRecord,
   PluginManifest,
 } from '@shared/plugin-types'
+import { useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { createStore, useStore } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -150,7 +151,7 @@ export type K12Store = K12State & K12Actions
 // Default demo data
 // ---------------------------------------------------------------------------
 
-const DEMO_DISTRICT: K12District = {
+export const DEMO_DISTRICT: K12District = {
   id: 'district-1',
   name: 'Westfield Unified School District',
   allowedPlugins: ['chess', 'weather', 'spotify', 'github', 'geogebra', 'phet', 'google-maps', 'wolfram'],
@@ -162,12 +163,12 @@ const DEMO_DISTRICT: K12District = {
   },
 }
 
-const DEMO_SCHOOLS: K12School[] = [
+export const DEMO_SCHOOLS: K12School[] = [
   { id: 'school-1', districtId: 'district-1', name: 'Lincoln Elementary', pluginOverrides: [] },
   { id: 'school-2', districtId: 'district-1', name: 'Washington Middle School', pluginOverrides: [] },
 ]
 
-const DEMO_CLASSES: K12Class[] = [
+export const DEMO_CLASSES: K12Class[] = [
   {
     id: 'class-1',
     schoolId: 'school-1',
@@ -463,9 +464,9 @@ export function createK12Store() {
 
           const approvedInstall = get().installRecords.some(
             (record) =>
-              record.pluginId == pluginId &&
+              record.pluginId === pluginId &&
               (record.status === 'approved' || record.status === 'active') &&
-              (!schoolId || record.schoolId === schoolId),
+              (!schoolId || record.schoolId === schoolId)
           )
 
           if (district.allowedPlugins.length > 0 && !district.allowedPlugins.includes(pluginId) && !approvedInstall) {
@@ -609,12 +610,22 @@ export function useCurrentUser() {
 }
 
 export function useK12Auth() {
-  return useK12((s) => ({
-    user: s.currentUser,
-    isAuthenticated: s.isAuthenticated,
-    login: s.login,
-    logout: s.logout,
-    hasPermission: s.hasPermission,
-    role: s.currentUser?.role ?? null,
-  }))
+  const user = useK12((s) => s.currentUser)
+  const isAuthenticated = useK12((s) => s.isAuthenticated)
+  const login = useK12((s) => s.login)
+  const logout = useK12((s) => s.logout)
+  const hasPermission = useK12((s) => s.hasPermission)
+  const role = useK12((s) => s.currentUser?.role ?? null)
+
+  return useMemo(
+    () => ({
+      user,
+      isAuthenticated,
+      login,
+      logout,
+      hasPermission,
+      role,
+    }),
+    [user, isAuthenticated, login, logout, hasPermission, role]
+  )
 }

@@ -1,15 +1,18 @@
 import type { PluginManifest } from '@shared/plugin-types'
 import { createStore } from 'zustand'
 import { combine, persist } from 'zustand/middleware'
-import { registerBuiltinManifest } from '@/plugins'
-import { registerPluginHtml } from '@/plugins/resolve'
+import { registerPluginHtml, unregisterPluginHtml } from '@/plugins/resolve'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
 import { safeStorage } from './safeStorage'
 
 function registerInstalledPackage(pkg: DroppedPluginPackage): void {
-  registerBuiltinManifest(pkg.manifest)
   registerPluginHtml(pkg.manifest.id, pkg.uiHtml)
   pluginRegistryStore.getState().registerManifest(pkg.manifest)
+}
+
+function unregisterInstalledPackage(pluginId: string): void {
+  unregisterPluginHtml(pluginId)
+  pluginRegistryStore.getState().removeManifest(pluginId)
 }
 
 export interface DroppedPluginPackage {
@@ -83,11 +86,40 @@ export const droppedPluginsStore = createStore(
           })
         },
         removePackage: (pluginId: string) => {
+          unregisterInstalledPackage(pluginId)
           set((state) => {
             const next = { ...state.packages }
             delete next[pluginId]
             return { packages: next }
           })
+        },
+        replaceRemoteState: ({
+          packages,
+          stagedPackages,
+        }: {
+          packages: Record<string, DroppedPluginPackage>
+          stagedPackages: Record<string, DroppedPluginPackage>
+        }) => {
+          const currentIds = new Set(Object.keys(get().packages))
+          const nextIds = new Set(Object.keys(packages))
+
+          for (const pluginId of currentIds) {
+            if (!nextIds.has(pluginId)) {
+              unregisterInstalledPackage(pluginId)
+            }
+          }
+
+          for (const pkg of Object.values(packages)) {
+            registerInstalledPackage(pkg)
+          }
+
+          set({ packages, stagedPackages })
+        },
+        clearAll: () => {
+          for (const pluginId of Object.keys(get().packages)) {
+            unregisterInstalledPackage(pluginId)
+          }
+          set({ packages: {}, stagedPackages: {} })
         },
         hydrateIntoRuntime: () => {
           const packages = Object.values(get().packages)

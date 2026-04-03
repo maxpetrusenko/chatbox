@@ -1,5 +1,5 @@
 import AdmZip from 'adm-zip'
-import { JSDOM } from 'jsdom'
+import { parseHTML } from 'linkedom'
 import { isPluginManifest } from '../shared/plugin-protocol'
 import type { PluginPackageAudit, PluginSecurityCapabilities, PluginSecurityFinding } from '../shared/plugin-security'
 import type { PluginManifest } from '../shared/plugin-types'
@@ -200,8 +200,7 @@ function rewriteCssUrls(css: string, currentPath: string, entries: Map<string, B
 }
 
 function inlinePackageAssets(html: string, entrypoint: string, entries: Map<string, Buffer>, findings: PluginSecurityFinding[]): string {
-  const dom = new JSDOM(html)
-  const { document } = dom.window
+  const { document } = parseHTML(html)
 
   const scripts = [...document.querySelectorAll('script[src]')]
   for (const script of scripts) {
@@ -287,7 +286,7 @@ function inlinePackageAssets(html: string, entrypoint: string, entries: Map<stri
     }
   }
 
-  return dom.serialize()
+  return document.toString()
 }
 
 function buildRuntimePolicyScript(allowedOrigins: string[]): string {
@@ -385,8 +384,7 @@ function buildCsp(allowedOrigins: string[]): string {
 }
 
 function hardenHtmlForRuntime(html: string, manifest: PluginManifest): string {
-  const dom = new JSDOM(html)
-  const { document } = dom.window
+  const { document } = parseHTML(html)
   const allowedOrigins = [...new Set((manifest.allowedDomains || []).map(normalizeAllowedOrigin).filter(Boolean))] as string[]
 
   let head = document.querySelector('head')
@@ -413,15 +411,14 @@ function hardenHtmlForRuntime(html: string, manifest: PluginManifest): string {
   policyScript.textContent = buildRuntimePolicyScript(allowedOrigins)
   head.prepend(policyScript)
 
-  return dom.serialize()
+  return document.toString()
 }
 
 function auditHtml(manifest: PluginManifest, html: string, entrypoint: string, fileCount: number, totalBytes: number): PluginPackageAudit {
   const findings: PluginSecurityFinding[] = []
-  const dom = new JSDOM(html)
-  const { document } = dom.window
+  const { document } = parseHTML(html)
   const capabilities = createCapabilities()
-  const sourceText = dom.serialize()
+  const sourceText = document.toString()
   const detectedDomains = extractOrigins(sourceText)
   const allowedOrigins = [...new Set((manifest.allowedDomains || []).map(normalizeAllowedOrigin).filter(Boolean))] as string[]
 

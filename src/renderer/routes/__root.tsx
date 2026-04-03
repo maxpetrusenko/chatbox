@@ -59,6 +59,7 @@ import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
 import { initTellMeK12AuthSync } from '@/packages/tellme/k12'
 import * as premiumActions from '@/stores/premiumActions'
 import * as settingActions from '@/stores/settingActions'
+import { chatboxAuthStore } from '@/stores/chatboxAuthStore'
 import { settingsStore, useLanguage, useSettingsStore, useTheme } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 
@@ -68,6 +69,7 @@ droppedPluginsStore.getState().hydrateIntoRuntime()
 pluginRegistryStore.getState().loadBuiltins()
 initPluginAuthBroker()
 initTellMeK12AuthSync()
+chatboxAuthStore.getState().init()
 
 function Root() {
   const location = useLocation()

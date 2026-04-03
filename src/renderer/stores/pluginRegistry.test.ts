@@ -1,5 +1,7 @@
 import type { PluginManifest } from '@shared/plugin-types'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { authInfoStore } from '@/stores/authInfoStore'
+import { chatboxAuthStore } from '@/stores/chatboxAuthStore'
 import { k12Store } from '@/stores/k12Store'
 import { createPluginRegistryStore, type PluginRegistryStore } from './pluginRegistry'
 
@@ -68,6 +70,11 @@ const wolframManifest: PluginManifest = {
   auth: { type: 'api-key' },
 }
 
+const gatedChessManifest: PluginManifest = {
+  ...chessManifest,
+  appAuth: { type: 'chatbox-ai-login' },
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -79,6 +86,8 @@ describe('pluginRegistry', () => {
   beforeEach(() => {
     store = createPluginRegistryStore()
     get = store.getState
+    authInfoStore.getState().clearTokens()
+    chatboxAuthStore.setState({ status: 'signed_out', profile: null, initialized: true })
     k12Store.setState((state) => ({
       ...state,
       isAuthenticated: false,
@@ -147,6 +156,49 @@ describe('pluginRegistry', () => {
       const tools = get().getToolSet('session-1')
       expect(tools.map((tool) => tool.namespacedName)).toContain('plugin__wolfram__compute')
     })
+
+    it('hides teacher tools when a plugin is disabled for the current scope', () => {
+      get().registerManifest(chessManifest)
+      k12Store.setState((state) => ({
+        ...state,
+        isAuthenticated: true,
+        currentUser: {
+          id: 'user-teacher',
+          email: 'teacher@westfield.edu',
+          name: 'Teacher Demo',
+          role: 'teacher',
+          districtId: 'district-1',
+          schoolId: 'school-1',
+        },
+        classes: state.classes.map((cls) =>
+          cls.teacherId === 'user-teacher'
+            ? { ...cls, activePlugins: cls.activePlugins.filter((pluginId) => pluginId !== 'chess') }
+            : cls
+        ),
+      }))
+
+      const tools = get().getToolSet('session-1')
+      expect(tools.map((tool) => tool.namespacedName)).not.toContain('plugin__chess__start_game')
+    })
+
+    it('hides app-auth tools when Chatbox AI is signed out', () => {
+      get().registerManifest(gatedChessManifest)
+
+      const tools = get().getToolSet('session-1')
+      expect(tools.map((tool) => tool.namespacedName)).not.toContain('plugin__chess__start_game')
+    })
+
+    it('shows app-auth tools when Chatbox AI is signed in', () => {
+      get().registerManifest(gatedChessManifest)
+      chatboxAuthStore.setState({
+        status: 'signed_in',
+        profile: { id: 'user-1', email: 'max@example.com', created_at: new Date().toISOString() },
+        initialized: true,
+      })
+
+      const tools = get().getToolSet('session-1')
+      expect(tools.map((tool) => tool.namespacedName)).toContain('plugin__chess__start_game')
+    })
   })
 
   // -- Tool call resolution --
@@ -194,6 +246,33 @@ describe('pluginRegistry', () => {
       get().registerManifest(spotifyManifest)
       const inst = get().createInstance('spotify', 'session-1')
       expect(inst!.authStatus).toBe('required')
+    })
+
+    it('creates app-auth instances in required state when Chatbox AI is signed out', () => {
+      get().registerManifest(gatedChessManifest)
+      const inst = get().createInstance('chess', 'session-1')
+      expect(inst).not.toBeNull()
+      expect(inst!.authStatus).toBe('required')
+    })
+
+    it('marks app-auth instances connected when Chatbox AI is signed in', () => {
+      get().registerManifest(gatedChessManifest)
+      chatboxAuthStore.setState({
+        status: 'signed_in',
+        profile: { id: 'user-1', email: 'max@example.com', created_at: new Date().toISOString() },
+        initialized: true,
+      })
+
+      const inst = get().createInstance('chess', 'session-1')
+      expect(inst!.authStatus).toBe('connected')
+    })
+
+    it('keeps app-auth gated when stale tokens exist but auth is signed out', () => {
+      get().registerManifest(gatedChessManifest)
+      authInfoStore.getState().setTokens({ accessToken: 'stale', refreshToken: 'stale' })
+
+      const tools = get().getToolSet('session-1')
+      expect(tools.map((tool) => tool.namespacedName)).not.toContain('plugin__chess__start_game')
     })
   })
 

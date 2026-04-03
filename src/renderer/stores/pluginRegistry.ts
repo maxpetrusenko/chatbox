@@ -16,6 +16,8 @@ import { v4 as uuidv4 } from 'uuid'
 import { createStore, useStore } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { getBuiltinManifests } from '@/plugins'
+import { getPluginAppAuthStatus, hasRequiredAppAuth } from '@/plugins/plugin-access'
+import { hiddenBuiltinPluginsStore } from '@/stores/hiddenBuiltinPluginsStore'
 import { k12Store } from '@/stores/k12Store'
 import { pluginAuthStore } from '@/stores/pluginAuthStore'
 
@@ -42,6 +44,7 @@ interface PluginRegistryState {
 interface PluginRegistryActions {
   loadBuiltins: () => void
   registerManifest: (manifest: PluginManifest) => boolean
+  removeManifest: (pluginId: string) => void
   createInstance: (pluginId: string, sessionId: string) => PluginInstance | null
   updateInstanceStatus: (instanceId: string, status: PluginInstanceStatus) => void
   updateInstanceState: (instanceId: string, state: Record<string, unknown>) => void
@@ -60,6 +63,12 @@ export type PluginRegistryStore = PluginRegistryState & PluginRegistryActions
 // ---------------------------------------------------------------------------
 // Store factory (exported for testing with fresh instances)
 // ---------------------------------------------------------------------------
+
+function isHiddenManifest(manifest: PluginManifest | undefined): boolean {
+  if (!manifest) return false
+  if (manifest.trustLevel !== 'builtin' && manifest.trustLevel !== 'verified') return false
+  return hiddenBuiltinPluginsStore.getState().isHidden(manifest.id)
+}
 
 export function createPluginRegistryStore() {
   return createStore<PluginRegistryStore>()(
@@ -89,9 +98,15 @@ export function createPluginRegistryStore() {
         return true
       },
 
+      removeManifest: (pluginId) => {
+        set((s) => {
+          s.manifests = s.manifests.filter((manifest) => manifest.id !== pluginId)
+        })
+      },
+
       createInstance: (pluginId, sessionId) => {
         const state = get()
-        const manifest = state.manifests.find((m) => m.id === pluginId)
+        const manifest = state.getManifest(pluginId)
         if (!manifest) return null
 
         const instance: PluginInstance = {
@@ -101,7 +116,7 @@ export function createPluginRegistryStore() {
           status: 'loading',
           lastState: null,
           lastCompletion: null,
-          authStatus: manifest.auth && manifest.auth.type !== 'none' ? 'required' : 'none',
+          authStatus: manifest.auth && manifest.auth.type !== 'none' ? 'required' : getPluginAppAuthStatus(manifest),
           createdAt: Date.now(),
         }
 
@@ -143,7 +158,8 @@ export function createPluginRegistryStore() {
       },
 
       getManifest: (pluginId) => {
-        return get().manifests.find((m) => m.id === pluginId)
+        const manifest = get().manifests.find((m) => m.id === pluginId)
+        return isHiddenManifest(manifest) ? undefined : manifest
       },
 
       getInstance: (instanceId) => {
@@ -165,13 +181,23 @@ export function createPluginRegistryStore() {
         const state = get()
         const tools: PluginTool[] = []
 
+        const visibleManifests = state.manifests.filter((manifest) => !isHiddenManifest(manifest))
+
         // Filter manifests by K12 role if authenticated
         const k12State = k12Store.getState()
-        const allowedManifests = k12State.isAuthenticated
-          ? k12State.getAvailablePlugins(state.manifests)
-          : state.manifests
+        const allowedManifests =
+          k12State.isAuthenticated && k12State.currentUser
+            ? visibleManifests.filter(
+                (manifest) =>
+                  k12State.isPluginAllowed(manifest.id, k12State.currentUser?.schoolId) &&
+                  k12State.isPluginActiveForCurrentScope(manifest.id)
+              )
+            : visibleManifests
 
         for (const manifest of allowedManifests) {
+          if (!hasRequiredAppAuth(manifest)) {
+            continue
+          }
           if (
             k12State.currentUser?.role === 'student' &&
             manifest.auth?.type !== undefined &&
@@ -197,7 +223,7 @@ export function createPluginRegistryStore() {
         const match = namespacedName.match(/^plugin__([^_]+)__(.+)$/)
         if (!match) return null
         const [, pluginId, toolName] = match
-        const manifest = get().manifests.find((m) => m.id === pluginId)
+        const manifest = get().getManifest(pluginId)
         if (!manifest) return null
         if (!manifest.tools.some((t) => t.name === toolName)) return null
         return { pluginId, toolName }

@@ -14,7 +14,7 @@ import {
 } from '@mantine/core'
 import type { PluginManifest } from '@shared/plugin-types'
 import { IconAlertTriangle, IconChartBar, IconDownload, IconKey, IconUsers } from '@tabler/icons-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePlatformProxy } from '@/stores/platformProxyStore'
 import { usePluginRegistry } from '@/stores/pluginRegistry'
 
@@ -66,17 +66,39 @@ export default function PlatformProxyAdminPanel({ districtId, role }: Props) {
     () => Object.fromEntries(proxyManifests.map((manifest) => [manifest.id, manifest.proxy])),
     [proxyManifests]
   )
+  const dashboardHydrationKey = useMemo(
+    () =>
+      proxyManifests
+        .map((manifest) => manifest.id)
+        .sort()
+        .join('|'),
+    [proxyManifests]
+  )
+  const apiKeyHydrationKey = useMemo(
+    () =>
+      `${districtId}:${apiKeyPlugins
+        .map((manifest) => manifest.id)
+        .sort()
+        .join('|')}`,
+    [apiKeyPlugins, districtId]
+  )
+  const lastDashboardHydrationKeyRef = useRef<string>('')
+  const lastApiKeyHydrationKeyRef = useRef<string>('')
 
   useEffect(() => {
+    if (lastDashboardHydrationKeyRef.current === dashboardHydrationKey) return
+    lastDashboardHydrationKeyRef.current = dashboardHydrationKey
     void hydrateDashboard(configMap)
-  }, [configMap, hydrateDashboard])
+  }, [configMap, dashboardHydrationKey, hydrateDashboard])
 
   useEffect(() => {
+    if (lastApiKeyHydrationKeyRef.current === apiKeyHydrationKey) return
+    lastApiKeyHydrationKeyRef.current = apiKeyHydrationKey
     void hydrateApiKeyMetadata(
       districtId,
       apiKeyPlugins.map((manifest) => manifest.id)
     )
-  }, [apiKeyPlugins, districtId, hydrateApiKeyMetadata])
+  }, [apiKeyHydrationKey, apiKeyPlugins, districtId, hydrateApiKeyMetadata])
 
   const handleSaveKey = async (pluginId: string) => {
     const value = draftKeys[pluginId]?.trim()

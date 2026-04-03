@@ -25,7 +25,11 @@ import { RouteComponent as SettingsDocumentParserRouteComponent } from '@/routes
 import { RouteComponent as SettingsGeneralRouteComponent } from '@/routes/settings/general'
 import { RouteComponent as SettingsHotkeysRouteComponent } from '@/routes/settings/hotkeys'
 import { RouteComponent as SettingsIndexRouteComponent } from '@/routes/settings/index'
+import { RouteComponent as SettingsK12AdminRouteComponent } from '@/routes/settings/k12-admin'
+import { RouteComponent as SettingsK12LoginRouteComponent } from '@/routes/settings/k12-login'
 import { RouteComponent as SettingsMcpRouteComponent } from '@/routes/settings/mcp'
+import { RouteComponent as SettingsPluginsDropRouteComponent } from '@/routes/settings/plugins-drop'
+import { RouteComponent as SettingsPluginsRouteComponent } from '@/routes/settings/plugins'
 import { RouteComponent as SettingsProviderProviderIdRouteComponent } from '@/routes/settings/provider/$providerId'
 import { RouteComponent as SettingsProviderChatboxAiRouteComponent } from '@/routes/settings/provider/chatbox-ai'
 import { RouteComponent as SettingsProviderIndexRouteComponent } from '@/routes/settings/provider/index'
@@ -171,6 +175,30 @@ const SettingsKnowledgeBaseRoute = createRoute({
   getParentRoute: () => RootRoute,
 })
 
+const SettingsK12LoginRoute = createRoute({
+  component: SettingsK12LoginRouteComponent,
+  path: '/settings/k12-login',
+  getParentRoute: () => RootRoute,
+})
+
+const SettingsPluginsRoute = createRoute({
+  component: SettingsPluginsRouteComponent,
+  path: '/settings/plugins',
+  getParentRoute: () => RootRoute,
+})
+
+const SettingsPluginsDropRoute = createRoute({
+  component: SettingsPluginsDropRouteComponent,
+  path: '/settings/plugins-drop',
+  getParentRoute: () => RootRoute,
+})
+
+const SettingsK12AdminRoute = createRoute({
+  component: SettingsK12AdminRouteComponent,
+  path: '/settings/k12-admin',
+  getParentRoute: () => RootRoute,
+})
+
 const SettingsDocumentParserRoute = createRoute({
   component: SettingsDocumentParserRouteComponent,
   path: '/settings/document-parser',
@@ -227,6 +255,10 @@ const routeTree = RootRoute.addChildren([
   SettingsWebSearchRoute,
   SettingsMcpRoute,
   SettingsKnowledgeBaseRoute,
+  SettingsK12LoginRoute,
+  SettingsPluginsRoute,
+  SettingsPluginsDropRoute,
+  SettingsK12AdminRoute,
   SettingsDocumentParserRoute,
   SettingsHotkeysRoute,
   SettingsDefaultModelsRoute,
@@ -235,10 +267,13 @@ const routeTree = RootRoute.addChildren([
 
 const settingsModalHistory = createMemoryHistory()
 
-// memoryHistory.location.href = '/about'
-const modalRouter = createRouter({
-  routeTree,
-  history: settingsModalHistory,
-  defaultPreload: 'intent',
-  scrollRestoration: true,
-})
+export function createSettingsModalRouter(history = createMemoryHistory()) {
+  return createRouter({
+    routeTree,
+    history,
+    defaultPreload: 'intent',
+    scrollRestoration: true,
+  })
+}
+
+const modalRouter = createSettingsModalRouter(settingsModalHistory)

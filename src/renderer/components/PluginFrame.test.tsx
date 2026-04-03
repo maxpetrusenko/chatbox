@@ -23,6 +23,7 @@ const {
   channelOptionsRef: { current: null as any },
   storeState: {
     getManifest: vi.fn(() => ({ name: 'Chess' })),
+    getInstance: vi.fn(() => undefined),
     updateInstanceStatus: vi.fn(),
     updateInstanceState: vi.fn(),
     updateInstanceCompletion: vi.fn(),
@@ -78,6 +79,8 @@ describe('PluginFrame', () => {
     consumeQueuedPluginToolInvocationsSpy.mockReturnValue([])
     channelOptionsRef.current = null
     storeState.getManifest.mockClear()
+    storeState.getInstance.mockReset()
+    storeState.getInstance.mockReturnValue(undefined)
     storeState.updateInstanceStatus.mockClear()
     storeState.updateInstanceState.mockClear()
     storeState.updateInstanceCompletion.mockClear()
@@ -235,6 +238,30 @@ describe('PluginFrame', () => {
         summary: 'Game exited early',
       })
     })
+
+    expect(container.querySelector('iframe')).toBeNull()
+    expect(container.textContent).toContain('Chess — completed')
+  })
+
+  it('stays collapsed on remount when the instance was already completed', () => {
+    storeState.getInstance.mockReturnValue({
+      instanceId: 'inst-done',
+      pluginId: 'chess',
+      sessionId: 'session-1',
+      status: 'completed',
+      lastState: null,
+      lastCompletion: {
+        pluginId: 'chess',
+        instanceId: 'inst-done',
+        summary: 'Closed from chat command',
+      },
+      authStatus: 'connected',
+      createdAt: Date.now(),
+    })
+
+    const { container } = renderWithMantine(
+      <PluginFrame pluginId="chess" instanceId="inst-done" nonce="inst-done" entrypointUrl="/plugins/chess/ui.html" />
+    )
 
     expect(container.querySelector('iframe')).toBeNull()
     expect(container.textContent).toContain('Chess — completed')

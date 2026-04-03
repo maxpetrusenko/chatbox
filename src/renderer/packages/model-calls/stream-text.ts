@@ -6,6 +6,9 @@ import type { ModelMessage, ToolSet } from 'ai'
 import { t } from 'i18next'
 import { uniqueId } from 'lodash'
 import { createModelDependencies } from '@/adapters'
+import { shouldEnablePluginTools } from '@/plugins/chat-intents'
+import { buildPluginAvailabilityPrompt } from '@/plugins/plugin-access'
+import { pluginRegistryStore } from '@/stores/pluginRegistry'
 import * as settingActions from '@/stores/settingActions'
 import { settingsStore } from '@/stores/settingsStore'
 import type {
@@ -38,7 +41,6 @@ import { getToolSet } from './toolsets/knowledge-base'
 import { getPluginToolSet, isPluginMountToolResult } from './toolsets/plugin-tools'
 import websearchToolSet, { parseLinkTool, webSearchTool } from './toolsets/web-search'
 
-
 function decoratePluginContentParts(contentParts: StreamTextResult['contentParts']): StreamTextResult['contentParts'] {
   const nextParts = [...contentParts]
   const seenPluginKeys = new Set(
@@ -61,6 +63,17 @@ function decoratePluginContentParts(contentParts: StreamTextResult['contentParts
   }
 
   return nextParts
+}
+
+function getLatestUserText(messages: Message[]): string {
+  const latestUserMessage = [...messages].reverse().find((message) => message.role === 'user')
+  if (!latestUserMessage) return ''
+
+  return latestUserMessage.contentParts
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join(' ')
+    .trim()
 }
 
 /**
@@ -199,6 +212,14 @@ export async function streamText(
   }
   if (webBrowsing && !webNotSupported) {
     toolSetInstructions += websearchToolSet.description
+  }
+  const shouldIncludePluginTools = shouldEnablePluginTools(getLatestUserText(params.messages), sessionId)
+  const visiblePluginManifests = pluginRegistryStore
+    .getState()
+    .manifests.filter((manifest) => !!pluginRegistryStore.getState().getManifest(manifest.id))
+  const pluginAvailabilityPrompt = shouldIncludePluginTools ? buildPluginAvailabilityPrompt(visiblePluginManifests) : ''
+  if (pluginAvailabilityPrompt) {
+    toolSetInstructions += `${toolSetInstructions ? '\n\n' : ''}${pluginAvailabilityPrompt}`
   }
 
   params.messages = injectModelSystemPrompt(
@@ -343,9 +364,11 @@ export async function streamText(
     }
 
     // Plugin tools — inject tools from all registered plugins
-    const pluginTools = getPluginToolSet(sessionId)
-    if (Object.keys(pluginTools).length > 0) {
-      tools = { ...tools, ...pluginTools }
+    if (shouldIncludePluginTools) {
+      const pluginTools = getPluginToolSet(sessionId)
+      if (Object.keys(pluginTools).length > 0) {
+        tools = { ...tools, ...pluginTools }
+      }
     }
 
     const onPluginAwareResultChange: OnResultChange = (data) => {

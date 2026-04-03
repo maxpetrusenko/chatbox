@@ -4,6 +4,8 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PluginManifest } from '@shared/plugin-types'
+import { authInfoStore } from '@/stores/authInfoStore'
+import { chatboxAuthStore } from '@/stores/chatboxAuthStore'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
 import {
   consumeQueuedPluginToolInvocations,
@@ -17,6 +19,7 @@ const chessManifest: PluginManifest = {
   version: '1.0.0',
   description: 'Play chess inline',
   category: 'internal',
+  appAuth: { type: 'chatbox-ai-login' },
   tools: [
     { name: 'start_game', description: 'Start a new game', parameters: [] },
   ],
@@ -37,6 +40,13 @@ const weatherManifest: PluginManifest = {
 
 describe('plugin-tools', () => {
   beforeEach(() => {
+    authInfoStore.getState().clearTokens()
+    authInfoStore.getState().setTokens({ accessToken: 'access', refreshToken: 'refresh' })
+    chatboxAuthStore.setState({
+      status: 'signed_in',
+      profile: { id: 'user-1', email: 'max@example.com', created_at: new Date().toISOString() },
+      initialized: true,
+    })
     pluginRegistryStore.setState({ manifests: [], instances: [] })
     pluginRegistryStore.getState().registerManifest(chessManifest)
   })
@@ -69,12 +79,27 @@ describe('plugin-tools', () => {
     dispatchSpy.mockRestore()
     executePromise.catch(() => undefined)
   })
+
+  it('does not expose chess tools when Chatbox AI is signed out', () => {
+    authInfoStore.getState().clearTokens()
+    chatboxAuthStore.setState({ status: 'signed_out', profile: null, initialized: true })
+
+    const tools = getPluginToolSet('session-1')
+    expect(tools['plugin__chess__start_game']).toBeUndefined()
+  })
 })
 
 describe('multi-plugin coexistence in same session', () => {
   const sessionId = 'session-multi'
 
   beforeEach(() => {
+    authInfoStore.getState().clearTokens()
+    authInfoStore.getState().setTokens({ accessToken: 'access', refreshToken: 'refresh' })
+    chatboxAuthStore.setState({
+      status: 'signed_in',
+      profile: { id: 'user-1', email: 'max@example.com', created_at: new Date().toISOString() },
+      initialized: true,
+    })
     pluginRegistryStore.setState({ manifests: [], instances: [] })
     pluginRegistryStore.getState().registerManifest(chessManifest)
     pluginRegistryStore.getState().registerManifest(weatherManifest)

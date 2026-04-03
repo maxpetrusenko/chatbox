@@ -35,10 +35,10 @@ import { submitPluginRequestToTellMe } from '@/packages/tellme/k12'
 import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
 import { reviewPluginSafety, runApprovalPipeline, type SafetyResult } from '@/stores/k12Safety'
 import { k12Store, useK12 } from '@/stores/k12Store'
-import { usePlatformProxy } from '@/stores/platformProxyStore'
+import { platformProxyStore, usePlatformProxy } from '@/stores/platformProxyStore'
 
 export const Route = createFileRoute('/settings/plugins-drop')({
-  component: PluginDropPage,
+  component: RouteComponent,
 })
 
 // ---------------------------------------------------------------------------
@@ -666,19 +666,19 @@ function DonePanel({ review, onReset, activated }: { review: ReviewState; onRese
 // Main Page: Stepper flow
 // ---------------------------------------------------------------------------
 
-function PluginDropPage() {
+export function RouteComponent() {
   const navigate = useNavigate()
   const currentUser = useK12((s) => s.currentUser)
   const isAuthenticated = useK12((s) => s.isAuthenticated)
   const hasPermission = useK12((s) => s.hasPermission)
   const apiKeyMetadata = usePlatformProxy((s) => s.apiKeyMetadata)
-  const hydrateApiKeyMetadata = usePlatformProxy((s) => s.hydrateApiKeyMetadata)
   const setApiKey = usePlatformProxy((s) => s.setApiKey)
 
   const [step, setStep] = useState<DropStep>('drop')
   const [review, setReview] = useState<ReviewState | null>(null)
   const [activatedOnSave, setActivatedOnSave] = useState(true)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const hydratedDistrictKeyRef = useRef<string | null>(null)
 
   const stepIndex = step === 'drop' ? 0 : step === 'review' ? 1 : step === 'setup' ? 2 : 3
 
@@ -731,13 +731,32 @@ function PluginDropPage() {
     )
   }
 
-  const needsDistrictKey = !!review && (review.manifest.auth?.type === 'api-key' || review.manifest.proxy?.requiresDistrictKey)
-  const districtKeyConfigured = review ? !!apiKeyMetadata[review.manifest.id]?.configured : false
+  const districtKeyPluginId =
+    review && (review.manifest.auth?.type === 'api-key' || review.manifest.proxy?.requiresDistrictKey) ? review.manifest.id : null
+  const needsDistrictKey = !!districtKeyPluginId
+  const districtKeyConfigured = districtKeyPluginId ? !!apiKeyMetadata[districtKeyPluginId]?.configured : false
 
   useEffect(() => {
-    if (!review || !currentUser?.districtId || !needsDistrictKey) return
-    void hydrateApiKeyMetadata(currentUser.districtId, [review.manifest.id])
-  }, [currentUser?.districtId, hydrateApiKeyMetadata, needsDistrictKey, review])
+    if (!currentUser?.districtId || !districtKeyPluginId) {
+      hydratedDistrictKeyRef.current = null
+      return
+    }
+
+    const hydrationKey = `${currentUser.districtId}:${districtKeyPluginId}`
+    if (hydratedDistrictKeyRef.current === hydrationKey) {
+      return
+    }
+
+    hydratedDistrictKeyRef.current = hydrationKey
+    void platformProxyStore
+      .getState()
+      .hydrateApiKeyMetadata(currentUser.districtId, [districtKeyPluginId])
+      .catch(() => {
+        if (hydratedDistrictKeyRef.current === hydrationKey) {
+          hydratedDistrictKeyRef.current = null
+        }
+      })
+  }, [currentUser?.districtId, districtKeyPluginId])
 
   const handleInspected = async (pkg: InspectedPluginPackage, sourceName: string) => {
     const safetyResult = reviewPluginSafety(pkg.manifest)
@@ -897,5 +916,5 @@ function PluginDropPage() {
 }
 
 export function PluginDropForm() {
-  return <PluginDropPage />
+  return <RouteComponent />
 }

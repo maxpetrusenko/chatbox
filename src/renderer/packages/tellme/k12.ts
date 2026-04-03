@@ -9,8 +9,10 @@ import type {
   PluginInstallRecord,
   PluginManifest,
 } from '@shared/plugin-types'
+import { v4 as uuidv4 } from 'uuid'
 import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
-import { k12Store } from '@/stores/k12Store'
+import { authenticateDemoPassword } from '@/stores/k12-auth'
+import { DEMO_CLASSES, DEMO_DISTRICT, DEMO_SCHOOLS, DEMO_USERS, k12Store } from '@/stores/k12Store'
 import { getTellMeClient, hasTellMeSupabaseConfig } from './supabase'
 
 const STORAGE_BUCKET = 'chatbox-plugin-drops'
@@ -24,10 +26,34 @@ export interface K12LoginPreset {
 }
 
 export const K12_LOGIN_PRESETS: K12LoginPreset[] = [
-  { alias: 'district-admin', email: 'district-admin@westfield.edu', name: 'Jordan Rivera', role: 'district-admin', schoolName: 'Westfield Unified' },
-  { alias: 'school-admin', email: 'school-admin@westfield.edu', name: 'Priya Patel', role: 'school-admin', schoolName: 'Lincoln Elementary' },
-  { alias: 'teacher', email: 'teacher@westfield.edu', name: 'Maya Chen', role: 'teacher', schoolName: 'Lincoln Elementary' },
-  { alias: 'student', email: 'student@westfield.edu', name: 'Alex Johnson', role: 'student', schoolName: 'Lincoln Elementary' },
+  {
+    alias: 'district-admin',
+    email: 'district-admin@westfield.edu',
+    name: 'Jordan Rivera',
+    role: 'district-admin',
+    schoolName: 'Westfield Unified',
+  },
+  {
+    alias: 'school-admin',
+    email: 'school-admin@westfield.edu',
+    name: 'Priya Patel',
+    role: 'school-admin',
+    schoolName: 'Lincoln Elementary',
+  },
+  {
+    alias: 'teacher',
+    email: 'teacher@westfield.edu',
+    name: 'Maya Chen',
+    role: 'teacher',
+    schoolName: 'Lincoln Elementary',
+  },
+  {
+    alias: 'student',
+    email: 'student@westfield.edu',
+    name: 'Alex Johnson',
+    role: 'student',
+    schoolName: 'Lincoln Elementary',
+  },
 ]
 
 interface BootstrapPayload {
@@ -96,6 +122,16 @@ interface K12Snapshot {
 
 let authSubscriptionBound = false
 
+export function getDroppedPackageHydrationTarget(status: PluginApprovalStatus): 'installed' | 'staged' | 'skip' {
+  if (status === 'active' || status === 'approved') {
+    return 'installed'
+  }
+  if (status === 'pending' || status === 'validating' || status === 'ai-review' || status === 'quarantined') {
+    return 'staged'
+  }
+  return 'skip'
+}
+
 function normalizeLogin(login: string): string {
   return login.trim().toLowerCase()
 }
@@ -145,7 +181,16 @@ function getPolicyStringArray(policy: Record<string, unknown> | null | undefined
 
 function deriveRecordStatus(row: BootstrapPayload['installations'][number]): PluginApprovalStatus {
   const chatboxStatus = getPolicyString(row.policy, 'chatboxStatus')
-  if (chatboxStatus === 'pending' || chatboxStatus === 'validating' || chatboxStatus === 'ai-review' || chatboxStatus === 'quarantined' || chatboxStatus === 'approved' || chatboxStatus === 'rejected' || chatboxStatus === 'active' || chatboxStatus === 'revoked') {
+  if (
+    chatboxStatus === 'pending' ||
+    chatboxStatus === 'validating' ||
+    chatboxStatus === 'ai-review' ||
+    chatboxStatus === 'quarantined' ||
+    chatboxStatus === 'approved' ||
+    chatboxStatus === 'rejected' ||
+    chatboxStatus === 'active' ||
+    chatboxStatus === 'revoked'
+  ) {
     return chatboxStatus
   }
   switch (row.install_state) {
@@ -161,7 +206,11 @@ function deriveRecordStatus(row: BootstrapPayload['installations'][number]): Plu
   }
 }
 
-function appliesToClass(row: BootstrapPayload['installations'][number], classroomId: string, schoolId: string): boolean {
+function appliesToClass(
+  row: BootstrapPayload['installations'][number],
+  classroomId: string,
+  schoolId: string
+): boolean {
   const scopedClassrooms = getPolicyStringArray(row.policy, 'classroomIds')
   if (scopedClassrooms.length > 0) {
     return scopedClassrooms.includes(classroomId)
@@ -213,7 +262,16 @@ function mapSchools(rows: BootstrapPayload['schools']): K12School[] {
 
 function applySnapshot(snapshot: K12Snapshot | null): void {
   if (!snapshot) {
-    k12Store.setState({ currentUser: null, isAuthenticated: false, district: null, schools: [], classes: [], installRecords: [], auditLog: [] })
+    droppedPluginsStore.getState().clearAll()
+    k12Store.setState({
+      currentUser: null,
+      isAuthenticated: false,
+      district: null,
+      schools: [],
+      classes: [],
+      installRecords: [],
+      auditLog: [],
+    })
     return
   }
 
@@ -230,27 +288,52 @@ function applySnapshot(snapshot: K12Snapshot | null): void {
 
 async function hydrateDroppedPackages(rows: BootstrapPayload['installations']): Promise<void> {
   const supabase = getTellMeClient()
+  type HydratedPackage = { manifest: PluginManifest; uiHtml: string; sourceName?: string; installedAt: number }
+  const nextPackages: Record<string, HydratedPackage> = {}
+  const nextStagedPackages: Record<string, HydratedPackage> = {}
+
   for (const row of rows) {
-    if (deriveRecordStatus(row) !== 'active' || !row.package_source || !row.manifest) {
+    if (!row.package_source || !row.manifest) {
       continue
     }
-    if (droppedPluginsStore.getState().packages[row.plugin_id]) {
+
+    const status = deriveRecordStatus(row)
+    const target = getDroppedPackageHydrationTarget(status)
+    if (target === 'skip') {
       continue
     }
+
     const { data, error } = await supabase.storage.from(STORAGE_BUCKET).download(row.package_source)
     if (error || !data) {
       continue
     }
     try {
-      const payload = JSON.parse(await data.text()) as { manifest?: PluginManifest; uiHtml?: string; sourceName?: string }
+      const payload = JSON.parse(await data.text()) as {
+        manifest?: PluginManifest
+        uiHtml?: string
+        sourceName?: string
+      }
       if (!payload.manifest || typeof payload.uiHtml !== 'string') {
         continue
       }
-      droppedPluginsStore.getState().installPackage({ manifest: payload.manifest, uiHtml: payload.uiHtml, sourceName: payload.sourceName })
-    } catch {
-      continue
-    }
+
+      const hydratedPackage = {
+        manifest: payload.manifest,
+        uiHtml: payload.uiHtml,
+        sourceName: payload.sourceName,
+        installedAt:
+          toTimestamp(row.activated_at) ?? toTimestamp(row.approved_at) ?? toTimestamp(row.created_at) ?? Date.now(),
+      }
+
+      if (target === 'installed') {
+        nextPackages[payload.manifest.id] = hydratedPackage
+      } else {
+        nextStagedPackages[row.id] = hydratedPackage
+      }
+    } catch {}
   }
+
+  droppedPluginsStore.getState().replaceRemoteState({ packages: nextPackages, stagedPackages: nextStagedPackages })
 }
 
 async function fetchBootstrap(): Promise<BootstrapPayload | null> {
@@ -301,7 +384,9 @@ export async function hydrateK12StoreFromTellMe(): Promise<K12Snapshot | null> {
     name: row.name,
     gradeLevel: row.grade_band ?? 'K-12',
     activePlugins: payload.installations
-      .filter((installation) => installation.install_state === 'active' && appliesToClass(installation, row.id, row.school_id))
+      .filter(
+        (installation) => installation.install_state === 'active' && appliesToClass(installation, row.id, row.school_id)
+      )
       .map((installation) => installation.plugin_id),
   }))
 
@@ -331,7 +416,22 @@ export async function hydrateK12StoreFromTellMe(): Promise<K12Snapshot | null> {
 
 export async function signInToTellMe(login: string, password: string): Promise<K12Snapshot | null> {
   if (!hasTellMeSupabaseConfig()) {
-    throw new Error('TellMe Supabase is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY first.')
+    const demoUser = authenticateDemoPassword(DEMO_USERS, login, password)
+    if (!demoUser) {
+      throw new Error('Invalid demo login. Try teacher, student, school-admin, or district-admin with password.')
+    }
+
+    const snapshot: K12Snapshot = {
+      user: demoUser,
+      district: DEMO_DISTRICT,
+      schools: DEMO_SCHOOLS,
+      classes: DEMO_CLASSES,
+      installRecords: [],
+      auditLog: [],
+    }
+
+    applySnapshot(snapshot)
+    return snapshot
   }
   const email = resolveK12LoginEmail(login)
   const { error } = await getTellMeClient().auth.signInWithPassword({ email, password })
@@ -348,13 +448,25 @@ export async function signOutFromTellMe(): Promise<void> {
   applySnapshot(null)
 }
 
-async function uploadPluginBundle(input: { manifest: PluginManifest; uiHtml?: string; sourceName?: string; currentUser: K12User }): Promise<string | null> {
+async function uploadPluginBundle(input: {
+  manifest: PluginManifest
+  uiHtml?: string
+  sourceName?: string
+  currentUser: K12User
+}): Promise<string | null> {
   if (!input.uiHtml) return null
   const path = `${input.currentUser.districtId}/${input.currentUser.schoolId ?? 'district'}/${input.manifest.id}/${input.manifest.version}/plugin-package.json`
   const payload = new TextEncoder().encode(
-    JSON.stringify({ manifest: input.manifest, uiHtml: input.uiHtml, sourceName: input.sourceName ?? null, uploadedAt: new Date().toISOString() })
+    JSON.stringify({
+      manifest: input.manifest,
+      uiHtml: input.uiHtml,
+      sourceName: input.sourceName ?? null,
+      uploadedAt: new Date().toISOString(),
+    })
   )
-  const { error } = await getTellMeClient().storage.from(STORAGE_BUCKET).upload(path, payload, { contentType: 'application/json', upsert: true })
+  const { error } = await getTellMeClient()
+    .storage.from(STORAGE_BUCKET)
+    .upload(path, payload, { contentType: 'application/json', upsert: true })
   if (error) throw error
   return path
 }
@@ -371,6 +483,35 @@ export async function submitPluginRequestToTellMe(input: {
   enableForCurrentScope?: boolean
   currentUser: K12User
 }): Promise<{ id: string; status: PluginApprovalStatus }> {
+  if (!hasTellMeSupabaseConfig()) {
+    const recordId = uuidv4()
+    const status = (input.chatboxStatus ?? 'pending') as PluginApprovalStatus
+    const nextRecord: PluginInstallRecord = {
+      id: recordId,
+      pluginId: input.manifest.id,
+      manifestSnapshot: input.manifest,
+      schoolId: input.schoolId,
+      districtId: input.currentUser.districtId,
+      status,
+      requestedBy: input.currentUser.id,
+      requestedAt: Date.now(),
+      safetyScore: input.safetyScore,
+      safetyFindings: input.safetyFindings,
+      reviewedBy: status === 'approved' || status === 'active' || status === 'rejected' ? input.currentUser.id : undefined,
+      reviewedAt: status === 'approved' || status === 'active' || status === 'rejected' ? Date.now() : undefined,
+    }
+
+    k12Store.setState((state) => ({
+      installRecords: [nextRecord, ...state.installRecords.filter((entry) => entry.pluginId !== input.manifest.id)],
+    }))
+
+    if (input.enableForCurrentScope) {
+      k12Store.getState().activatePluginForCurrentScope(input.manifest.id)
+    }
+
+    return { id: recordId, status }
+  }
+
   const packageSource = await uploadPluginBundle(input)
   const { data, error } = await getTellMeClient().rpc('chatbox_k12_submit_plugin_request', {
     input_manifest: input.manifest,
@@ -385,10 +526,50 @@ export async function submitPluginRequestToTellMe(input: {
   })
   if (error) throw error
   await hydrateK12StoreFromTellMe()
-  return { id: (data as { recordId: string }).recordId, status: (input.chatboxStatus ?? 'pending') as PluginApprovalStatus }
+  return {
+    id: (data as { recordId: string }).recordId,
+    status: (input.chatboxStatus ?? 'pending') as PluginApprovalStatus,
+  }
 }
 
-export async function reviewPluginRequestInTellMe(input: { recordId: string; status: 'approved' | 'active' | 'rejected'; reviewedBy: string; rejectionReason?: string }): Promise<void> {
+export async function reviewPluginRequestInTellMe(input: {
+  recordId: string
+  status: 'approved' | 'active' | 'rejected' | 'revoked'
+  reviewedBy: string
+  rejectionReason?: string
+}): Promise<void> {
+  if (!hasTellMeSupabaseConfig()) {
+    const record = k12Store.getState().installRecords.find((entry) => entry.id === input.recordId)
+
+    if (record) {
+      k12Store.setState((state) => ({
+        installRecords: state.installRecords.map((entry) =>
+          entry.id === input.recordId
+            ? {
+                ...entry,
+                status: input.status,
+                reviewedBy: input.reviewedBy,
+                reviewedAt: Date.now(),
+                rejectionReason: input.rejectionReason ?? entry.rejectionReason,
+              }
+            : entry,
+        ),
+      }))
+
+      if (input.status === 'active') {
+        k12Store.getState().activatePluginForCurrentScope(record.pluginId)
+      }
+
+      if (input.status === 'revoked') {
+        k12Store.getState().deactivatePluginForCurrentScope(record.pluginId)
+        droppedPluginsStore.getState().removePackage(record.pluginId)
+        droppedPluginsStore.getState().clearStagedPackage(input.recordId)
+      }
+    }
+
+    return
+  }
+
   const { error } = await getTellMeClient().rpc('chatbox_k12_review_plugin_request', {
     input_record_id: input.recordId,
     input_next_status: input.status,
@@ -399,6 +580,16 @@ export async function reviewPluginRequestInTellMe(input: { recordId: string; sta
 }
 
 export async function setPluginEnabledForCurrentScopeInTellMe(pluginId: string, enabled: boolean): Promise<void> {
+  if (!hasTellMeSupabaseConfig()) {
+    if (enabled) {
+      k12Store.getState().activatePluginForCurrentScope(pluginId)
+      return
+    }
+
+    k12Store.getState().deactivatePluginForCurrentScope(pluginId)
+    return
+  }
+
   const { error } = await getTellMeClient().rpc('chatbox_k12_set_plugin_scope', {
     input_plugin_id: pluginId,
     input_enabled: enabled,

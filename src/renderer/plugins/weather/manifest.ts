@@ -7,6 +7,11 @@ export const weatherManifest: PluginManifest = {
   description: 'Live weather and air quality for a city using public APIs.',
   category: 'external-public',
   trustLevel: 'builtin',
+  allowedDomains: [
+    'geocoding-api.open-meteo.com',
+    'api.open-meteo.com',
+    'air-quality-api.open-meteo.com',
+  ],
   tools: [
     {
       name: 'lookup_forecast',

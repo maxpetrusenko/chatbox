@@ -5,8 +5,17 @@
 import type { PluginManifest } from '@shared/plugin-types'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { resolvePluginToolCall } from '@/packages/model-calls/toolsets/plugin-tools'
+import { authInfoStore } from '@/stores/authInfoStore'
+import { chatboxAuthStore } from '@/stores/chatboxAuthStore'
+import { hiddenBuiltinPluginsStore } from '@/stores/hiddenBuiltinPluginsStore'
+import { k12Store } from '@/stores/k12Store'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
-import { executePluginChatIntent, resolvePluginChatIntent } from './chat-intents'
+import {
+  executePluginChatIntent,
+  resolvePluginChatIntent,
+  resolvePluginDiscoveryMessage,
+  shouldEnablePluginTools,
+} from './chat-intents'
 
 const chessManifest: PluginManifest = {
   id: 'chess',
@@ -14,6 +23,7 @@ const chessManifest: PluginManifest = {
   version: '1.0.0',
   description: 'Play chess inline',
   category: 'internal',
+  appAuth: { type: 'chatbox-ai-login' },
   tools: [
     { name: 'start_game', description: 'Start a new game', parameters: [] },
     {
@@ -105,8 +115,37 @@ const geogebraManifest: PluginManifest = {
   widget: { entrypoint: 'ui.html' },
 }
 
+const phetManifest: PluginManifest = {
+  id: 'phet',
+  name: 'PhET Simulations',
+  version: '1.0.0',
+  description: 'Interactive science simulations',
+  category: 'external-public',
+  tools: [
+    {
+      name: 'launch_sim',
+      description: 'Launch simulation',
+      parameters: [{ name: 'simId', type: 'string', description: 'Simulation', required: true }],
+    },
+    {
+      name: 'finish',
+      description: 'Close PhET',
+      parameters: [{ name: 'summary', type: 'string', description: 'Summary', required: false }],
+    },
+  ],
+  widget: { entrypoint: 'ui.html' },
+}
+
 describe('plugin chat intents', () => {
   beforeEach(() => {
+    authInfoStore.getState().clearTokens()
+    chatboxAuthStore.setState({ status: 'signed_out', profile: null, initialized: true })
+    k12Store.setState((state) => ({
+      ...state,
+      isAuthenticated: false,
+      currentUser: null,
+    }))
+    hiddenBuiltinPluginsStore.setState((state) => ({ ...state, hiddenPluginIds: [] }))
     pluginRegistryStore.setState({ manifests: [], instances: [] })
     const store = pluginRegistryStore.getState()
     store.registerManifest(chessManifest)
@@ -114,6 +153,7 @@ describe('plugin chat intents', () => {
     store.registerManifest(spotifyManifest)
     store.registerManifest(githubManifest)
     store.registerManifest(geogebraManifest)
+    store.registerManifest(phetManifest)
   })
 
   it('resolves chess launch phrases', () => {
@@ -185,8 +225,85 @@ describe('plugin chat intents', () => {
     })
   })
 
+  it('answers game discovery without launching chess', () => {
+    const message = resolvePluginDiscoveryMessage('what games do we have?', {
+      aiProvider: 'openai',
+      model: 'gpt-5-mini',
+    })
+
+    expect(message?.contentParts).toEqual([
+      {
+        type: 'text',
+        text: expect.stringContaining('Games right now: Chess.'),
+      },
+    ])
+    expect(message?.contentParts[0]).toEqual({
+      type: 'text',
+      text: expect.stringContaining('Interactive learning apps: GeoGebra and PhET Simulations.'),
+    })
+    expect(message?.contentParts.some((part) => part.type === 'plugin')).toBe(false)
+    expect(message?.aiProvider).toBe('openai')
+    expect(message?.model).toBe('gpt-5-mini')
+  })
+
+  it('answers plugin discovery with the available apps', () => {
+    const message = resolvePluginDiscoveryMessage('what plugins do we have')
+    const text = message?.contentParts[0]
+
+    expect(text).toEqual({
+      type: 'text',
+      text: expect.stringContaining('Plugins available:'),
+    })
+    expect((text as { text: string }).text).toContain('Chess')
+    expect((text as { text: string }).text).toContain('Spotify Study DJ')
+    expect((text as { text: string }).text).toContain('GeoGebra')
+  })
+
+  it('does not enable plugin tools for plain greetings', () => {
+    expect(shouldEnablePluginTools('hi', 'session-1')).toBe(false)
+    expect(shouldEnablePluginTools('how are you?', 'session-1')).toBe(false)
+  })
+
+  it('enables plugin tools for discovery and active plugin followups', () => {
+    expect(shouldEnablePluginTools('what games do we have?', 'session-1')).toBe(true)
+
+    const store = pluginRegistryStore.getState()
+    store.createInstance('weather', 'session-1')
+
+    expect(shouldEnablePluginTools('continue', 'session-1')).toBe(true)
+  })
+
+  it('refreshes cached catalog data when plugins are added or removed', () => {
+    const before = (resolvePluginDiscoveryMessage('what plugins do we have')?.contentParts[0] as { text: string }).text
+    expect(before).not.toContain('Calculator Lab')
+
+    pluginRegistryStore.getState().registerManifest({
+      id: 'calculator-lab',
+      name: 'Calculator Lab',
+      version: '1.0.0',
+      description: 'Quick calculations',
+      category: 'external-public',
+      tools: [{ name: 'compute', description: 'Compute expression', parameters: [] }],
+      widget: { entrypoint: 'ui.html' },
+    })
+
+    const afterAdd = (resolvePluginDiscoveryMessage('what plugins do we have')?.contentParts[0] as { text: string })
+      .text
+    expect(afterAdd).toContain('Calculator Lab')
+
+    pluginRegistryStore.getState().removeManifest('calculator-lab')
+    const afterRemove = (resolvePluginDiscoveryMessage('what plugins do we have')?.contentParts[0] as { text: string })
+      .text
+    expect(afterRemove).not.toContain('Calculator Lab')
+  })
+
   it('closes an active chess game without remounting', async () => {
     const store = pluginRegistryStore.getState()
+    chatboxAuthStore.setState({
+      status: 'signed_in',
+      profile: { id: 'user-1', email: 'max@example.com', created_at: new Date().toISOString() },
+      initialized: true,
+    })
     const instance = store.createInstance('chess', 'session-1')
     if (!instance) throw new Error('failed to create test instance')
 
@@ -212,6 +329,11 @@ describe('plugin chat intents', () => {
   })
 
   it('returns a plain message when no chess game is active to close', async () => {
+    chatboxAuthStore.setState({
+      status: 'signed_in',
+      profile: { id: 'user-1', email: 'max@example.com', created_at: new Date().toISOString() },
+      initialized: true,
+    })
     const message = await executePluginChatIntent('session-1', {
       pluginId: 'chess',
       assistantText: 'Closing Chess.',
@@ -221,6 +343,183 @@ describe('plugin chat intents', () => {
     })
 
     expect(message.contentParts).toEqual([{ type: 'text', text: 'No active Chess game to close.' }])
+  })
+
+  it('closes a stale chess instance without a live frame', async () => {
+    const store = pluginRegistryStore.getState()
+    chatboxAuthStore.setState({
+      status: 'signed_in',
+      profile: { id: 'user-1', email: 'max@example.com', created_at: new Date().toISOString() },
+      initialized: true,
+    })
+    const instance = store.createInstance('chess', 'session-1')
+    if (!instance) throw new Error('failed to create test instance')
+
+    store.updateInstanceStatus(instance.instanceId, 'error')
+    store.updateInstanceState(instance.instanceId, {
+      fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR',
+      status: 'in_progress',
+      difficulty: 'medium',
+    })
+
+    const message = await executePluginChatIntent('session-1', {
+      pluginId: 'chess',
+      assistantText: 'Closing Chess.',
+      toolName: 'finish_game',
+      parameters: { reason: 'Closed from chat command' },
+      requiresActiveInstance: true,
+    })
+
+    expect(message.contentParts).toEqual([{ type: 'text', text: 'Closing Chess.' }])
+    expect(store.getInstance(instance.instanceId)?.status).toBe('completed')
+    expect(store.getInstance(instance.instanceId)?.lastCompletion?.summary).toBe('Closed from chat command')
+  })
+
+  it('blocks chess launch when Chatbox AI is signed out', async () => {
+    authInfoStore.getState().setTokens({ accessToken: 'stale', refreshToken: 'stale' })
+    const existingInstances = pluginRegistryStore.getState().getInstancesForSession('session-1')
+
+    const message = await executePluginChatIntent('session-1', {
+      pluginId: 'chess',
+      assistantText: 'Starting Chess.',
+      toolName: 'start_game',
+    })
+
+    expect(message.contentParts).toEqual([{ type: 'text', text: 'Sign in to Chatbox AI before using Chess.' }])
+    expect(pluginRegistryStore.getState().getInstancesForSession('session-1')).toEqual(existingInstances)
+  })
+
+  it('does not resolve weather launch when Weather is uninstalled', () => {
+    pluginRegistryStore.setState((state) => ({
+      ...state,
+      manifests: state.manifests.filter((manifest) => manifest.id !== 'weather'),
+    }))
+
+    expect(resolvePluginChatIntent('weather in kyiv')).toBeNull()
+  })
+
+  it('says a plugin is not installed when an explicit launch reaches a missing manifest', async () => {
+    pluginRegistryStore.setState((state) => ({
+      ...state,
+      manifests: state.manifests.filter((manifest) => manifest.id !== 'weather'),
+    }))
+
+    const message = await executePluginChatIntent('session-1', {
+      pluginId: 'weather',
+      assistantText: 'Opening Weather Lab.',
+      toolName: 'lookup_forecast',
+      parameters: { city: 'Kyiv' },
+    })
+
+    expect(message.contentParts).toEqual([
+      { type: 'text', text: 'Weather Lab is not installed. Install it from Plugin Marketplace or Plugin Drop first.' },
+    ])
+  })
+
+  it('does not resolve weather launch when Weather is uninstalled', () => {
+    pluginRegistryStore.setState((state) => ({
+      ...state,
+      manifests: state.manifests.filter((manifest) => manifest.id !== 'weather'),
+    }))
+
+    expect(resolvePluginChatIntent('weather in kyiv')).toBeNull()
+  })
+
+  it('says a plugin is not installed when an explicit launch reaches a missing manifest', async () => {
+    pluginRegistryStore.setState((state) => ({
+      ...state,
+      manifests: state.manifests.filter((manifest) => manifest.id !== 'weather'),
+    }))
+
+    const message = await executePluginChatIntent('session-1', {
+      pluginId: 'weather',
+      assistantText: 'Opening Weather Lab.',
+      toolName: 'lookup_forecast',
+      parameters: { city: 'Kyiv' },
+    })
+
+    expect(message.contentParts).toEqual([
+      { type: 'text', text: 'Weather Lab is not installed. Install it from Plugin Marketplace or Plugin Drop first.' },
+    ])
+  })
+
+  it('treats hidden Weather as not installed for chat intents', async () => {
+    hiddenBuiltinPluginsStore.setState((state) => ({ ...state, hiddenPluginIds: ['weather'] }))
+
+    expect(resolvePluginChatIntent('weather in kyiv')).toBeNull()
+
+    const message = await executePluginChatIntent('session-1', {
+      pluginId: 'weather',
+      assistantText: 'Opening Weather Lab.',
+      toolName: 'lookup_forecast',
+      parameters: { city: 'Kyiv' },
+    })
+
+    expect(message.contentParts).toEqual([
+      { type: 'text', text: 'Weather Lab is not installed. Install it from Plugin Marketplace or Plugin Drop first.' },
+    ])
+  })
+
+  it('blocks chess launch when the plugin is disabled for the current scope', async () => {
+    chatboxAuthStore.setState({
+      status: 'signed_in',
+      profile: { id: 'user-1', email: 'max@example.com', created_at: new Date().toISOString() },
+      initialized: true,
+    })
+    k12Store.setState((state) => ({
+      ...state,
+      isAuthenticated: true,
+      currentUser: {
+        id: 'user-teacher',
+        email: 'teacher@westfield.edu',
+        name: 'Teacher Demo',
+        role: 'teacher',
+        districtId: 'district-1',
+        schoolId: 'school-1',
+      },
+      classes: state.classes.map((cls) =>
+        cls.teacherId === 'user-teacher'
+          ? { ...cls, activePlugins: cls.activePlugins.filter((pluginId) => pluginId !== 'chess') }
+          : cls
+      ),
+    }))
+
+    const message = await executePluginChatIntent('session-1', {
+      pluginId: 'chess',
+      assistantText: 'Starting Chess.',
+      toolName: 'start_game',
+    })
+
+    expect(message.contentParts).toEqual([
+      { type: 'text', text: 'Chess is disabled for the current scope. Enable it in Plugin Marketplace first.' },
+    ])
+  })
+
+  it('starts a fresh chess instance instead of reusing stale session state', async () => {
+    const store = pluginRegistryStore.getState()
+    chatboxAuthStore.setState({
+      status: 'signed_in',
+      profile: { id: 'user-1', email: 'max@example.com', created_at: new Date().toISOString() },
+      initialized: true,
+    })
+
+    const stale = store.createInstance('chess', 'session-1')
+    if (!stale) throw new Error('failed to create stale instance')
+    store.updateInstanceStatus(stale.instanceId, 'ready')
+    store.updateInstanceState(stale.instanceId, { isGameOver: true, gameResult: 'Old game' })
+
+    const message = await executePluginChatIntent('session-1', {
+      pluginId: 'chess',
+      assistantText: 'Starting Chess.',
+      toolName: 'start_game',
+      parameters: { difficulty: 'medium' },
+    })
+
+    const pluginPart = message.contentParts.find((part) => part.type === 'plugin' && part.pluginId === 'chess')
+    expect(pluginPart).toBeDefined()
+    expect((pluginPart as { instanceId: string }).instanceId).not.toBe(stale.instanceId)
+    expect(store.getInstance(stale.instanceId)?.status).toBe('completed')
+    expect(store.getInstance(stale.instanceId)?.lastCompletion?.summary).toBe('Superseded by a new chess game')
   })
 
   it('returns a plain message when no spotify task is active to close', async () => {

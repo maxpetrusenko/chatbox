@@ -6,7 +6,9 @@
  * so the host can ignore stale or spoofed frames.
  */
 
-import type { PluginAuthType, PluginCompletionPayload, PluginManifest } from './plugin-types'
+import type { PluginAppAuthType, PluginAuthType, PluginCompletionPayload, PluginManifest } from './plugin-types'
+
+export type PluginRuntimeAuthType = PluginAuthType | PluginAppAuthType
 
 // ---------------------------------------------------------------------------
 // Host → Plugin messages
@@ -30,8 +32,8 @@ export interface ToolInvokeMessage {
 export interface AuthStatusMessage {
   type: 'AUTH_STATUS'
   nonce: string
-  status: 'connected' | 'expired' | 'revoked' | 'authorizing' | 'error'
-  authType: PluginAuthType
+  status: 'required' | 'connected' | 'expired' | 'revoked' | 'authorizing' | 'error'
+  authType: PluginRuntimeAuthType
   accessToken?: string
   expiresAt?: number
   metadata?: Record<string, unknown>

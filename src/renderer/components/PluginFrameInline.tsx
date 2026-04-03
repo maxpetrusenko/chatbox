@@ -4,13 +4,17 @@
  * Used inside chat Message rendering when a `plugin` content part is encountered.
  */
 
-import { Alert, Text } from '@mantine/core'
+import { Alert, Stack, Text } from '@mantine/core'
 import type { AuthStatusMessage } from '@shared/plugin-protocol'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { type FC, memo, useCallback, useEffect, useMemo } from 'react'
+import { getPluginAppAuthBlockedMessage } from '@/plugins/plugin-access'
 import { resolvePluginEntrypoint } from '@/plugins/resolve'
+import { navigateToSettings } from '@/modals/Settings'
+import { useChatboxAuthStore } from '@/stores/chatboxAuthStore'
 import { getPluginAuthSetupError, usePluginAuth } from '@/stores/pluginAuthStore'
 import { usePluginRegistry } from '@/stores/pluginRegistry'
+import ChatboxAuthGate from './ChatboxAuthGate'
 import PluginFrame from './PluginFrame'
 
 interface Props {
@@ -26,6 +30,9 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
   const authSession = usePluginAuth((s) => s.sessions[pluginId])
   const hydrateAuth = usePluginAuth((s) => s.hydrate)
   const beginAuth = usePluginAuth((s) => s.beginAuth)
+  const chatboxAuthStatus = useChatboxAuthStore((state) => state.status)
+  const isChatboxAiSignedIn = chatboxAuthStatus === 'signed_in'
+  const appAuthStatus = manifest?.appAuth ? (isChatboxAiSignedIn ? 'connected' : 'required') : 'none'
 
   const entrypointUrl = useMemo(() => {
     if (!manifest) return null
@@ -38,21 +45,55 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
   }, [pluginId, manifest?.auth, hydrateAuth])
 
   useEffect(() => {
-    if (!manifest?.auth || !instance) return
-    const mappedStatus =
-      authSession?.status === 'connected' ? 'connected' : authSession?.status === 'expired' ? 'expired' : 'required'
+    if (!instance) return
+    let mappedStatus: 'none' | 'required' | 'connected' | 'expired' = 'none'
+
+    if (manifest?.auth) {
+      mappedStatus =
+        authSession?.status === 'connected' ? 'connected' : authSession?.status === 'expired' ? 'expired' : 'required'
+    } else if (manifest?.appAuth) {
+      mappedStatus = appAuthStatus
+    } else {
+      return
+    }
+
     updateInstanceAuth(instance.instanceId, mappedStatus)
-  }, [authSession?.status, instance, manifest?.auth, updateInstanceAuth])
+  }, [appAuthStatus, authSession?.status, instance, manifest?.appAuth, manifest?.auth, updateInstanceAuth])
 
   const handleAuthRequest = useCallback(() => {
+    if (manifest?.appAuth?.type === 'chatbox-ai-login') {
+      navigateToSettings('/provider/chatbox-ai')
+      return
+    }
+
+    if (manifest?.appAuth?.type === 'k12-login') {
+      navigateToSettings('/settings/k12-login')
+      return
+    }
+
     if (!manifest?.auth || manifest.auth.type === 'api-key') return
     void beginAuth(pluginId, manifest.auth)
-  }, [beginAuth, pluginId, manifest?.auth])
+  }, [beginAuth, pluginId, manifest?.appAuth, manifest?.auth])
 
   if (!manifest) {
     return (
       <Alert icon={<IconAlertCircle size={16} />} color="orange" className="my-2">
         <Text size="sm">Unknown plugin: {pluginId}</Text>
+      </Alert>
+    )
+  }
+
+  if (!instance) {
+    return (
+      <Alert icon={<IconAlertCircle size={16} />} color="gray" className="my-2">
+        <Stack gap="xs">
+          <Text size="sm" fw={600}>
+            {manifest.name} session archived
+          </Text>
+          <Text size="sm" c="dimmed">
+            This app session ended or was cleared after refresh. Ask Chatbox to reopen {manifest.name} if you want to use it again.
+          </Text>
+        </Stack>
       </Alert>
     )
   }
@@ -78,7 +119,15 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
           error: authSession?.error || setupError,
         },
       }
-    : undefined
+    : manifest.appAuth
+      ? {
+          auth: {
+            status: appAuthStatus,
+            provider: manifest.appAuth.type,
+            message: getPluginAppAuthBlockedMessage(manifest),
+          },
+        }
+      : undefined
 
   const authPayload: AuthStatusMessage | undefined =
     manifest.auth &&
@@ -107,9 +156,19 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
             error: authSession.error || setupError || undefined,
           },
         }
+      : manifest.appAuth
+        ? {
+            type: 'AUTH_STATUS',
+            nonce: instanceId,
+            status: appAuthStatus,
+            authType: manifest.appAuth.type,
+            metadata: {
+              message: getPluginAppAuthBlockedMessage(manifest) || undefined,
+            },
+          }
       : undefined
 
-  return (
+  const frame = (
     <PluginFrame
       pluginId={pluginId}
       instanceId={instanceId}
@@ -119,9 +178,19 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
       authPayload={authPayload}
       height={manifest.widget.defaultHeight || 400}
       width={manifest.widget.defaultWidth}
-      onAuthRequest={manifest.auth ? handleAuthRequest : undefined}
+      onAuthRequest={manifest.auth || manifest.appAuth ? handleAuthRequest : undefined}
     />
   )
+
+  if (manifest.appAuth) {
+    return (
+      <ChatboxAuthGate authType={manifest.appAuth.type} appName={manifest.name} message={getPluginAppAuthBlockedMessage(manifest) || undefined}>
+        {frame}
+      </ChatboxAuthGate>
+    )
+  }
+
+  return frame
 }
 
 export default memo(PluginFrameInline)

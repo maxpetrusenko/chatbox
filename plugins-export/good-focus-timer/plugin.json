@@ -1,0 +1,45 @@
+{
+  "id": "focus-timer-lite",
+  "name": "Focus Timer Lite",
+  "version": "1.0.0",
+  "description": "Simple classroom focus timer with a safe local widget and no external network access.",
+  "category": "external-public",
+  "tools": [
+    {
+      "name": "start_focus_timer",
+      "description": "Start a short focus timer session for students.",
+      "parameters": [
+        {
+          "name": "minutes",
+          "type": "number",
+          "description": "Duration in minutes",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "widget": {
+    "entrypoint": "ui.html",
+    "defaultWidth": 640,
+    "defaultHeight": 420
+  },
+  "trustLevel": "verified",
+  "dataProfile": {
+    "collectsPii": false,
+    "persistentIdentifiers": false,
+    "dataCategories": [],
+    "retentionDays": 0,
+    "thirdPartySharing": [],
+    "aiTrainingUse": false
+  },
+  "coppaScope": "none",
+  "dpaRequired": false,
+  "targetGrades": [
+    "3-12"
+  ],
+  "contentSafetyLevel": "strict",
+  "allowedDomains": [
+    "https://chatbox-safe.local"
+  ],
+  "signatureType": "verified"
+}

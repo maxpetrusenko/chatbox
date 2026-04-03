@@ -18,7 +18,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core'
-import type { AuditLogEntry, K12District, PluginInstallRecord } from '@shared/plugin-types'
+import type { K12District, PluginInstallRecord } from '@shared/plugin-types'
 import {
   IconBuilding,
   IconChartBar,
@@ -36,7 +36,7 @@ import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
 import { k12Store, useK12 } from '@/stores/k12Store'
 
 export const Route = createFileRoute('/settings/k12-admin')({
-  component: K12AdminPanel,
+  component: RouteComponent,
 })
 
 // ---------------------------------------------------------------------------
@@ -81,13 +81,17 @@ function relativeTime(ts: number): string {
 // ---------------------------------------------------------------------------
 
 function ApprovalQueueTab() {
-  const pending = useK12((s) => s.getPendingApprovals())
+  const installRecords = useK12((s) => s.installRecords)
   const currentUser = useK12((s) => s.currentUser)
   const schools = useK12((s) => s.schools)
   const [rejectId, setRejectId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
 
   const schoolMap = useMemo(() => Object.fromEntries(schools.map((s) => [s.id, s.name])), [schools])
+  const pending = useMemo(
+    () => installRecords.filter((record) => ['pending', 'validating', 'ai-review'].includes(record.status)),
+    [installRecords]
+  )
 
   const handleApprove = useCallback(
     (record: PluginInstallRecord) => {
@@ -560,7 +564,7 @@ function SchoolsClassesTab() {
 // Main Component
 // ---------------------------------------------------------------------------
 
-function K12AdminPanel() {
+export function RouteComponent() {
   const currentUser = useK12((s) => s.currentUser)
   const isAuthenticated = useK12((s) => s.isAuthenticated)
   const role = currentUser?.role ?? null
@@ -592,7 +596,7 @@ function K12AdminPanel() {
         </Badge>
       </Flex>
 
-      <Tabs defaultValue={defaultTab}>
+      <Tabs defaultValue={defaultTab} keepMounted={false}>
         <Tabs.List>
           {(isDistrictAdmin || isSchoolAdmin) && (
             <Tabs.Tab value="approvals" leftSection={<IconClipboardList size={14} />}>
@@ -628,7 +632,10 @@ function K12AdminPanel() {
         </Tabs.Panel>
 
         <Tabs.Panel value="proxy" pt="md">
-          <PlatformProxyAdminPanel districtId={currentUser.districtId} role={role as 'district-admin' | 'school-admin' | 'teacher'} />
+          <PlatformProxyAdminPanel
+            districtId={currentUser.districtId}
+            role={role as 'district-admin' | 'school-admin' | 'teacher'}
+          />
         </Tabs.Panel>
 
         {isDistrictAdmin && (

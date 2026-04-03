@@ -18,10 +18,10 @@ import type { K12Role } from '@shared/plugin-types'
 import { IconInfoCircle, IconLogin2, IconLogout, IconSchool, IconUser } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
-import { getK12HomePath, normalizeK12Email } from '@/stores/k12-auth'
-import { useK12, useK12Auth } from '@/stores/k12Store'
 import { K12_LOGIN_PRESETS, resolveK12LoginEmail, signInToTellMe, signOutFromTellMe } from '@/packages/tellme/k12'
 import { hasTellMeSupabaseConfig } from '@/packages/tellme/supabase'
+import { getK12HomePath, normalizeK12Email } from '@/stores/k12-auth'
+import { useK12, useK12Auth } from '@/stores/k12Store'
 
 export const Route = createFileRoute('/settings/k12-login')({
   component: RouteComponent,
@@ -152,7 +152,12 @@ function LoggedInView() {
         </Group>
       </Card>
 
-      <Alert variant="light" color={ROLE_COLORS[role]} title={`${ROLE_LABELS[role]} permissions`} icon={<IconInfoCircle size={18} />}>
+      <Alert
+        variant="light"
+        color={ROLE_COLORS[role]}
+        title={`${ROLE_LABELS[role]} permissions`}
+        icon={<IconInfoCircle size={18} />}
+      >
         {PERMISSION_DESCRIPTIONS[role]}
       </Alert>
 
@@ -178,7 +183,7 @@ function LoggedInView() {
   )
 }
 
-function RouteComponent() {
+export function RouteComponent() {
   const navigate = useNavigate()
   const { isAuthenticated } = useK12Auth()
   const [login, setLogin] = useState('teacher')
@@ -243,12 +248,14 @@ function RouteComponent() {
       </Group>
 
       <Text size="sm" c="dimmed">
-        Real teacher and student auth lives in TellMe Supabase. Alias login still works: <Code>teacher</Code> / <Code>password</Code> and <Code>student</Code> / <Code>password</Code>.
+        Real teacher and student auth lives in TellMe Supabase. Alias login still works: <Code>teacher</Code> /{' '}
+        <Code>password</Code> and <Code>student</Code> / <Code>password</Code>.
       </Text>
 
       {!configured && (
-        <Alert color="red" variant="light" icon={<IconInfoCircle size={16} />}>
-          TellMe auth is not configured. Add <Code>SUPABASE_URL</Code> and <Code>SUPABASE_ANON_KEY</Code>, then restart.
+        <Alert color="blue" variant="light" icon={<IconInfoCircle size={16} />}>
+          TellMe auth is not configured. Demo login still works with <Code>teacher</Code>, <Code>student</Code>,{' '}
+          <Code>school-admin</Code>, or <Code>district-admin</Code> and password <Code>password</Code>.
         </Alert>
       )}
 
@@ -260,7 +267,8 @@ function RouteComponent() {
                 Fastest path
               </Text>
               <Text size="sm" c="dimmed">
-                Login as teacher. Then open Plugin Drop and upload your <Code>.zip</Code> or <Code>.cbplugin</Code> package.
+                Login as teacher. Then open Plugin Drop and upload your <Code>.zip</Code> or <Code>.cbplugin</Code>{' '}
+                package.
               </Text>
             </Box>
             <Badge size="sm" variant="light" color="teal">
@@ -268,10 +276,15 @@ function RouteComponent() {
             </Badge>
           </Group>
           <Group>
-            <Button size="sm" disabled={!configured || submitting} onClick={() => void completeLogin('teacher', 'password')}>
+            <Button size="sm" disabled={submitting} onClick={() => void completeLogin('teacher', 'password')}>
               Login as Teacher
             </Button>
-            <Button size="sm" variant="light" disabled={!configured || submitting} onClick={() => void completeLogin('student', 'password')}>
+            <Button
+              size="sm"
+              variant="light"
+              disabled={submitting}
+              onClick={() => void completeLogin('student', 'password')}
+            >
               Login as Student
             </Button>
           </Group>
@@ -298,7 +311,7 @@ function RouteComponent() {
           <Group>
             <Button
               leftSection={<IconLogin2 size={16} />}
-              disabled={!configured || submitting}
+              disabled={submitting}
               loading={submitting}
               onClick={() => void completeLogin(login, password)}
             >
@@ -334,7 +347,8 @@ function RouteComponent() {
       <Stack gap="xs">
         <Title order={6}>Alias shortcuts</Title>
         <Text size="sm" c="dimmed">
-          <Code>teacher</Code>, <Code>student</Code>, <Code>school-admin</Code>, and <Code>district-admin</Code> resolve to their TellMe accounts. Full emails work too.
+          <Code>teacher</Code>, <Code>student</Code>, <Code>school-admin</Code>, and <Code>district-admin</Code> resolve
+          to their TellMe accounts. Full emails work too.
         </Text>
         <Text size="xs" c="dimmed">
           Current login input: {normalizeK12Email(login)}

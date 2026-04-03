@@ -10,7 +10,8 @@
  */
 
 import { Button, Loader, Paper, Stack, Text } from '@mantine/core'
-import type { PluginAuthType, PluginCompletionPayload } from '@shared/plugin-types'
+import type { AuthStatusMessage } from '@shared/plugin-protocol'
+import type { PluginCompletionPayload } from '@shared/plugin-types'
 import { IconAlertCircle, IconPuzzle, IconRefresh } from '@tabler/icons-react'
 import { type FC, memo, useCallback, useEffect, useRef, useState } from 'react'
 import { usePluginChannel } from '@/hooks/usePluginChannel'
@@ -30,13 +31,7 @@ interface PluginFrameProps {
   height?: number
   onToolResult?: (callId: string, result: unknown, error?: string) => void
   onAuthRequest?: () => void
-  authPayload?: {
-    status: 'connected' | 'expired' | 'revoked' | 'authorizing' | 'error'
-    authType: PluginAuthType
-    accessToken?: string
-    expiresAt?: number
-    metadata?: Record<string, unknown>
-  }
+  authPayload?: Omit<AuthStatusMessage, 'type' | 'nonce'>
 }
 
 const HANDSHAKE_TIMEOUT_MS = 10_000
@@ -69,10 +64,22 @@ const PluginFrame: FC<PluginFrameProps> = ({
   const activeStartRef = useRef<number | null>(null)
 
   const manifest = usePluginRegistry((s) => s.getManifest(pluginId))
+  const instance = usePluginRegistry((s) => s.getInstance(instanceId))
   const updateInstanceStatus = usePluginRegistry((s) => s.updateInstanceStatus)
   const updateInstanceState = usePluginRegistry((s) => s.updateInstanceState)
   const updateInstanceCompletion = usePluginRegistry((s) => s.updateInstanceCompletion)
   const currentUser = useCurrentUser()
+
+  useEffect(() => {
+    if (!instance) return
+    if (instance.status === 'completed' || instance.lastCompletion) {
+      setStatus('completed')
+      return
+    }
+    if (instance.status === 'error') {
+      setStatus('error')
+    }
+  }, [instance])
 
   const handleReady = useCallback(() => {
     setStatus('active')
