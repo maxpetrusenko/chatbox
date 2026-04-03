@@ -3,12 +3,14 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest'
+import { hiddenBuiltinPluginsStore } from './hiddenBuiltinPluginsStore'
 import { droppedPluginsStore } from './droppedPluginsStore'
 
 describe('droppedPluginsStore', () => {
   beforeEach(() => {
     localStorage.clear()
     droppedPluginsStore.setState({ packages: {}, stagedPackages: {} })
+    hiddenBuiltinPluginsStore.setState({ hiddenPluginIds: [] })
   })
 
   it('stores dropped plugin packages', () => {
@@ -27,6 +29,27 @@ describe('droppedPluginsStore', () => {
     })
 
     expect(droppedPluginsStore.getState().packages['drop-weather']?.sourceName).toBe('drop-weather.cbplugin')
+  })
+
+  it('unhides a plugin id when installing a dropped replacement', () => {
+    hiddenBuiltinPluginsStore.getState().hidePlugin('weather')
+
+    droppedPluginsStore.getState().installPackage({
+      manifest: {
+        id: 'weather',
+        name: 'Weather Lab',
+        version: '1.0.0',
+        description: 'Dropped plugin',
+        category: 'external-public',
+        trustLevel: 'verified',
+        tools: [],
+        widget: { entrypoint: 'ui.html' },
+      },
+      uiHtml: '<html></html>',
+      sourceName: 'weather.cbplugin',
+    })
+
+    expect(hiddenBuiltinPluginsStore.getState().isHidden('weather')).toBe(false)
   })
 
   it('stages and promotes dropped plugin packages after approval', () => {

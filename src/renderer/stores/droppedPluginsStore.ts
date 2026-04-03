@@ -2,10 +2,12 @@ import type { PluginManifest } from '@shared/plugin-types'
 import { createStore } from 'zustand'
 import { combine, persist } from 'zustand/middleware'
 import { registerPluginHtml, unregisterPluginHtml } from '@/plugins/resolve'
+import { hiddenBuiltinPluginsStore } from '@/stores/hiddenBuiltinPluginsStore'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
 import { safeStorage } from './safeStorage'
 
 function registerInstalledPackage(pkg: DroppedPluginPackage): void {
+  hiddenBuiltinPluginsStore.getState().showPlugin(pkg.manifest.id)
   registerPluginHtml(pkg.manifest.id, pkg.uiHtml)
   pluginRegistryStore.getState().registerManifest(pkg.manifest)
 }

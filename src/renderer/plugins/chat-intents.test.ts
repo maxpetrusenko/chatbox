@@ -193,6 +193,21 @@ describe('plugin chat intents', () => {
     })
   })
 
+  it('resolves open phet phrases', () => {
+    expect(resolvePluginChatIntent('open phet')).toMatchObject({
+      pluginId: 'phet',
+      assistantText: 'Opening PhET Simulations.',
+    })
+  })
+
+  it('resolves new phet phrases as a fresh session', () => {
+    expect(resolvePluginChatIntent('new phet')).toMatchObject({
+      pluginId: 'phet',
+      assistantText: 'Starting a new PhET Simulations session.',
+      forceFreshInstance: true,
+    })
+  })
+
   it('resolves exit game phrases', () => {
     expect(resolvePluginChatIntent('exit game')).toMatchObject({
       pluginId: 'chess',
@@ -561,5 +576,44 @@ describe('plugin chat intents', () => {
     expect(message.model).toBe('GPT 5.3')
     expect(message.usage?.totalTokens).toBe(0)
     expect(message.tokensUsed).toBe(0)
+  })
+
+  it('does not remount a second live frame when a plugin is already open', async () => {
+    const store = pluginRegistryStore.getState()
+    const instance = store.createInstance('phet', 'session-1')
+    if (!instance) throw new Error('failed to create phet instance')
+    store.updateInstanceStatus(instance.instanceId, 'ready')
+
+    const message = await executePluginChatIntent('session-1', {
+      pluginId: 'phet',
+      assistantText: 'Opening PhET Simulations.',
+    })
+
+    expect(message.contentParts).toEqual([
+      {
+        type: 'text',
+        text: 'PhET Simulations is already open. Say "new phet" to start fresh or "close phet" to stop it.',
+      },
+    ])
+    expect(store.getInstancesForSession('session-1').filter((current) => current.pluginId === 'phet')).toHaveLength(1)
+  })
+
+  it('starts a fresh non-chess plugin session when asked for a new app session', async () => {
+    const store = pluginRegistryStore.getState()
+    const stale = store.createInstance('phet', 'session-1')
+    if (!stale) throw new Error('failed to create stale phet instance')
+    store.updateInstanceStatus(stale.instanceId, 'ready')
+
+    const message = await executePluginChatIntent('session-1', {
+      pluginId: 'phet',
+      assistantText: 'Starting a new PhET Simulations session.',
+      forceFreshInstance: true,
+    })
+
+    const pluginPart = message.contentParts.find((part) => part.type === 'plugin' && part.pluginId === 'phet')
+    expect(pluginPart).toBeDefined()
+    expect((pluginPart as { instanceId: string }).instanceId).not.toBe(stale.instanceId)
+    expect(store.getInstance(stale.instanceId)?.status).toBe('completed')
+    expect(store.getInstance(stale.instanceId)?.lastCompletion?.summary).toBe('Restarted from chat command')
   })
 })

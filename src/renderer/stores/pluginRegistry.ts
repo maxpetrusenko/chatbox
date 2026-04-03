@@ -17,6 +17,7 @@ import { createStore, useStore } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { getBuiltinManifests } from '@/plugins'
 import { getPluginAppAuthStatus, hasRequiredAppAuth } from '@/plugins/plugin-access'
+import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
 import { hiddenBuiltinPluginsStore } from '@/stores/hiddenBuiltinPluginsStore'
 import { k12Store } from '@/stores/k12Store'
 import { pluginAuthStore } from '@/stores/pluginAuthStore'
@@ -66,6 +67,7 @@ export type PluginRegistryStore = PluginRegistryState & PluginRegistryActions
 
 function isHiddenManifest(manifest: PluginManifest | undefined): boolean {
   if (!manifest) return false
+  if (droppedPluginsStore.getState().packages[manifest.id]) return false
   if (manifest.trustLevel !== 'builtin' && manifest.trustLevel !== 'verified') return false
   return hiddenBuiltinPluginsStore.getState().isHidden(manifest.id)
 }

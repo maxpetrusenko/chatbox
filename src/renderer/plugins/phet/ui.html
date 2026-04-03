@@ -121,6 +121,7 @@
 <script>
 // ===== Plugin Bridge Protocol =====
 var nonce = '';
+var instanceId = '';
 var currentSim = null;
 var animFrame = null;
 var catalog = [];
@@ -131,14 +132,33 @@ window.addEventListener('message', function(event) {
   var msg = event.data;
   if (msg.type === 'PLUGIN_INIT') {
     nonce = msg.nonce;
+    instanceId = msg.instanceId || instanceId;
   }
   if (msg.type === 'TOOL_INVOKE') {
     handleToolInvoke(msg.callId, msg.toolName, msg.parameters || {});
   }
 });
 
+function sendMsg(message) {
+  window.parent.postMessage(Object.assign({ nonce: nonce }, message), '*');
+}
+
 function sendResult(callId, result) {
-  window.parent.postMessage({ type: 'TOOL_RESULT', nonce: nonce, callId: callId, result: result }, '*');
+  sendMsg({ type: 'TOOL_RESULT', callId: callId, result: result });
+}
+
+function sendCompletion(summary) {
+  sendMsg({
+    type: 'COMPLETION',
+    payload: {
+      pluginId: 'phet',
+      instanceId: instanceId,
+      summary: summary || 'Simulation session ended',
+      data: {
+        currentSimulation: currentSim,
+      },
+    },
+  });
 }
 
 function handleToolInvoke(callId, toolName, params) {
@@ -174,8 +194,10 @@ function handleToolInvoke(callId, toolName, params) {
       break;
     }
     case 'finish': {
+      var summary = params.summary || (currentSim ? 'Finished exploring ' + currentSim + '.' : 'Simulation session ended');
       if (currentSim) showBrowser();
-      sendResult(callId, { success: true, summary: params.summary || 'Session ended' });
+      sendCompletion(summary);
+      sendResult(callId, { success: true, summary: summary });
       break;
     }
     default:

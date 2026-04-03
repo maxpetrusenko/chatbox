@@ -1,6 +1,7 @@
 import { createMessage, type Message } from '@shared/types'
 import { getPluginToolSet, isPluginMountToolResult } from '@/packages/model-calls/toolsets/plugin-tools'
 import { getPluginAppAuthBlockedMessage, hasRequiredAppAuth } from '@/plugins/plugin-access'
+import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
 import { hiddenBuiltinPluginsStore } from '@/stores/hiddenBuiltinPluginsStore'
 import { k12Store } from '@/stores/k12Store'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
@@ -24,6 +25,7 @@ export interface PluginChatIntent {
   toolName?: string
   parameters?: Record<string, unknown>
   requiresActiveInstance?: boolean
+  forceFreshInstance?: boolean
 }
 
 export interface PluginIntentMessageMetadata {
@@ -72,6 +74,7 @@ function hasWholePhrase(text: string, phrase: string): boolean {
 }
 
 function isHiddenManifest(pluginId: string): boolean {
+  if (droppedPluginsStore.getState().packages[pluginId]) return false
   return hiddenBuiltinPluginsStore.getState().isHidden(pluginId)
 }
 
@@ -361,6 +364,42 @@ function resolveCloseIntent(text: string): PluginChatIntent | null {
   return null
 }
 
+function resolveRestartIntent(text: string): PluginChatIntent | null {
+  const normalized = normalize(text)
+  const restartVerb = /(^|\b)(new|restart|reopen|reset|fresh)(?:\b|$)/
+  if (!restartVerb.test(normalized)) return null
+
+  const explicitPluginId = resolveExplicitAppAlias(normalized)
+  if (!explicitPluginId) {
+    if (/\b(game|board|match|chess app|game app)\b/.test(normalized) && isInstalledPlugin('chess')) {
+      return {
+        pluginId: 'chess',
+        assistantText: 'Starting a new Chess game.',
+        toolName: 'start_game',
+        parameters: extractDifficulty(normalized) ? { difficulty: extractDifficulty(normalized) } : {},
+        forceFreshInstance: true,
+      }
+    }
+    return null
+  }
+
+  if (explicitPluginId === 'chess') {
+    return {
+      pluginId: 'chess',
+      assistantText: 'Starting a new Chess game.',
+      toolName: 'start_game',
+      parameters: extractDifficulty(normalized) ? { difficulty: extractDifficulty(normalized) } : {},
+      forceFreshInstance: true,
+    }
+  }
+
+  return {
+    pluginId: explicitPluginId,
+    assistantText: `Starting a new ${getPluginDisplayName(explicitPluginId)} session.`,
+    forceFreshInstance: true,
+  }
+}
+
 export function resolvePluginChatIntent(text: string): PluginChatIntent | null {
   const normalized = normalize(text)
   if (!normalized) return null
@@ -368,6 +407,8 @@ export function resolvePluginChatIntent(text: string): PluginChatIntent | null {
   const difficulty = extractDifficulty(normalized)
   const closeIntent = resolveCloseIntent(normalized)
   if (closeIntent) return closeIntent
+  const restartIntent = resolveRestartIntent(normalized)
+  if (restartIntent) return restartIntent
 
   if (
     isInstalledPlugin('chess') &&
@@ -492,7 +533,15 @@ export async function executePluginChatIntent(
 
   const activeInstance = store.getActiveInstanceForPlugin(intent.pluginId, sessionId)
 
-  if (intent.requiresActiveInstance && !activeInstance) {
+  if (intent.forceFreshInstance) {
+    completeOutstandingInstances(intent.pluginId, sessionId, 'Restarted from chat command')
+  }
+
+  const reusableActiveInstance = intent.forceFreshInstance
+    ? store.getActiveInstanceForPlugin(intent.pluginId, sessionId)
+    : activeInstance
+
+  if (intent.requiresActiveInstance && !reusableActiveInstance) {
     const closeableInstance = getCloseableInstance(intent.pluginId, sessionId)
     if (closeableInstance && intent.toolName && (intent.toolName === 'finish_game' || intent.toolName === 'finish')) {
       store.updateInstanceCompletion(closeableInstance.instanceId, {
@@ -506,6 +555,16 @@ export async function executePluginChatIntent(
 
     const subject = intent.pluginId === 'chess' ? 'Chess game' : getPluginDisplayName(intent.pluginId)
     return applyPluginIntentMessageMetadata(createMessage('assistant', `No active ${subject} to close.`), metadata)
+  }
+
+  if (!intent.toolName && reusableActiveInstance && !intent.forceFreshInstance) {
+    return applyPluginIntentMessageMetadata(
+      createMessage(
+        'assistant',
+        `${getPluginDisplayName(intent.pluginId)} is already open. Say "new ${intent.pluginId}" to start fresh or "close ${intent.pluginId}" to stop it.`
+      ),
+      metadata
+    )
   }
 
   if (intent.toolName) {
@@ -533,7 +592,7 @@ export async function executePluginChatIntent(
     }
   }
 
-  let instance = activeInstance ?? null
+  let instance = reusableActiveInstance ?? null
   if (!instance) {
     instance = store.createInstance(intent.pluginId, sessionId)
   }
