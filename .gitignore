@@ -178,3 +178,14 @@ electron-builder.env
 
 .env.sentry-build-plugin
 .sisyphus/
+
+# Agent tooling
+.codex
+.claude
+.cursor
+/agents
+/skills
+AGENTS.md
+CLAUDE.md
+**/AGENTS.md
+**/CLAUDE.md

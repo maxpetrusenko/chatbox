@@ -12,6 +12,8 @@ import { k12Store } from '@/stores/k12Store'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
 import {
   executePluginChatIntent,
+  resolveActivePluginStatusMessage,
+  resolveGenericPluginActionMessage,
   resolvePluginChatIntent,
   resolvePluginDiscoveryMessage,
   shouldEnablePluginTools,
@@ -246,6 +248,81 @@ describe('plugin chat intents', () => {
       toolName: 'finish',
       requiresActiveInstance: true,
     })
+  })
+
+  it('resolves generic exit app phrases against the only active app', () => {
+    const store = pluginRegistryStore.getState()
+    store.createInstance('chess', 'session-1')
+
+    expect(resolvePluginChatIntent('exit an app', 'session-1')).toMatchObject({
+      pluginId: 'chess',
+      toolName: 'finish_game',
+      requiresActiveInstance: true,
+    })
+  })
+
+  it('resolves generic open app phrases against the only active app', () => {
+    const store = pluginRegistryStore.getState()
+    store.createInstance('spotify', 'session-1')
+
+    expect(resolvePluginChatIntent('open the app', 'session-1')).toMatchObject({
+      pluginId: 'spotify',
+      assistantText: 'Opening Spotify Study DJ.',
+    })
+  })
+
+  it('returns a terse local message for generic close app with no active app', () => {
+    const message = resolveGenericPluginActionMessage('exit an app', 'session-1')
+
+    expect(message?.contentParts).toEqual([{ type: 'text', text: 'No active app to close.' }])
+  })
+
+  it('returns a terse local message for generic close app ambiguity', () => {
+    const store = pluginRegistryStore.getState()
+    store.createInstance('chess', 'session-1')
+    store.createInstance('weather', 'session-1')
+
+    const message = resolveGenericPluginActionMessage('exit the app', 'session-1')
+    const text = message?.contentParts[0]
+
+    expect(text).toEqual({
+      type: 'text',
+      text: 'Active apps: Chess and Weather Lab. Say "close chess".',
+    })
+  })
+
+  it('answers which app is open without using the model', () => {
+    const store = pluginRegistryStore.getState()
+    store.createInstance('spotify', 'session-1')
+
+    const message = resolveActivePluginStatusMessage('which app is open?', 'session-1')
+
+    expect(message?.contentParts).toEqual([{ type: 'text', text: 'Active app: Spotify Study DJ.' }])
+  })
+
+  it('answers active app status for multiple apps', () => {
+    const store = pluginRegistryStore.getState()
+    store.createInstance('chess', 'session-1')
+    store.createInstance('weather', 'session-1')
+
+    const message = resolveActivePluginStatusMessage('what apps are active?', 'session-1')
+
+    expect(message?.contentParts).toEqual([{ type: 'text', text: 'Active apps: Chess and Weather Lab.' }])
+  })
+
+  it('does not enable plugin tools for unrelated questions just because an app is open', () => {
+    const store = pluginRegistryStore.getState()
+    store.createInstance('chess', 'session-1')
+
+    expect(shouldEnablePluginTools('who founded stripe?', 'session-1')).toBe(false)
+  })
+
+  it('still enables plugin tools for active app followups', () => {
+    const store = pluginRegistryStore.getState()
+    store.createInstance('chess', 'session-1')
+
+    expect(shouldEnablePluginTools('what should i do here?', 'session-1')).toBe(true)
+    expect(shouldEnablePluginTools('Nf3', 'session-1')).toBe(true)
   })
 
   it('answers game discovery without launching chess', () => {

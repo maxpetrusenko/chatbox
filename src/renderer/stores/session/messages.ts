@@ -14,7 +14,13 @@ import { runCompactionWithUIState } from '@/packages/context-management'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
 import { estimateTokensFromMessages } from '@/packages/token'
 import platform from '@/platform'
-import { executePluginChatIntent, resolvePluginChatIntent, resolvePluginDiscoveryMessage } from '@/plugins/chat-intents'
+import {
+  executePluginChatIntent,
+  resolveActivePluginStatusMessage,
+  resolveGenericPluginActionMessage,
+  resolvePluginChatIntent,
+  resolvePluginDiscoveryMessage,
+} from '@/plugins/chat-intents'
 import * as chatStore from '../chatStore'
 import * as settingActions from '../settingActions'
 import { settingsStore } from '../settingsStore'
@@ -160,7 +166,25 @@ export async function submitNewUserMessage(
       return pluginDiscoveryMsg
     }
 
-    const pluginIntent = resolvePluginChatIntent(plainText)
+    const activePluginStatusMsg = resolveActivePluginStatusMessage(plainText, sessionId, {
+      aiProvider: settings.provider,
+      model: await getModelDisplayName(settings, globalSettings, 'chat'),
+    })
+    if (activePluginStatusMsg) {
+      await insertMessage(sessionId, activePluginStatusMsg)
+      return activePluginStatusMsg
+    }
+
+    const genericPluginActionMsg = resolveGenericPluginActionMessage(plainText, sessionId, {
+      aiProvider: settings.provider,
+      model: await getModelDisplayName(settings, globalSettings, 'chat'),
+    })
+    if (genericPluginActionMsg) {
+      await insertMessage(sessionId, genericPluginActionMsg)
+      return genericPluginActionMsg
+    }
+
+    const pluginIntent = resolvePluginChatIntent(plainText, sessionId)
     if (pluginIntent) {
       const pluginAssistantMsg = await executePluginChatIntent(sessionId, pluginIntent, {
         aiProvider: settings.provider,

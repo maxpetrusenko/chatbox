@@ -33,6 +33,8 @@ export interface PluginIntentMessageMetadata {
   model?: string
 }
 
+type GenericPluginAction = 'close' | 'restart' | 'open'
+
 const GAME_PLUGIN_IDS = new Set(['chess'])
 const LEARNING_PLUGIN_IDS = new Set(['geogebra', 'phet'])
 const TOOL_TRIGGER_TERMS = [
@@ -56,6 +58,21 @@ const TOOL_TRIGGER_TERMS = [
 ]
 
 let cachedCatalogSnapshot: PluginCatalogSnapshot | null = null
+
+const CLOSE_VERB = /(^|\b)(close|exit|quit|finish|end|stop)(?:\b|$)/
+const RESTART_VERB = /(^|\b)(new|restart|reopen|reset|fresh)(?:\b|$)/
+const OPEN_VERB = /(^|\b)(open|launch|start|continue|resume|show|use)(?:\b|$)/
+const GENERIC_APP_REFERENCE = /\b(?:(?:this|that|the|current|active|an?)\s+)?(?:app|application|plugin|tool|session)\b/
+const GENERIC_CHESS_REFERENCE = /\b(game|board|match|chess app|game app)\b/
+const ACTIVE_APP_QUERY =
+  /(?:^|\b)(?:what|which|show|list|is)\b(?: .*?)\b(?:app|apps|application|applications|plugin|plugins|tool|tools|game|games)\b(?: .*?)\b(?:open|active|running)\b/
+const ANY_ACTIVE_APP_QUERY = /(?:^|\b)is(?: .*?)\b(?:anything|something)\b(?: .*?)\b(?:open|active|running)\b/
+const SHORT_PLUGIN_FOLLOWUP = /^(continue|resume|keep going|go on|again|next|another)\b/
+const DEICTIC_PLUGIN_FOLLOWUP = /^(what about|how about)\b|\b(what should i do|what do i do|what now|next move|my move|your move|here|there|this position|this board)\b/
+const ACTION_PLUGIN_FOLLOWUP =
+  /\b(move|castle|search|find|lookup|forecast|playlist|playlists|repo|repos|graph|plot|equation|simulate|simulation)\b/
+const CHESS_MOVE_FOLLOWUP = /\b(?:o-o(?:-o)?|[nbrqk]?[a-h]?[1-8]?x?[a-h][1-8](?:=[nbrq])?[+#]?)\b/i
+const CHESS_COORDINATE_MOVE = /\b[a-h][1-8]\s*(?:to|-)\s*[a-h][1-8]\b/i
 
 function normalize(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ')
@@ -173,6 +190,177 @@ function formatNameList(names: string[]): string {
   return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
 }
 
+function hasGenericAppReference(text: string): boolean {
+  return GENERIC_APP_REFERENCE.test(text)
+}
+
+function hasGenericChessReference(text: string): boolean {
+  return GENERIC_CHESS_REFERENCE.test(text)
+}
+
+function getSessionPluginIds(
+  sessionId: string,
+  selector: 'active' | 'closeable',
+  fallbackSelector?: 'active' | 'closeable'
+): string[] {
+  const select = (mode: 'active' | 'closeable') =>
+    pluginRegistryStore
+      .getState()
+      .getInstancesForSession(sessionId)
+      .filter((instance) =>
+        mode === 'active' ? instance.status !== 'completed' && instance.status !== 'error' : !instance.lastCompletion
+      )
+      .sort((left, right) => right.createdAt - left.createdAt)
+
+  const pickIds = (instances: ReturnType<typeof select>) => {
+    const seen = new Set<string>()
+    const pluginIds: string[] = []
+    for (const instance of instances) {
+      if (seen.has(instance.pluginId)) continue
+      seen.add(instance.pluginId)
+      pluginIds.push(instance.pluginId)
+    }
+    return pluginIds
+  }
+
+  const primaryPluginIds = pickIds(select(selector))
+  if (primaryPluginIds.length > 0 || !fallbackSelector) return primaryPluginIds
+  return pickIds(select(fallbackSelector))
+}
+
+function getSingleSessionPluginId(
+  sessionId: string,
+  selector: 'active' | 'closeable',
+  fallbackSelector?: 'active' | 'closeable'
+): string | null {
+  const pluginIds = getSessionPluginIds(sessionId, selector, fallbackSelector)
+  return pluginIds.length === 1 ? pluginIds[0] : null
+}
+
+function getGenericPluginAction(text: string): GenericPluginAction | null {
+  if (CLOSE_VERB.test(text)) return 'close'
+  if (RESTART_VERB.test(text)) return 'restart'
+  if (OPEN_VERB.test(text)) return 'open'
+  return null
+}
+
+function buildGenericPluginHint(action: GenericPluginAction, pluginId: string): string {
+  switch (action) {
+    case 'close':
+      return `Say "close ${pluginId}".`
+    case 'restart':
+      return `Say "new ${pluginId}".`
+    case 'open':
+      return `Say "open ${pluginId}".`
+  }
+}
+
+function isActiveAppStatusQuery(text: string): boolean {
+  return ACTIVE_APP_QUERY.test(text) || ANY_ACTIVE_APP_QUERY.test(text)
+}
+
+function isLikelyPluginFollowup(text: string): boolean {
+  return (
+    SHORT_PLUGIN_FOLLOWUP.test(text) ||
+    DEICTIC_PLUGIN_FOLLOWUP.test(text) ||
+    ACTION_PLUGIN_FOLLOWUP.test(text) ||
+    CHESS_MOVE_FOLLOWUP.test(text) ||
+    CHESS_COORDINATE_MOVE.test(text) ||
+    hasGenericAppReference(text) ||
+    hasGenericChessReference(text)
+  )
+}
+
+export function resolveActivePluginStatusMessage(
+  text: string,
+  sessionId: string,
+  metadata?: PluginIntentMessageMetadata
+): Message | null {
+  const normalized = normalize(text)
+  if (!normalized || !isActiveAppStatusQuery(normalized)) return null
+
+  const activePluginIds = getSessionPluginIds(sessionId, 'active')
+  if (activePluginIds.length === 0) {
+    return applyPluginIntentMessageMetadata(createMessage('assistant', 'No active apps.'), metadata)
+  }
+  if (activePluginIds.length === 1) {
+    return applyPluginIntentMessageMetadata(
+      createMessage('assistant', `Active app: ${getPluginDisplayName(activePluginIds[0])}.`),
+      metadata
+    )
+  }
+
+  return applyPluginIntentMessageMetadata(
+    createMessage('assistant', `Active apps: ${formatNameList(activePluginIds.map(getPluginDisplayName))}.`),
+    metadata
+  )
+}
+
+export function resolveGenericPluginActionMessage(
+  text: string,
+  sessionId: string,
+  metadata?: PluginIntentMessageMetadata
+): Message | null {
+  const normalized = normalize(text)
+  if (!normalized || resolveExplicitAppAlias(normalized) || hasGenericChessReference(normalized)) {
+    return null
+  }
+  if (!hasGenericAppReference(normalized)) return null
+
+  const action = getGenericPluginAction(normalized)
+  if (!action) return null
+
+  const activePluginIds = getSessionPluginIds(sessionId, 'active')
+  const closeablePluginIds = getSessionPluginIds(sessionId, 'active', 'closeable')
+
+  if (action === 'close') {
+    if (closeablePluginIds.length === 0) {
+      return applyPluginIntentMessageMetadata(createMessage('assistant', 'No active app to close.'), metadata)
+    }
+    if (closeablePluginIds.length > 1) {
+      return applyPluginIntentMessageMetadata(
+        createMessage(
+          'assistant',
+          `Active apps: ${formatNameList(closeablePluginIds.map(getPluginDisplayName))}. ${buildGenericPluginHint(action, closeablePluginIds[0])}`
+        ),
+        metadata
+      )
+    }
+    return null
+  }
+
+  if (action === 'restart') {
+    if (activePluginIds.length === 0) {
+      return applyPluginIntentMessageMetadata(createMessage('assistant', 'No active app to restart.'), metadata)
+    }
+    if (activePluginIds.length > 1) {
+      return applyPluginIntentMessageMetadata(
+        createMessage(
+          'assistant',
+          `Active apps: ${formatNameList(activePluginIds.map(getPluginDisplayName))}. ${buildGenericPluginHint(action, activePluginIds[0])}`
+        ),
+        metadata
+      )
+    }
+    return null
+  }
+
+  if (activePluginIds.length === 0) {
+    return applyPluginIntentMessageMetadata(createMessage('assistant', 'Say which app to open.'), metadata)
+  }
+  if (activePluginIds.length > 1) {
+    return applyPluginIntentMessageMetadata(
+      createMessage(
+        'assistant',
+        `Active apps: ${formatNameList(activePluginIds.map(getPluginDisplayName))}. ${buildGenericPluginHint(action, activePluginIds[0])}`
+      ),
+      metadata
+    )
+  }
+
+  return null
+}
+
 function isGameManifest(pluginId: string, name: string, description: string, toolNames: string[]): boolean {
   if (GAME_PLUGIN_IDS.has(pluginId)) return true
   const haystack = `${pluginId} ${name} ${description} ${toolNames.join(' ')}`.toLowerCase()
@@ -230,12 +418,16 @@ export function shouldEnablePluginTools(text: string, sessionId: string): boolea
   const normalized = normalize(text)
   if (!normalized) return hasActivePluginInstance(sessionId)
 
-  if (resolvePluginDiscoveryMessage(normalized) || resolvePluginChatIntent(normalized)) {
+  if (resolvePluginDiscoveryMessage(normalized) || resolvePluginChatIntent(normalized, sessionId)) {
     return true
   }
 
+  if (resolveActivePluginStatusMessage(normalized, sessionId) || resolveGenericPluginActionMessage(normalized, sessionId)) {
+    return false
+  }
+
   if (hasActivePluginInstance(sessionId)) {
-    return true
+    return isLikelyPluginFollowup(normalized)
   }
 
   if (resolveExplicitAppAlias(normalized)) {
@@ -347,68 +539,99 @@ function getPluginCloseIntent(pluginId: string): PluginChatIntent | null {
   }
 }
 
-function resolveCloseIntent(text: string): PluginChatIntent | null {
+function getPluginRestartIntent(pluginId: string, text: string): PluginChatIntent {
+  if (pluginId === 'chess') {
+    return {
+      pluginId: 'chess',
+      assistantText: 'Starting a new Chess game.',
+      toolName: 'start_game',
+      parameters: extractDifficulty(text) ? { difficulty: extractDifficulty(text) } : {},
+      forceFreshInstance: true,
+    }
+  }
+
+  return {
+    pluginId,
+    assistantText: `Starting a new ${getPluginDisplayName(pluginId)} session.`,
+    forceFreshInstance: true,
+  }
+}
+
+function getPluginOpenIntent(pluginId: string): PluginChatIntent {
+  return {
+    pluginId,
+    assistantText: `Opening ${getPluginDisplayName(pluginId)}.`,
+  }
+}
+
+function resolveCloseIntent(text: string, sessionId?: string): PluginChatIntent | null {
   const normalized = normalize(text)
-  const closeVerb = /(^|\b)(close|exit|quit|finish|end|stop)(?:\b|$)/
-  if (!closeVerb.test(normalized)) return null
+  if (!CLOSE_VERB.test(normalized)) return null
 
   const explicitPluginId = resolveExplicitAppAlias(normalized)
   if (explicitPluginId) {
     return getPluginCloseIntent(explicitPluginId)
   }
 
-  if (/\b(game|board|match|chess app|game app)\b/.test(normalized)) {
+  if (hasGenericChessReference(normalized)) {
     return getPluginCloseIntent('chess')
+  }
+
+  if (sessionId && hasGenericAppReference(normalized)) {
+    const pluginId = getSingleSessionPluginId(sessionId, 'active', 'closeable')
+    if (pluginId) {
+      return getPluginCloseIntent(pluginId)
+    }
   }
 
   return null
 }
 
-function resolveRestartIntent(text: string): PluginChatIntent | null {
+function resolveRestartIntent(text: string, sessionId?: string): PluginChatIntent | null {
   const normalized = normalize(text)
-  const restartVerb = /(^|\b)(new|restart|reopen|reset|fresh)(?:\b|$)/
-  if (!restartVerb.test(normalized)) return null
+  if (!RESTART_VERB.test(normalized)) return null
 
   const explicitPluginId = resolveExplicitAppAlias(normalized)
   if (!explicitPluginId) {
-    if (/\b(game|board|match|chess app|game app)\b/.test(normalized) && isInstalledPlugin('chess')) {
-      return {
-        pluginId: 'chess',
-        assistantText: 'Starting a new Chess game.',
-        toolName: 'start_game',
-        parameters: extractDifficulty(normalized) ? { difficulty: extractDifficulty(normalized) } : {},
-        forceFreshInstance: true,
+    if (hasGenericChessReference(normalized) && isInstalledPlugin('chess')) {
+      return getPluginRestartIntent('chess', normalized)
+    }
+    if (sessionId && hasGenericAppReference(normalized)) {
+      const pluginId = getSingleSessionPluginId(sessionId, 'active')
+      if (pluginId) {
+        return getPluginRestartIntent(pluginId, normalized)
       }
     }
     return null
   }
 
-  if (explicitPluginId === 'chess') {
-    return {
-      pluginId: 'chess',
-      assistantText: 'Starting a new Chess game.',
-      toolName: 'start_game',
-      parameters: extractDifficulty(normalized) ? { difficulty: extractDifficulty(normalized) } : {},
-      forceFreshInstance: true,
-    }
-  }
-
-  return {
-    pluginId: explicitPluginId,
-    assistantText: `Starting a new ${getPluginDisplayName(explicitPluginId)} session.`,
-    forceFreshInstance: true,
-  }
+  return getPluginRestartIntent(explicitPluginId, normalized)
 }
 
-export function resolvePluginChatIntent(text: string): PluginChatIntent | null {
+function resolveOpenIntent(text: string, sessionId?: string): PluginChatIntent | null {
+  if (!sessionId) return null
+
+  const normalized = normalize(text)
+  if (!OPEN_VERB.test(normalized)) return null
+  if (resolveExplicitAppAlias(normalized) || hasGenericChessReference(normalized) || !hasGenericAppReference(normalized)) {
+    return null
+  }
+
+  const pluginId = getSingleSessionPluginId(sessionId, 'active')
+  return pluginId ? getPluginOpenIntent(pluginId) : null
+}
+
+export function resolvePluginChatIntent(text: string, sessionId?: string): PluginChatIntent | null {
   const normalized = normalize(text)
   if (!normalized) return null
 
   const difficulty = extractDifficulty(normalized)
-  const closeIntent = resolveCloseIntent(normalized)
+  const closeIntent = resolveCloseIntent(normalized, sessionId)
   if (closeIntent) return closeIntent
-  const restartIntent = resolveRestartIntent(normalized)
+  const restartIntent = resolveRestartIntent(normalized, sessionId)
   if (restartIntent) return restartIntent
+  const openIntent = resolveOpenIntent(normalized, sessionId)
+  if (openIntent) return openIntent
 
   if (
     isInstalledPlugin('chess') &&
