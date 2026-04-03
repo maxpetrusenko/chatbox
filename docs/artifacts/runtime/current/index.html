@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Current Runtime Dashboard</title>
+  <link rel="stylesheet" href="../../../assets/living-docs-ui.css" />
+</head>
+<body>
+  <main class="page" data-runtime-dashboard>
+    <section class="card hero">
+      <span class="eyebrow">Runtime Dashboard · Human Skim</span>
+      <h1>Shared runtime files drive this page.<br />Heartbeat writes now refresh the runtime automatically.</h1>
+      <p class="sub">
+        This page reads four real files under <code>docs/artifacts/runtime/current/</code>: <code>state.json</code>,
+        <code>log.md</code>, <code>proof.md</code>, and <code>drift.md</code>. The skim layer is tied to shared
+        runtime state directly, and the runtime heartbeat now rewrites those files from the current artifact graph
+        plus the stale report.
+      </p>
+      <p class="muted" style="margin-top:12px" data-runtime-load-state>Loading shared runtime files...</p>
+      <div class="stats">
+        <div class="stat">
+          <div class="num" data-runtime-active-stage>loading...</div>
+          <div class="label">active stage in state.json</div>
+        </div>
+        <div class="stat">
+          <div class="num" data-runtime-coordination-status>loading...</div>
+          <div class="label">coordination heartbeat</div>
+        </div>
+        <div class="stat">
+          <div class="num" data-runtime-proof-status>loading...</div>
+          <div class="label">proof status</div>
+        </div>
+        <div class="stat">
+          <div class="num" data-runtime-drift-status>loading...</div>
+          <div class="label">drift status</div>
+        </div>
+        <div class="stat">
+          <div class="num" data-runtime-blocked-status>loading...</div>
+          <div class="label">blocked state</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Current Files</span>
+          <h2>What is already written down</h2>
+        </div>
+        <div class="grid2">
+          <a class="tile link-card" href="./state.json">
+            <strong>state.json</strong>
+            <p class="muted">stage, locks, token owners, handoff refs, and current blocker flags</p>
+          </a>
+          <a class="tile link-card" href="./log.md">
+            <strong>log.md</strong>
+            <p class="muted">runtime events, packet focus, and dispatch changes</p>
+          </a>
+          <a class="tile link-card" href="./proof.md">
+            <strong>proof.md</strong>
+            <p class="muted">verified, inferred, missing, and next proof step</p>
+          </a>
+          <a class="tile link-card" href="./drift.md">
+            <strong>drift.md</strong>
+            <p class="muted">current mismatch set, stale downstream, and repair packet</p>
+          </a>
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Next Move</span>
+          <h2>What still needs proof after live binding</h2>
+        </div>
+        <div class="callout warm">
+          <span data-runtime-next-move>Loading next move...</span>
+        </div>
+        <p class="muted" style="margin-top:12px">The repo now writes coordination and drift heartbeats automatically. Remaining blockers should show up here as proof or policy gaps, not as manual-runtime debt.</p>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Node Routing</span>
+          <h2>How this runtime node fits the tree</h2>
+        </div>
+        <div class="grid2">
+          <a class="tile link-card" href="../../../tasks.html">
+            <strong>Task board</strong>
+            <p class="muted">the remaining runtime automation steps live there</p>
+          </a>
+          <a class="tile link-card" href="../../../indexes/stale-report.html">
+            <strong>Stale report</strong>
+            <p class="muted">freshness is green even though runtime proof is still sparse</p>
+          </a>
+          <a class="tile link-card" href="../../plans/chatbox-living-docs/visual.html">
+            <strong>Plan node</strong>
+            <p class="muted">why this runtime exists and which runtime work is still sequenced next</p>
+          </a>
+          <a class="tile link-card" href="../../verification/chatbox-living-docs/index.html">
+            <strong>Verification node</strong>
+            <p class="muted">where repo proof stays separate from remote stale-check proof</p>
+          </a>
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Provenance</span>
+          <h2>What is already real here</h2>
+        </div>
+        <ul>
+          <li>real: the four runtime files and schema contract exist in repo today</li>
+          <li>real: this dashboard now reads those files instead of restating placeholder values by hand</li>
+          <li>real: <code>scripts/runtime-heartbeat.mjs</code> now rewrites shared runtime state, proof, drift, and log files</li>
+          <li>still open: first remote stale-check proof</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Lock State</span>
+          <h2>Reply and packet control right now</h2>
+        </div>
+        <div class="grid2">
+          <div class="tile">
+            <strong>Reply lock</strong>
+            <p class="muted" data-runtime-reply-lock>loading...</p>
+          </div>
+          <div class="tile">
+            <strong>Locked packet</strong>
+            <p class="muted" data-runtime-locked-packet>loading...</p>
+          </div>
+          <div class="tile">
+            <strong>Proposal owner</strong>
+            <p class="muted" data-runtime-proposal-owner>loading...</p>
+          </div>
+          <div class="tile">
+            <strong>Challenge owner</strong>
+            <p class="muted" data-runtime-challenge-owner>loading...</p>
+          </div>
+          <div class="tile">
+            <strong>Blockers</strong>
+            <p class="muted" data-runtime-blocked-reasons>loading...</p>
+          </div>
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Dispatch</span>
+          <h2>Which refs the runtime points agents at</h2>
+        </div>
+        <div class="grid2">
+          <div class="tile">
+            <strong>Active intent</strong>
+            <p class="muted" data-runtime-intent>loading...</p>
+          </div>
+          <div class="tile">
+            <strong>Claude handoff</strong>
+            <p class="muted" data-runtime-claude-ref>loading...</p>
+          </div>
+          <div class="tile">
+            <strong>Codex handoff</strong>
+            <p class="muted" data-runtime-codex-ref>loading...</p>
+          </div>
+          <div class="tile">
+            <strong>Extra refs</strong>
+            <p class="muted" data-runtime-extra-refs>loading...</p>
+          </div>
+          <div class="tile">
+            <strong>Open disagreements</strong>
+            <p class="muted" data-runtime-open-disagreements>loading...</p>
+          </div>
+          <div class="tile">
+            <strong>Coordination updated</strong>
+            <p class="muted" data-runtime-coordination-updated>loading...</p>
+          </div>
+          <div class="tile">
+            <strong>Drift updated</strong>
+            <p class="muted" data-runtime-drift-updated>loading...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Proof Ledger</span>
+          <h2>Current proof state</h2>
+        </div>
+        <ul data-runtime-proof-list>
+          <li>Loading proof ledger...</li>
+        </ul>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Drift Ledger</span>
+          <h2>Current drift state</h2>
+        </div>
+        <ul data-runtime-drift-list>
+          <li>Loading drift ledger...</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Runtime Log</span>
+        <h2>What changed in the shared runtime</h2>
+      </div>
+      <ul data-runtime-log-list>
+        <li>Loading runtime log...</li>
+      </ul>
+      <div class="callout warm" style="margin-top:14px">
+        This screen is live against shared runtime files. The remaining trust work is operational proof and policy closure, not manual runtime syncing.
+      </div>
+    </section>
+  </main>
+  <script src="../../../assets/living-docs-mini-map.js"></script>
+  <script src="../../../assets/living-docs-runtime.js"></script>
+</body>
+</html>

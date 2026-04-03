@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbox-living-docs-verification-ledger",
+  "artifact_type": "verification",
+  "project_id": "chatbox",
+  "title": "Chatbox Living Docs Verification Ledger",
+  "status": "in-progress",
+  "phase": "verification",
+  "owners": ["qa", "reviewer"],
+  "upstream_ids": [
+    "chatbox-living-docs-implementation-contract"
+  ],
+  "downstream_ids": [
+    "chatbox-living-docs-drift-report"
+  ],
+  "last_refreshed_at": "2026-04-03",
+  "freshness": {
+    "score": 0.95,
+    "state": "fresh"
+  },
+  "confidence": "medium",
+  "evidence": {
+    "verified": 23,
+    "inferred": 3,
+    "missing": 2
+  },
+  "acceptance_criteria": [
+    "Verified/inferred/unverified split exists",
+    "Repo anchors recorded",
+    "Publish gate conditions named"
+  ],
+  "open_questions": [
+    "When will the first remote stale-check workflow run land?",
+    "Should extension docs become canonical or source-seed only?"
+  ],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Browser proofs, scheduled workflow config, and first product-facing gate-visibility proof recorded"
+}

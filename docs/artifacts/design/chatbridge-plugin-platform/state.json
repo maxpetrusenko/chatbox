@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbridge-plugin-platform-design",
+  "artifact_type": "design",
+  "project_id": "chatbox",
+  "title": "ChatBridge Plugin Platform Design Artifact",
+  "status": "proposed",
+  "phase": "design",
+  "owners": ["ui-agent", "architect"],
+  "upstream_ids": ["chatbridge-plugin-platform-plan"],
+  "downstream_ids": [],
+  "last_refreshed_at": "2026-03-31",
+  "freshness": { "score": 0.84, "state": "fresh" },
+  "confidence": "medium",
+  "evidence": { "verified": 1, "inferred": 4, "missing": 1 },
+  "acceptance_criteria": ["Plugin visual rules defined", "Lane 6 made mandatory"],
+  "open_questions": ["Inline source links or footer source links?"],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Initial plugin-platform design artifact"
+}

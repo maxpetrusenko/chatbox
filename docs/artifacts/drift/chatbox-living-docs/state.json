@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbox-living-docs-drift-report",
+  "artifact_type": "drift-report",
+  "project_id": "chatbox",
+  "title": "Chatbox Living Docs Drift Report",
+  "status": "active",
+  "phase": "drift-report",
+  "owners": ["repair", "reviewer"],
+  "upstream_ids": [
+    "chatbox-living-docs-verification-ledger"
+  ],
+  "downstream_ids": [
+    "chatbox-plugin-corpus-migration-plan"
+  ],
+  "last_refreshed_at": "2026-04-03",
+  "freshness": {
+    "score": 0.92,
+    "state": "fresh"
+  },
+  "confidence": "high",
+  "evidence": {
+    "verified": 12,
+    "inferred": 2,
+    "missing": 1
+  },
+  "acceptance_criteria": [
+    "Current drift items named",
+    "Each drift item has repair packet",
+    "Priority order defined"
+  ],
+  "open_questions": [
+    "Should extension plans become canonical artifacts or remain source-seed only?"
+  ],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Weekly refresh re-scoped drift to remaining proof and scheduling gaps"
+}

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Runbooks Hub</title>
+  <link rel="stylesheet" href="../assets/living-docs-ui.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero">
+      <span class="eyebrow">Runbooks · Human Skim</span>
+      <h1>Current run loops.<br />Operator nodes, not note dumps.</h1>
+      <p class="sub">
+        These runbooks are the maintenance edge of the living tree. Each one routes to a real markdown procedure, but
+        each also owns concrete updates inside this repo: tasks, stale-check, verification, drift, and archive calls.
+      </p>
+    </section>
+
+    <section class="grid3">
+      <div id="daily" class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Current Node</span>
+          <h2>Daily</h2>
+        </div>
+        <p class="muted"><a href="./daily.md">daily.md</a> answers what can break today and what should be checked before build work starts.</p>
+        <p class="muted">Updates: <a href="../tasks.html">task board</a>, <a href="../artifacts/verification/chatbox-living-docs/index.html">verification</a>, <a href="../artifacts/drift/chatbox-living-docs/index.html">drift</a>.</p>
+      </div>
+      <div id="weekly" class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Current Node</span>
+          <h2>Weekly</h2>
+        </div>
+        <p class="muted"><a href="./weekly.md">weekly.md</a> answers what changed in sources, code, or gates.</p>
+        <p class="muted">Updates: <a href="../indexes/stale-report.html">stale report</a>, <a href="../indexes/artifacts-index.html">artifacts index</a>, active presearch and brainlift nodes.</p>
+      </div>
+      <div id="monthly" class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Current Node</span>
+          <h2>Monthly</h2>
+        </div>
+        <p class="muted"><a href="./monthly.md">monthly.md</a> answers what should be archived, stabilized, or reclassified.</p>
+        <p class="muted">Updates: <a href="../skills/index.html">skills hub</a>, <a href="../decisions/index.html">decisions</a>, archive and source-seed status calls.</p>
+      </div>
+    </section>
+
+    <section class="grid3">
+      <div class="tile">
+        <strong>Current owner</strong>
+        <p class="muted">PM + QA + repair rotate the active maintenance loop</p>
+      </div>
+      <a class="tile link-card" href="../indexes/refresh-cadence.html">
+        <strong>Cadence source</strong>
+        <p class="muted">scheduled versus manual loop, with proof boundaries</p>
+      </a>
+      <a class="tile link-card" href="../indexes/stale-report.html">
+        <strong>Current readout</strong>
+        <p class="muted">freshness snapshot the runbooks are trying to protect</p>
+      </a>
+    </section>
+  </main>
+  <script src="../assets/living-docs-mini-map.js"></script>
+</body>
+</html>

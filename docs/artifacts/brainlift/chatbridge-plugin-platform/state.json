@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbridge-plugin-platform-brainlift",
+  "artifact_type": "brainlift",
+  "project_id": "chatbox",
+  "title": "ChatBridge Plugin Platform Brainlift",
+  "status": "published",
+  "phase": "brainlift",
+  "owners": ["architect", "pm"],
+  "upstream_ids": [
+    "chatbridge-plugin-platform-presearch"
+  ],
+  "downstream_ids": [
+    "chatbridge-plugin-platform-plan"
+  ],
+  "last_refreshed_at": "2026-04-03",
+  "freshness": {
+    "score": 0.88,
+    "state": "fresh"
+  },
+  "confidence": "high",
+  "evidence": {
+    "verified": 6,
+    "inferred": 8,
+    "missing": 2
+  },
+  "acceptance_criteria": [
+    "Themes extracted",
+    "Repo-specific SPOVs recorded",
+    "Next canonical plan defined"
+  ],
+  "open_questions": [
+    "Should ideal-platform and shipped-gates become separate visual tabs or one artifact?"
+  ],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Weekly refresh confirmed canonical plugin themes and remaining extension drift"
+}

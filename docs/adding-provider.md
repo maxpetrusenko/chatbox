@@ -1,3 +1,4 @@
+Human skim: `docs/reference-index.html#provider-integration`
 # Adding a New Provider to Chatbox
 
 This guide documents all the steps and files that need to be modified when adding a new AI provider to the Chatbox application.

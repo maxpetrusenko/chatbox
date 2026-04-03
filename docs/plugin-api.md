@@ -1,4 +1,5 @@
 # ChatBridge Plugin API
+Human skim: `docs/plugin-api.html`
 
 ## Overview
 
@@ -7,13 +8,19 @@ ChatBridge plugins are manifest-driven embedded apps. Each plugin provides:
 - a manifest with tool definitions
 - a sandboxed iframe entrypoint
 - postMessage handlers for state, completion, tool results, and auth
+- optional host-owned app auth such as `chatbox-ai-login` or `k12-login`
+- optional proxy config and K12 governance metadata
 
-Bundled examples in this repo:
+Builtin examples in this repo:
 
 - `chess` — internal app
 - `weather` — public external app
 - `spotify` — OAuth PKCE app
 - `github` — device flow app
+- `geogebra` — education surface
+- `phet` — education simulation surface
+- `google-maps` — public utility surface
+- `wolfram` — district-key-compatible utility surface
 
 ## Manifest shape
 
@@ -35,6 +42,19 @@ Auth-capable plugins add:
 - `auth.clientId`
 - endpoint URLs
 - scopes
+
+Current manifest surface also includes:
+
+- `appAuth`
+- `proxy`
+- `trustLevel`
+- `dataProfile`
+- `coppaScope`
+- `dpaRequired`
+- `targetGrades`
+- `contentSafetyLevel`
+- `allowedDomains`
+- `signatureType`
 
 ## Host to plugin messages
 
@@ -61,6 +81,17 @@ The platform owns auth.
 - refresh tokens stay in main-process encrypted storage
 - widgets only receive short-lived access tokens
 - auth callbacks return through `chatbox://plugin-auth/callback`
+- app-auth gates can require Chatbox AI sign-in or K12 sign-in before tools are exposed
+
+## Runtime gating
+
+A plugin being installed does not mean it is visible or callable.
+
+- tool exposure is gated by `shouldEnablePluginTools(...)`
+- active inline app state can suppress generic tool injection
+- hidden builtin state can remove builtin manifests from the visible set
+- K12 scope and current role still filter visible manifests
+- student access can still be blocked by missing plugin auth sessions
 
 ## Builtin app examples
 
@@ -85,6 +116,13 @@ The platform owns auth.
 - tools: `get_profile`, `list_my_repos`, `finish`
 - requires `GITHUB_CLIENT_ID`
 - auth: device flow
+
+### Education and utility examples
+
+- `geogebra`
+- `phet`
+- `google-maps`
+- `wolfram`
 
 ## Adding a new plugin
 

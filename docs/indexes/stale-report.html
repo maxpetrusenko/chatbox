@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Stale Report</title>
+  <link rel="stylesheet" href="../assets/living-docs-ui.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero">
+      <span class="eyebrow">Stale Report · Human Skim</span>
+      <h1>Artifact freshness is green.<br />Scope and maturity still matter.</h1>
+      <p class="sub">
+        This page is not a universal docs-trust dashboard. It summarizes one real scan: artifact <code>state.json</code>
+        freshness under <code>docs/artifacts/**</code> plus backlink coverage for six legacy plugin docs. It does not
+        directly validate every human skim hub or HTML index page.
+      </p>
+      <div class="stats">
+        <div class="stat">
+          <div class="num">15</div>
+          <div class="label">artifact states checked</div>
+        </div>
+        <div class="stat">
+          <div class="num">6</div>
+          <div class="label">legacy backlink docs checked</div>
+        </div>
+        <div class="stat">
+          <div class="num">0</div>
+          <div class="label">freshness failures in scan scope</div>
+        </div>
+        <div class="stat">
+          <div class="num">2</div>
+          <div class="label">maturity gaps outside scan scope</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Checked</span>
+          <h2>What the stale checker really covers</h2>
+        </div>
+        <ul>
+          <li><code>docs/artifacts/**/state.json</code> freshness, thresholds, stale inputs, stale downstream</li>
+          <li>legacy backlink coverage for the six ChatBridge plugin source docs and extension plans</li>
+          <li>artifact classes such as presearch, brainlift, plan, design, verification, and drift report</li>
+        </ul>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Not Checked</span>
+          <h2>What this page should not overclaim</h2>
+        </div>
+        <ul>
+          <li><code>docs/tasks.html</code> and other human skim HTML hubs are not part of the stale-check script</li>
+          <li><code>docs/agents/index.html</code>, <code>docs/reference-index.html</code>, and control-center pages are not scanned directly</li>
+          <li>remote workflow execution proof is not part of the freshness pass</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Freshness Read</span>
+        <h2>Current scan result</h2>
+      </div>
+      <div class="heat">
+        <div class="tile">
+          <strong>Presearch / brainlift</strong>
+          <span class="pill ok">fresh</span>
+          <p class="muted">both chains within threshold</p>
+        </div>
+        <div class="tile">
+          <strong>Plan / design</strong>
+          <span class="pill ok">fresh</span>
+          <p class="muted">all tracked state files still current</p>
+        </div>
+        <div class="tile">
+          <strong>Implementation / verification</strong>
+          <span class="pill ok">fresh</span>
+          <p class="muted">no threshold breaches in scan scope</p>
+        </div>
+        <div class="tile">
+          <strong>Drift / backlinks</strong>
+          <span class="pill ok">fresh</span>
+          <p class="muted">no missing legacy backlinks</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Thresholds</span>
+          <h2>How age is judged in script</h2>
+        </div>
+        <div class="grid2">
+          <div class="tile"><strong>3d</strong><p class="muted">verification and drift report</p></div>
+          <div class="tile"><strong>7d</strong><p class="muted">presearch and brainlift</p></div>
+          <div class="tile"><strong>14d</strong><p class="muted">plan and design</p></div>
+          <div class="tile"><strong>0</strong><p class="muted">missing backlinks allowed</p></div>
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Outside Scan Scope</span>
+          <h2>What still blocks “fully trustworthy”</h2>
+        </div>
+        <div class="callout warm">
+          The scan is clean, but the docs runtime is still not mature until one remote stale-check run is verified.
+          Green freshness does not erase that operational gap.
+        </div>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Operator Takeaway</span>
+        <h2>What decision follows from this page</h2>
+      </div>
+      <div class="ui-window">
+        <div class="window-top">
+          <span class="chrome-dot"></span>
+          <span class="chrome-dot"></span>
+          <span class="chrome-dot"></span>
+          <span class="muted">freshness dashboard</span>
+        </div>
+        <div class="window-body">
+          <div class="menu">
+            <span class="active">artifact scope green</span>
+            <span>workflow proof pending</span>
+            <span>extension decision open</span>
+          </div>
+          <p class="muted">
+            Read this as “artifact state files are current,” not “every skim page and process claim is fully verified.”
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <a class="card panel link-card" href="plugin-source-seed-registry.html">
+        <div class="section-head">
+          <span class="eyebrow">Decision Node</span>
+          <h2>Extension docs still need one explicit status call</h2>
+        </div>
+        <div class="callout warm">
+          Use the source-seed registry to decide which legacy plugin plans stay as provenance only and which ones
+          deserve canonical artifact treatment.
+        </div>
+      </a>
+      <a class="card panel link-card" href="../artifacts/runtime/current/index.html">
+        <div class="section-head">
+          <span class="eyebrow">Runtime Node</span>
+          <h2>Green freshness still does not mean mature runtime proof</h2>
+        </div>
+        <div class="callout">
+          The runtime dashboard now reads shared runtime files directly, but heartbeat automation and remote proof are
+          still separate gaps. Fresh artifacts and mature automation are not the same claim.
+        </div>
+      </a>
+    </section>
+  </main>
+  <script src="../assets/living-docs-mini-map.js"></script>
+</body>
+</html>

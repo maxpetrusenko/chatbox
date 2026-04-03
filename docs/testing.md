@@ -1,4 +1,5 @@
 # Testing Strategy and Implementation
+Human skim: `docs/reference-index.html#testing`
 
 ## Current Testing Infrastructure
 

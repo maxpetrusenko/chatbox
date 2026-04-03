@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbridge-plugin-platform-drift-report",
+  "artifact_type": "drift-report",
+  "project_id": "chatbox",
+  "title": "ChatBridge Plugin Platform Drift Report",
+  "status": "active",
+  "phase": "drift-report",
+  "owners": ["repair", "reviewer"],
+  "upstream_ids": ["chatbridge-plugin-platform-verification-ledger"],
+  "downstream_ids": ["chatbridge-plugin-source-seed-registry"],
+  "last_refreshed_at": "2026-04-03",
+  "freshness": { "score": 0.92, "state": "fresh" },
+  "confidence": "high",
+  "evidence": { "verified": 9, "inferred": 1, "missing": 1 },
+  "acceptance_criteria": [
+    "Plugin drift items named",
+    "Repair path named for each",
+    "Priority order defined"
+  ],
+  "open_questions": ["When should extension docs gain sidecars or be frozen as source seeds?"],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Weekly refresh narrowed plugin drift to extensions, scheduling, and proof gaps"
+}

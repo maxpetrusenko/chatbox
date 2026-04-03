@@ -30,6 +30,7 @@ import {
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
+import { getPluginToolVisibility } from '@/lib/plugin-gates'
 import { navigateToSettings } from '@/modals/Settings'
 import { reviewPluginRequestInTellMe, setPluginEnabledForCurrentScopeInTellMe } from '@/packages/tellme/k12'
 import { getPluginAppAuthBlockedMessage, getPluginAppAuthStatus } from '@/plugins/plugin-access'
@@ -135,6 +136,7 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
   const droppedPackage = useStore(droppedPluginsStore, (state) => state.packages[manifest.id])
   const districtKeyConfigured = !!apiKeyMetadata?.configured
   const districtKeyMissing = isApiKeyPlugin && !districtKeyConfigured
+  const toolVisibility = getPluginToolVisibility(manifest)
   const showManagedToggle = canInstall && isAllowed
   const showReadOnlyToggle = !needsAuth && !isStudent && isAllowed && !showManagedToggle
   const canDeleteDroppedPlugin = canInstall && !!installRecord && !!droppedPackage
@@ -250,7 +252,17 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
               {manifest.tools.length} tool{manifest.tools.length !== 1 ? 's' : ''}:{' '}
               {manifest.tools.map((t) => t.name).join(', ')}
             </Text>
+            {toolVisibility && (
+              <Badge size="xs" variant="outline" color="grape">
+                {toolVisibility.label}
+              </Badge>
+            )}
           </Group>
+          {toolVisibility && (
+            <Text size="xs" c="dimmed" mt={4}>
+              {toolVisibility.description}
+            </Text>
+          )}
           {needsAppAuth && !isAppAuthSatisfied && (
             <Flex
               mt="sm"

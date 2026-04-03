@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chatbox Living Docs Rollout</title>
+<style>
+:root {
+  --bg: #f6f1e8;
+  --panel: #fffdf8;
+  --ink: #1c1814;
+  --muted: #6f675d;
+  --line: #ddd2c0;
+  --ac: #9f4d2f;
+  --ac2: #184e4a;
+  --acbg: rgba(159,77,47,0.1);
+  --ok: #166534;
+  --warn: #b45309;
+  --shadow: 0 14px 34px rgba(0,0,0,0.08);
+  --sans: "Avenir Next", "IBM Plex Sans", sans-serif;
+  --serif: "Iowan Old Style", Georgia, serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(159,77,47,0.08), transparent 30%),
+    radial-gradient(circle at 100% 0%, rgba(24,78,74,0.07), transparent 25%),
+    var(--bg);
+}
+.page { width: min(1100px, calc(100vw - 40px)); margin: 0 auto; padding: 40px 0 80px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+.hero { padding: 28px; }
+.eyebrow { display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; }
+h1,h2,h3,p { margin: 0; }
+h1 { font-family: var(--serif); font-size: clamp(2.6rem, 5vw, 4.4rem); line-height: .98; letter-spacing: -.03em; margin-top: 16px; }
+.sub { color: var(--muted); font-size: 18px; margin-top: 14px; max-width: 760px; }
+.meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.tag { background: var(--acbg); color: var(--ac); border-radius: 999px; padding: 6px 10px; font-size: 12px; font-weight: 700; }
+section { margin-top: 22px; }
+.grid-2,.grid-3,.pipeline { display: grid; gap: 14px; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.pipeline { grid-template-columns: repeat(6, 1fr); }
+.panel { padding: 22px; }
+.phase, .mini { border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,0.45); padding: 16px; }
+.phase .n { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; background: var(--ac); color: #fff; font-weight: 800; font-size: 12px; }
+.phase h3 { margin-top: 10px; font-size: 16px; }
+.phase p, .mini p, .panel p { color: var(--muted); margin-top: 8px; }
+.section-head { margin-bottom: 12px; }
+.section-head p { color: var(--muted); margin-top: 6px; }
+.lane { padding: 16px; border: 1px solid var(--line); border-radius: 14px; }
+.lane strong { display: block; font-size: 15px; }
+.badge { display: inline-block; margin-top: 10px; font-size: 11px; font-weight: 800; padding: 5px 8px; border-radius: 999px; }
+.ok { background: rgba(22,101,52,.12); color: var(--ok); }
+.warn { background: rgba(180,83,9,.12); color: var(--warn); }
+ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); }
+a { color: var(--ac2); font-weight: 700; text-decoration: none; }
+a:hover { text-decoration: underline; }
+@media (max-width: 900px) { .grid-2,.grid-3,.pipeline { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main class="page">
+  <section class="card hero">
+    <span class="eyebrow">Chatbox · Living Docs Rollout</span>
+    <h1>Build the docs runtime.<br/>Then build the skills.</h1>
+    <p class="sub">Project-grounded rollout for this repo. Starts from the existing plugin docs corpus, turns it into canonical living artifacts, then promotes those artifacts into reusable skills and refresh loops.</p>
+    <div class="meta">
+      <span class="tag">real repo data</span>
+      <span class="tag">plugin corpus first</span>
+      <span class="tag">docs-first rollout</span>
+      <span class="tag">stale propagation next</span>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <div class="section-head">
+      <span class="eyebrow">Phases</span>
+      <h2>Six-phase rollout</h2>
+      <p>Do not automate first. make one chain real first.</p>
+    </div>
+    <div class="pipeline">
+      <div class="phase"><div class="n">0</div><h3>Bootstrap</h3><p>tasks, indexes, first real artifacts</p></div>
+      <div class="phase"><div class="n">1</div><h3>Skills</h3><p>presearch, brainlift, visual-plan, contract, drift</p></div>
+      <div class="phase"><div class="n">2</div><h3>Templates</h3><p>sidecar, html, md, decision record</p></div>
+      <div class="phase"><div class="n">3</div><h3>Verify</h3><p>ledger, stale rules, repair packet</p></div>
+      <div class="phase"><div class="n">4</div><h3>Cadence</h3><p>daily, weekly, monthly runtime</p></div>
+      <div class="phase"><div class="n">5</div><h3>Migrate</h3><p>convert plugin corpus to canonical chain</p></div>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Swarm</span>
+        <h2>Operating lanes</h2>
+      </div>
+      <div class="grid-2">
+        <div class="lane"><strong>Research</strong><p>presearch refresh, source deltas, open questions</p><span class="badge warn">weekly</span></div>
+        <div class="lane"><strong>Architecture</strong><p>brainlift, decisions, artifact graph</p><span class="badge warn">weekly + scope change</span></div>
+        <div class="lane"><strong>Visual Docs</strong><p>html skim docs, visual grammar, freshness banners</p><span class="badge ok">per promotion</span></div>
+        <div class="lane"><strong>Contracts</strong><p>build packets, acceptance criteria, no-go constraints</p><span class="badge ok">per wave</span></div>
+        <div class="lane"><strong>Drift + Repair</strong><p>stale scan, contradiction handling, repair packets</p><span class="badge warn">daily</span></div>
+        <div class="lane"><strong>Verification</strong><p>proof ledger, measured vs inferred, publish gate</p><span class="badge ok">daily during build</span></div>
+      </div>
+    </div>
+    <div class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Current Truth</span>
+        <h2>Why this repo needs it</h2>
+      </div>
+      <div class="mini"><p>Plugin pages exist.</p><ul><li>`src/renderer/routes/settings/route.tsx:79`</li></ul></div>
+      <div class="mini"><p>Drop is desktop-only.</p><ul><li>`src/renderer/routes/settings/plugins-drop.tsx:91`</li></ul></div>
+      <div class="mini"><p>Enable/disable is permission-gated.</p><ul><li>`src/renderer/routes/settings/plugins.tsx:124`</li></ul></div>
+      <div class="mini"><p>Tool use is heuristic-gated.</p><ul><li>`src/renderer/packages/model-calls/stream-text.ts:216`</li></ul></div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <div class="section-head">
+      <span class="eyebrow">Next</span>
+      <h2>Immediate deliverables</h2>
+    </div>
+    <div class="grid-3">
+      <div class="mini"><strong>1. Runtime heartbeat</strong><ul><li>coordination state</li><li>shared runtime source</li><li>packet refs</li></ul></div>
+      <div class="mini"><strong>2. Drift heartbeat</strong><ul><li>runtime drift sync</li><li>artifact drift sync</li><li>repair edge</li></ul></div>
+      <div class="mini"><strong>3. Runtime binding</strong><ul><li>skim page reads state</li><li>proof split stays visible</li><li>no fake live dashboard</li></ul></div>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Node Routing</span>
+        <h2>This plan is a tree node, not a standalone poster</h2>
+      </div>
+      <div class="mini">
+        <p><a href="./index.md">Paired markdown</a> carries the full plan narrative and repo-grounded detail.</p>
+      </div>
+      <div class="mini">
+        <p><a href="./state.json">Sidecar state</a> is the freshness and promotion record this visual depends on.</p>
+      </div>
+      <div class="mini">
+        <p><a href="../../brainlift/chatbox-living-docs/index.html">Upstream brainlift</a> explains why the runtime exists.</p>
+      </div>
+      <div class="mini">
+        <p><a href="../../implementation/chatbox-living-docs/index.html">Downstream implementation</a> is where heartbeat wiring and runtime behavior become concrete.</p>
+      </div>
+    </div>
+    <div class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Approval Read</span>
+        <h2>What is real vs next</h2>
+      </div>
+      <div class="mini"><p>Real now: the artifact chain, stale checker, and runtime starter files are in repo.</p></div>
+      <div class="mini"><p>Next: coordination heartbeat, drift heartbeat, and a runtime page driven by shared state.</p></div>
+      <div class="mini"><p>Decision: keep this node focused on docs-runtime rollout, not plugin feature sprawl.</p></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -1,3 +1,4 @@
+Human skim: `docs/reference-index.html#testing`
 # ChatBridge Submission Checklist
 
 ## Product requirements

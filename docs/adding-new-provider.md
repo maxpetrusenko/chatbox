@@ -1,3 +1,4 @@
+Human skim: `docs/reference-index.html#provider-integration`
 # Adding a New Provider (Registry Architecture)
 
 This guide documents how to add a new AI provider to Chatbox using the **registry-based architecture**.

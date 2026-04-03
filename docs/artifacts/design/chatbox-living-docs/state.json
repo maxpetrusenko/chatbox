@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbox-living-docs-design",
+  "artifact_type": "design",
+  "project_id": "chatbox",
+  "title": "Chatbox Living Docs Design Artifact",
+  "status": "proposed",
+  "phase": "design",
+  "owners": ["ui-agent", "architect"],
+  "upstream_ids": ["chatbox-living-docs-rollout-plan"],
+  "downstream_ids": [],
+  "last_refreshed_at": "2026-03-31",
+  "freshness": { "score": 0.82, "state": "fresh" },
+  "confidence": "medium",
+  "evidence": { "verified": 1, "inferred": 6, "missing": 1 },
+  "acceptance_criteria": ["Visual rules defined", "Chatbox gate rule defined"],
+  "open_questions": ["Centralized templates or per-artifact visuals?"],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Initial design artifact"
+}

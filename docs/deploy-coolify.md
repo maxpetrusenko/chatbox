@@ -1,3 +1,4 @@
+Human skim: `docs/reference-index.html#ops`
 # Coolify Deploy
 
 This repository can be deployed to Coolify from GitHub as a static web build.

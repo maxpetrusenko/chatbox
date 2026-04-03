@@ -1,8 +1,11 @@
+Human skim: `docs/plans/index.html#chatbridge-finish`
 # ChatBridge Finish Plan Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Ship the assignment-complete ChatBridge layer on top of Chatbox: true plugin registration, inline embedded apps, completion signaling, context retention, 3 required apps, at least 1 production auth flow, and submission artifacts.
+
+> **Canonical reference:** Source-seed historical implementation snapshot. For current plugin platform state, use `docs/artifacts/implementation/chatbridge-plugin-platform/index.md` first, then return here for original execution detail.
 
 **Architecture:** Keep the current chat stack. Add a manifest-driven plugin host, a narrow postMessage bridge, a registry store, and a platform-owned auth broker. Convert chess from standalone route to the first real plugin, then add one public external app and one authenticated external app. Keep the route-based chess page as fallback/manual QA surface until the inline plugin path is stable.
 

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ChatBridge Plugin Platform Plan</title>
+<style>
+:root {
+  --bg:#f5efe5; --panel:#fffdf9; --ink:#171411; --muted:#6b645b; --line:#ddd1bf;
+  --ac:#9f4d2f; --acbg:rgba(159,77,47,.1); --ac2:#234c48; --shadow:0 12px 32px rgba(0,0,0,.08);
+  --sans:"Avenir Next","IBM Plex Sans",sans-serif; --serif:"Iowan Old Style",Georgia,serif;
+}
+*{box-sizing:border-box} body{margin:0;font-family:var(--sans);background:radial-gradient(circle at top left, rgba(159,77,47,.08), transparent 30%), radial-gradient(circle at top right, rgba(35,76,72,.08), transparent 26%), var(--bg); color:var(--ink)}
+.page{width:min(1120px,calc(100vw - 40px));margin:0 auto;padding:40px 0 80px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.hero,.panel{padding:24px}
+.eyebrow{display:inline-block;padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+h1,h2,h3,p{margin:0} h1{font-family:var(--serif);font-size:clamp(2.6rem,5vw,4.4rem);line-height:.98;letter-spacing:-.03em;margin-top:16px}
+.sub{margin-top:14px;color:var(--muted);font-size:18px;max-width:760px}.meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.tag{padding:6px 10px;border-radius:999px;background:var(--acbg);color:var(--ac);font-size:12px;font-weight:700}
+section{margin-top:22px}.pipeline,.grid-2,.grid-3{display:grid;gap:14px}.pipeline{grid-template-columns:repeat(6,1fr)}.grid-2{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(3,1fr)}
+.step,.mini,.call{padding:16px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.5)}.n{width:28px;height:28px;border-radius:8px;background:var(--ac);color:#fff;display:grid;place-items:center;font-weight:800;font-size:12px}.step h3{margin-top:10px;font-size:16px}.step p,.mini p,.call p{margin-top:8px;color:var(--muted)} ul{margin:10px 0 0;padding-left:18px;color:var(--muted)}a{color:var(--ac2);font-weight:700;text-decoration:none}a:hover{text-decoration:underline}
+@media (max-width:900px){.pipeline,.grid-2,.grid-3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="page">
+  <section class="card hero">
+    <span class="eyebrow">Canonical Plugin Plan</span>
+    <h1>Six lanes.<br/>Not five.</h1>
+    <p class="sub">The original checklist stays useful. The missing lane is the one the repo already enforces: policy and surface reality.</p>
+    <div class="meta">
+      <span class="tag">source seeds preserved</span>
+      <span class="tag">repo truth included</span>
+      <span class="tag">human skim</span>
+      <span class="tag">agent sidecar</span>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <span class="eyebrow">Lanes</span>
+    <h2 style="margin-top:10px">Canonical rollout lanes</h2>
+    <p style="margin-top:6px;color:var(--muted)">Based on `docs/chatbridge-planning-flow.html:497`, upgraded with current repo behavior.</p>
+    <div class="pipeline" style="margin-top:16px">
+      <div class="step"><div class="n">1</div><h3>Widget Host</h3><p>iframe mount, sandbox, host wrapper</p></div>
+      <div class="step"><div class="n">2</div><h3>Event Bridge</h3><p>state, completion, error protocol</p></div>
+      <div class="step"><div class="n">3</div><h3>Reference App</h3><p>Chess proves full contract</p></div>
+      <div class="step"><div class="n">4</div><h3>Snapshot Context</h3><p>state to LLM context</p></div>
+      <div class="step"><div class="n">5</div><h3>Auth Broker</h3><p>platform-owned scoped auth</p></div>
+      <div class="step"><div class="n">6</div><h3>Policy + Surface</h3><p>runtime, role, auth, heuristic gates</p></div>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="card panel">
+      <span class="eyebrow">Source Truth</span>
+      <h2 style="margin-top:10px">Original architecture thesis</h2>
+      <div class="mini" style="margin-top:14px"><p>Sandboxed iframe trust boundary</p></div>
+      <div class="mini"><p>Structured state publishing to chat context</p></div>
+      <div class="mini"><p>Platform-mediated auth</p></div>
+      <div class="mini"><p>Build order starts with host and bridge</p></div>
+    </div>
+    <div class="card panel">
+      <span class="eyebrow">Repo Truth</span>
+      <h2 style="margin-top:10px">Current shipped gates</h2>
+      <div class="mini" style="margin-top:14px"><p>Desktop-only plugin drop</p><ul><li>`plugins-drop.tsx:91`</li></ul></div>
+      <div class="mini"><p>Permission-gated enable/disable</p><ul><li>`plugins.tsx:124`</li></ul></div>
+      <div class="mini"><p>Heuristic tool inclusion</p><ul><li>`stream-text.ts:216`</li></ul></div>
+      <div class="mini"><p>K12 + auth-filtered manifest exposure</p><ul><li>`pluginRegistry.ts:190`</li></ul></div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <span class="eyebrow">Next</span>
+    <h2 style="margin-top:10px">Follow-on artifacts</h2>
+    <div class="grid-3" style="margin-top:16px">
+      <div class="call"><strong>Implementation</strong><p>bounded plugin-platform contract</p></div>
+      <div class="call"><strong>Verification</strong><p>proof ledger for plugin chain</p></div>
+      <div class="call"><strong>Drift</strong><p>repo-alignment appendix and repair packets</p></div>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="card panel">
+      <span class="eyebrow">Node Routing</span>
+      <h2 style="margin-top:10px">Where this plan sits in the chain</h2>
+      <div class="mini" style="margin-top:14px"><p><a href="./index.md">Paired markdown</a> keeps the full migration plan and source-seed context.</p></div>
+      <div class="mini"><p><a href="./state.json">Sidecar state</a> is what freshness tooling actually checks.</p></div>
+      <div class="mini"><p><a href="../../brainlift/chatbridge-plugin-platform/index.html">Upstream brainlift</a> captures the recovered architecture thesis.</p></div>
+      <div class="mini"><p><a href="../../implementation/chatbridge-plugin-platform/index.html">Downstream implementation</a> translates these six lanes into shipped-contract work.</p></div>
+    </div>
+    <div class="card panel">
+      <span class="eyebrow">Current Read</span>
+      <h2 style="margin-top:10px">What this node is proving</h2>
+      <div class="mini" style="margin-top:14px"><p>Real now: the migrated plugin corpus has a canonical chain inside <code>docs/artifacts/</code>.</p></div>
+      <div class="mini"><p>Real now: Lane 6 exists because shipped `chatbox` already has desktop, auth, K12, and heuristic gates.</p></div>
+      <div class="mini"><p>Next: keep extension-plan ideas separate until Max approves a new overlay branch.</p></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

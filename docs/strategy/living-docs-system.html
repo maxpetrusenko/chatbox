@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Living Documentation System</title>
+<style>
+:root {
+  --bg: #f7f3ea;
+  --panel: #fffdf8;
+  --panel-2: #f2ede2;
+  --ink: #1d1a16;
+  --muted: #6c655c;
+  --line: #ddd3c3;
+  --accent: #b85c38;
+  --accent-2: #1f4d48;
+  --accent-bg: rgba(184, 92, 56, 0.1);
+  --ok: #166534;
+  --warn: #b45309;
+  --danger: #b91c1c;
+  --shadow: 0 10px 30px rgba(29, 26, 22, 0.08);
+  --radius: 18px;
+  --mono: "JetBrains Mono", "SFMono-Regular", monospace;
+  --sans: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  --serif: "Iowan Old Style", "Georgia", serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(184, 92, 56, 0.08), transparent 30%),
+    radial-gradient(circle at top right, rgba(31, 77, 72, 0.08), transparent 28%),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.5;
+}
+.page {
+  width: min(1160px, calc(100vw - 40px));
+  margin: 0 auto;
+  padding: 40px 0 100px;
+}
+.hero {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr;
+  gap: 20px;
+  align-items: stretch;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.hero-main { padding: 28px; }
+.hero-side { padding: 24px; background: linear-gradient(180deg, var(--panel), var(--panel-2)); }
+.eyebrow {
+  display: inline-block;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+h1, h2, h3 { margin: 0; }
+h1 {
+  margin-top: 16px;
+  font-family: var(--serif);
+  font-size: clamp(2.8rem, 5vw, 4.6rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 0.98;
+}
+.sub {
+  margin-top: 16px;
+  max-width: 760px;
+  color: var(--muted);
+  font-size: 18px;
+}
+.meta {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.tag {
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+.stat-grid, .grid-2, .grid-3 { display: grid; gap: 16px; }
+.stat-grid { grid-template-columns: repeat(4, 1fr); margin-top: 22px; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); margin-top: 22px; }
+.grid-3 { grid-template-columns: repeat(3, 1fr); margin-top: 22px; }
+.stat {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.55);
+}
+.num { font-size: 30px; font-weight: 800; color: var(--accent); }
+.label { color: var(--muted); font-size: 13px; }
+section { margin-top: 34px; }
+.section-head { margin-bottom: 14px; }
+.section-head p { color: var(--muted); margin: 6px 0 0; }
+.panel { padding: 24px; }
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+}
+.step {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  min-height: 160px;
+}
+.step .n {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: white;
+  font-weight: 800;
+  font-size: 13px;
+}
+.step h3 { margin-top: 12px; font-size: 16px; }
+.step p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+.artifact {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.artifact strong {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+.artifact code, .mini code { font-family: var(--mono); font-size: 12px; }
+.artifact ul, .mini ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); }
+.mini {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.45);
+}
+.matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.matrix th, .matrix td {
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  padding: 12px 10px;
+}
+.matrix th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+.callout {
+  padding: 18px;
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
+  background: rgba(184, 92, 56, 0.08);
+}
+.cadence {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.badge-ok, .badge-warn, .badge-danger {
+  display: inline-block;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.badge-ok { background: rgba(22, 101, 52, 0.12); color: var(--ok); }
+.badge-warn { background: rgba(180, 83, 9, 0.12); color: var(--warn); }
+.badge-danger { background: rgba(185, 28, 28, 0.12); color: var(--danger); }
+@media (max-width: 900px) {
+  .hero, .grid-2, .grid-3, .stat-grid, .cadence, .pipeline { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<main class="page">
+  <section class="hero">
+    <div class="card hero-main">
+      <span class="eyebrow">Living Documentation System</span>
+      <h1>Human skim.<br/>AI execute.<br/>No drift.</h1>
+      <p class="sub">A live docs runtime for Chatbox. Research, brainlift, plans, design, implementation, verification, and drift now run as one canonical graph with visual projections for humans and structured sidecars for agents.</p>
+      <div class="meta">
+        <span class="tag">Active in repo</span>
+        <span class="tag">2 live chains</span>
+        <span class="tag">15 sidecars landed</span>
+        <span class="tag">Wave 1 complete</span>
+      </div>
+      <div class="stat-grid">
+        <div class="stat"><div class="num">7</div><div class="label">Canonical artifact phases</div></div>
+        <div class="stat"><div class="num">2</div><div class="label">Canonical project chains live</div></div>
+        <div class="stat"><div class="num">15</div><div class="label">Artifact sidecars already landed</div></div>
+        <div class="stat"><div class="num">9</div><div class="label">Swarm roles defined and routed</div></div>
+      </div>
+    </div>
+    <div class="card hero-side">
+      <h2>Status snapshot</h2>
+      <p>Not just a proposal anymore. Chatbox now has a controller board, canonical artifact chains, swarm routing, runbooks, decisions, and source seed mapping inside the repo.</p>
+      <section>
+        <div class="mini">
+          <strong>Current proof</strong>
+          <ul>
+            <li><code>docs/tasks.md</code> is the control surface</li>
+            <li><code>docs/indexes/plugin-source-seed-registry.md</code> maps legacy plugin docs</li>
+            <li><code>docs/indexes/swarm-dispatch-board.md</code> routes active work</li>
+            <li><code>docs/artifacts/brainlift/chatbridge-plugin-platform/repo-alignment-appendix.md</code> records repo truth</li>
+            <li><code>docs/indexes/stale-report.md</code> is now generated from the stale checker</li>
+          </ul>
+        </div>
+      </section>
+      <section>
+        <div class="mini">
+          <strong>Wave 1 complete</strong>
+          <ul>
+            <li>weekly refresh executed on 2026-04-03</li>
+            <li>script-assisted stale and freshness check landed</li>
+            <li>remaining legacy plan docs backlink to canonical artifacts</li>
+            <li>MAX-router Claude task proved canonical-only docs workflow</li>
+            <li>scheduled stale-check workflow is configured</li>
+            <li>browser render proofs are captured for both visual plans</li>
+            <li>local tooling proof exists for stale-check write plus verify</li>
+          </ul>
+        </div>
+      </section>
+      <section>
+        <div class="mini">
+          <strong>Wave 2 priorities</strong>
+          <ul>
+            <li>first remote stale-check workflow proof</li>
+            <li>extension-doc final source-seed decision</li>
+            <li>recurring visual proof policy</li>
+          </ul>
+        </div>
+      </section>
+      <section>
+        <div class="mini">
+          <strong>Hidden gates to surface</strong>
+          <ul>
+            <li>desktop runtime only at <code>src/renderer/routes/settings/plugins-drop.tsx:91</code></li>
+            <li>permission gate at <code>src/renderer/routes/settings/plugins.tsx:124</code></li>
+            <li>tool routing heuristic at <code>src/renderer/packages/model-calls/stream-text.ts:216</code></li>
+            <li>registry behavior at <code>src/renderer/stores/pluginRegistry.ts:190</code></li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section class="grid-3">
+    <div class="card panel artifact">
+      <strong>Control surface</strong>
+      <code>docs/tasks.md</code>
+      <ul>
+        <li>active program and current priorities</li>
+        <li>canonical outputs and artifact status</li>
+        <li>swarm ownership and epics</li>
+      </ul>
+    </div>
+    <div class="card panel artifact">
+      <strong>Live chains</strong>
+      <code>docs/artifacts/*</code>
+      <ul>
+        <li><code>chatbox-living-docs</code> chain spans presearch through drift</li>
+        <li><code>chatbridge-plugin-platform</code> chain is the migration pilot</li>
+        <li><code>docs/artifacts/plans/chatbox-plugin-corpus-migration/index.md</code> tracks rollout</li>
+      </ul>
+    </div>
+    <div class="card panel artifact">
+      <strong>Governance layer</strong>
+      <code>docs/decisions/ + docs/runbooks/ + docs/indexes/</code>
+      <ul>
+        <li>decision records define graph and pairing rules</li>
+        <li>daily, weekly, and monthly runbooks exist</li>
+        <li>indexes expose registry, stale state, cadence, and dispatch</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="card panel artifact">
+      <strong>Wave 1 proof ledger</strong>
+      <code>verification + stale report + registry</code>
+      <ul>
+        <li>weekly refresh recorded in <code>docs/runbooks/weekly.md</code></li>
+        <li>stale checker proved clean pass in <code>docs/indexes/stale-report.md</code></li>
+        <li>schedule configured in <code>.github/workflows/stale-check.yml</code></li>
+        <li>browser proofs stored under <code>docs/artifacts/verification/*/browser-proof.png</code></li>
+        <li>legacy backlinks confirmed in <code>docs/indexes/plugin-source-seed-registry.md</code></li>
+      </ul>
+    </div>
+    <div class="card panel artifact">
+      <strong>Agent proof</strong>
+      <code>MAX router -> Claude Haiku</code>
+      <ul>
+        <li>canonical artifacts drove the backlink task</li>
+        <li>result landed in the remaining legacy plan docs</li>
+        <li>proof recorded in verification ledgers</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <div class="section-head">
+      <span class="eyebrow">Pipeline</span>
+      <h2>Canonical artifact chain</h2>
+      <p>One source chain per project. No doc pile. No silent overrides.</p>
+    </div>
+    <div class="pipeline">
+      <div class="step"><div class="n">1</div><h3>Presearch</h3><p>Repo map. source inventory. evidence grading. open questions.</p></div>
+      <div class="step"><div class="n">2</div><h3>Brainlift</h3><p>DOK ladder. themes. risks. SPOVs. anti-goals. trust boundary.</p></div>
+      <div class="step"><div class="n">3</div><h3>Plan</h3><p>Visual build map. phase order. checklist. acceptance criteria.</p></div>
+      <div class="step"><div class="n">4</div><h3>Design</h3><p>UX flows. state model. auth states. edge cases. quality bar.</p></div>
+      <div class="step"><div class="n">5</div><h3>Implement</h3><p>Bounded work packets. file touch map. no-go constraints.</p></div>
+      <div class="step"><div class="n">6</div><h3>Verify</h3><p>Proof ledger. verified vs inferred. screenshots. tests. gaps.</p></div>
+      <div class="step"><div class="n">7</div><h3>Drift</h3><p>Mismatch scan. stale propagation. repair packet. republish loop.</p></div>
+    </div>
+    <div class="callout" style="margin-top: 18px;">
+      Current examples already in repo: <code>docs/artifacts/presearch/chatbox-living-docs/index.md</code>, <code>docs/artifacts/brainlift/chatbox-living-docs/index.md</code>, <code>docs/artifacts/plans/chatbridge-plugin-platform/visual.html</code>, <code>docs/artifacts/verification/chatbox-living-docs/index.md</code>, and <code>docs/artifacts/drift/chatbox-living-docs/index.md</code>.
+    </div>
+  </section>
+
+  <section class="grid-3">
+    <div class="card panel artifact">
+      <strong>Human-facing projection</strong>
+      <code>visual.html / index.md</code>
+      <ul>
+        <li>skim first architecture, plan, and runtime views</li>
+        <li>current repo truth above the fold</li>
+        <li>freshness, next action, and stale warnings</li>
+      </ul>
+    </div>
+    <div class="card panel artifact">
+      <strong>Machine sidecar</strong>
+      <code>state.json</code>
+      <ul>
+        <li>artifact id and phase</li>
+        <li>freshness, evidence counts, and owners</li>
+        <li>acceptance criteria, open questions, and stale edges</li>
+      </ul>
+    </div>
+    <div class="card panel artifact">
+      <strong>Decision spine</strong>
+      <code>decisions/*.md</code>
+      <ul>
+        <li>ADR-style records</li>
+        <li>trade-offs and consequences</li>
+        <li>no silent contradictions</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <div class="section-head">
+      <span class="eyebrow">Agents</span>
+      <h2>Who owns what</h2>
+      <p>Separation of roles. explicit handoffs. explicit refresh.</p>
+    </div>
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>Artifact</th>
+          <th>Primary</th>
+          <th>Support</th>
+          <th>Cadence</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Presearch</td><td>Research</td><td>Architect, Reviewer</td><td><span class="badge-warn">Weekly</span></td></tr>
+        <tr><td>Brainlift</td><td>Architect</td><td>Research, PM</td><td><span class="badge-warn">Weekly</span></td></tr>
+        <tr><td>Plan</td><td>Architect</td><td>PM, UI agent</td><td><span class="badge-ok">On scope change</span></td></tr>
+        <tr><td>Design</td><td>UI agent</td><td>Architect, PM</td><td><span class="badge-ok">On UX change</span></td></tr>
+        <tr><td>Implementation contract</td><td>PM</td><td>Architect, Engineer</td><td><span class="badge-ok">Per build wave</span></td></tr>
+        <tr><td>Verification ledger</td><td>QA</td><td>Engineer, Reviewer</td><td><span class="badge-ok">Daily</span></td></tr>
+        <tr><td>Drift report</td><td>Repair</td><td>Reviewer, QA</td><td><span class="badge-danger">Daily scan</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="grid-2">
+    <div class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Skills</span>
+        <h2>Core skill pack</h2>
+      </div>
+      <div class="mini"><code>presearch</code> — evidence-backed first contact</div>
+      <div class="mini"><code>brainlift</code> — DOK ladder + SPOVs + risks</div>
+      <div class="mini"><code>visual-plan</code> — skim-first HTML plan grammar</div>
+      <div class="mini"><code>implementation-contract</code> — bounded build packet</div>
+      <div class="mini"><code>drift-review</code> — mismatch diagnosis + repair packet</div>
+      <div class="mini"><code>artifact-refresh</code> — freshness scoring + stale propagation</div>
+      <div class="mini"><code>rpi-orchestrator</code> — Research → Plan → Implement loop</div>
+    </div>
+    <div class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Cadence</span>
+        <h2>Refresh rhythm</h2>
+      </div>
+      <div class="cadence">
+        <div class="mini"><strong>Daily</strong><ul><li><code>docs/tasks.md</code> refresh</li><li><code>docs/indexes/stale-report.md</code> refresh</li><li>verification ledger refresh</li></ul></div>
+        <div class="mini"><strong>Weekly</strong><ul><li>plugin corpus comparison</li><li>presearch and brainlift refresh</li><li>hidden gate review</li></ul></div>
+        <div class="mini"><strong>Monthly</strong><ul><li>archive superseded artifacts</li><li>review schema stability</li><li>review skills and agent split</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Repo Truth</span>
+        <h2>Hidden gates every artifact must carry forward</h2>
+      </div>
+      <div class="mini"><strong>Runtime</strong><ul><li><code>src/renderer/routes/settings/plugins-drop.tsx:91</code> blocks non desktop flow</li></ul></div>
+      <div class="mini"><strong>Permissions</strong><ul><li><code>src/renderer/routes/settings/plugins.tsx:124</code> adds role and permission gating</li></ul></div>
+      <div class="mini"><strong>Tool use</strong><ul><li><code>src/renderer/packages/model-calls/stream-text.ts:216</code> is heuristic, not always on</li></ul></div>
+      <div class="mini"><strong>Registry state</strong><ul><li><code>src/renderer/stores/pluginRegistry.ts:190</code> affects what agents and users actually see</li></ul></div>
+    </div>
+    <div class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Done Signal</span>
+        <h2>Wave 1 complete. Wave 2 gates next.</h2>
+      </div>
+      <div class="mini"><strong>Done</strong><ul><li>weekly refresh executed once against active chains</li><li>stale checker reports current freshness</li><li>remaining legacy plan docs backlink to canonical artifacts</li><li>one agent executed a canonical-only docs task</li></ul></div>
+      <div class="mini"><strong>Next</strong><ul><li>first remote stale-check workflow proof</li><li>keep extension source-seed policy reflected across active trust nodes</li><li>recurring visual proof policy</li></ul></div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <div class="section-head">
+      <span class="eyebrow">Repo Layout</span>
+      <h2>Docs runtime inside the repo</h2>
+    </div>
+    <div class="callout">
+      <code>docs/tasks.md</code> controls the active program. Everything else lives under structured phase folders so artifacts can be refreshed, superseded, and queried by agents without guessing where truth lives.
+    </div>
+    <pre class="mini" style="white-space: pre-wrap; margin-top: 16px;">docs/
+  tasks.md
+  strategy/
+    living-docs-system.html
+    living-docs-system.md
+    skills-and-agents.md
+    artifact-schemas.md
+  artifacts/
+    presearch/
+    brainlift/
+    plans/
+    design/
+    implementation/
+    verification/
+    drift/
+    snapshots/
+  agents/
+  decisions/
+  indexes/
+    artifacts-index.md
+    plugin-source-seed-registry.md
+    swarm-dispatch-board.md
+    refresh-cadence.md
+    stale-report.md
+  runbooks/
+    daily.md
+    weekly.md
+    monthly.md
+  skills/</pre>
+  </section>
+
+  <section class="card panel">
+    <div class="section-head">
+      <span class="eyebrow">Next Build Wave</span>
+      <h2>Highest value work from here</h2>
+      <p>Wave 1 is complete. Next prove browser truth, scheduling, and code-path execution.</p>
+    </div>
+    <div class="grid-2">
+      <div class="artifact"><strong>1. Scheduled freshness</strong><ul><li>verify <code>.github/workflows/stale-check.yml</code> on remote</li><li>keep generated stale output current</li></ul></div>
+      <div class="artifact"><strong>2. Extension decision</strong><ul><li>choose source-seed only or canonical design</li><li>stop ambiguous extension-plan status</li></ul></div>
+      <div class="artifact"><strong>3. Visual proof policy</strong><ul><li>decide manual versus CI render capture</li><li>keep browser proofs current after major visual changes</li></ul></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

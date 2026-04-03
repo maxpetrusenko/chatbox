@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbox-living-docs-brainlift",
+  "artifact_type": "brainlift",
+  "project_id": "chatbox",
+  "title": "Chatbox Living Docs Brainlift",
+  "status": "published",
+  "phase": "brainlift",
+  "owners": ["architect", "pm"],
+  "upstream_ids": [
+    "chatbox-living-docs-presearch"
+  ],
+  "downstream_ids": [
+    "chatbox-living-docs-rollout-plan"
+  ],
+  "last_refreshed_at": "2026-04-03",
+  "freshness": {
+    "score": 0.87,
+    "state": "fresh"
+  },
+  "confidence": "high",
+  "evidence": {
+    "verified": 7,
+    "inferred": 14,
+    "missing": 3
+  },
+  "acceptance_criteria": [
+    "Repo-specific themes extracted",
+    "SPOVs grounded in presearch",
+    "Boundaries and risks defined"
+  ],
+  "open_questions": [
+    "What should the first verification ledger prove?",
+    "Which skill specs ship in wave 1 versus wave 2?",
+    "Should cadence be manual docs-first or script-assisted?"
+  ],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Weekly refresh confirmed operating spine and next proof gates"
+}

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agents Hub</title>
+  <link rel="stylesheet" href="../assets/living-docs-ui.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero">
+      <span class="eyebrow">Chatbox · Agents Hub · Human Skim</span>
+      <h1>Who owns which docs/runtime move.<br />Not generic swarm lore.</h1>
+      <p class="sub">
+        This hub exists to show how `chatbox` splits work between research, shaping, UI skim work, implementation,
+        proof, and repair. The reference point is the files under <code>docs/agents/</code> plus the real plugin/docs
+        surfaces in this repo, not an abstract multi-agent framework.
+      </p>
+      <div class="stats">
+        <div class="stat">
+          <div class="num">9</div>
+          <div class="label">project role specs</div>
+        </div>
+        <div class="stat">
+          <div class="num">3</div>
+          <div class="label">companion docs here</div>
+        </div>
+        <div class="stat">
+          <div class="num">2</div>
+          <div class="label">main work domains: src and docs</div>
+        </div>
+        <div class="stat">
+          <div class="num">1</div>
+          <div class="label">active handoff packet format</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid3">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Control</span>
+          <h2>Swarm controller and PM own the wave</h2>
+        </div>
+        <div class="mini">
+          <p><code>docs/tasks.md</code> + <code>docs/indexes/swarm-dispatch-board.md</code></p>
+          <ul>
+            <li>turn a broad request into the next bounded wave</li>
+            <li>keep the board aligned with actual artifact and proof state</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Architecture</span>
+          <h2>Research and architect own hidden-gate clarity</h2>
+        </div>
+        <div class="mini">
+          <p><code>plugins.tsx</code>, <code>plugins-drop.tsx</code>, <code>stream-text.ts</code>, <code>pluginRegistry.ts</code></p>
+          <ul>
+            <li>surface runtime, auth, K12, and heuristic constraints before plans drift</li>
+            <li>translate repo truth into brainlift and plan artifacts</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Proof</span>
+          <h2>QA, reviewer, and repair own maturity claims</h2>
+        </div>
+        <div class="mini">
+          <p><code>docs/artifacts/verification/**</code> + <code>docs/artifacts/drift/**</code></p>
+          <ul>
+            <li>separate verified repo truth from inference</li>
+            <li>block “runtime is live” claims until proof exists</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Routing</span>
+        <h2 id="routing-matrix">How work should move in this repo</h2>
+      </div>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 1040 290" role="img" aria-label="Agent routing flow">
+          <defs>
+            <marker id="arr" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+              <path d="M0,0 L12,6 L0,12 z" fill="#9f4d2f" />
+            </marker>
+          </defs>
+          <rect x="20" y="44" rx="18" ry="18" width="210" height="84" fill="#fff" stroke="#ddd2c0" />
+          <text x="48" y="76" font-size="14" fill="#6f675d">entry</text>
+          <text x="48" y="106" font-size="28" font-family="Georgia" fill="#1c1814">swarm-controller</text>
+
+          <rect x="300" y="44" rx="18" ry="18" width="196" height="84" fill="#fff" stroke="#ddd2c0" />
+          <text x="328" y="76" font-size="14" fill="#6f675d">shape</text>
+          <text x="328" y="106" font-size="28" font-family="Georgia" fill="#1c1814">PM / Architect</text>
+
+          <rect x="566" y="44" rx="18" ry="18" width="220" height="84" fill="#fff" stroke="#ddd2c0" />
+          <text x="594" y="76" font-size="14" fill="#6f675d">build</text>
+          <text x="594" y="106" font-size="28" font-family="Georgia" fill="#1c1814">Research / UI / Engineer</text>
+
+          <rect x="856" y="44" rx="18" ry="18" width="164" height="84" fill="#fff" stroke="#ddd2c0" />
+          <text x="884" y="76" font-size="14" fill="#6f675d">gate</text>
+          <text x="884" y="106" font-size="28" font-family="Georgia" fill="#1c1814">QA / Review / Repair</text>
+
+          <path d="M230 86H290" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+          <path d="M496 86H556" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+          <path d="M786 86H846" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+          <path d="M938 142C938 214 120 214 120 142" stroke="#184e4a" stroke-width="4" fill="none" marker-end="url(#arr)" />
+        </svg>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Role Wall</span>
+        <h2>What each role owns here</h2>
+      </div>
+      <div class="grid3">
+        <div id="swarm-controller" class="tile"><strong>Swarm controller</strong><p class="muted">initiative framing, dispatch, promotion, packet routing between docs/runtime lanes</p></div>
+        <div id="research-agent" class="tile"><strong>Research</strong><p class="muted">repo mapping, evidence, contradictions, open questions before a plan claims too much</p></div>
+        <div id="architect-agent" class="tile"><strong>Architect</strong><p class="muted">contracts, gates, artifact graph shape, and the hidden policy layers around plugins</p></div>
+        <div id="pm-agent" class="tile"><strong>PM</strong><p class="muted">wave slicing, acceptance criteria, priorities, and keeping tasks aligned with chain maturity</p></div>
+        <div id="ui-agent" class="tile"><strong>UI</strong><p class="muted">human skim pages that show shipped plugin surfaces instead of generic docs-framework language</p></div>
+        <div id="engineer-agent" class="tile"><strong>Engineer</strong><p class="muted">bounded product or docs-runtime implementation such as stale-check and runtime heartbeat wiring</p></div>
+        <div id="qa-agent" class="tile"><strong>QA</strong><p class="muted">proof split, checks, maturity gate, and remote-run evidence before green claims harden</p></div>
+        <div id="reviewer-agent" class="tile"><strong>Reviewer</strong><p class="muted">consistency review across skim HTML, markdown artifacts, and product code anchors</p></div>
+        <div id="repair-agent" class="tile"><strong>Repair</strong><p class="muted">drift diagnosis, repair packets, stale downstream cleanup, and broken backlink recovery</p></div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Handoff</span>
+          <h2 id="handoff-packets">Packet format that keeps context small</h2>
+        </div>
+        <div class="callout warm">
+          Every packet should say goal, why now, scope, non-goals, inputs, constraints, expected output, validation,
+          stop condition, and next agent. That is what the repo’s handoff packet doc actually standardizes.
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Lineage</span>
+          <h2 id="chatbox-factory-architecture">What is source truth vs inspiration</h2>
+        </div>
+        <div class="callout">
+          Source truth for this page is the checked-in <code>docs/agents/*.md</code> catalog, <code>docs/tasks.md</code>,
+          and the shipped plugin/docs surfaces they route work toward. The “factory” framing is useful inspiration, but
+          this hub should be read as `chatbox` operating guidance, not as canonical truth outside this repo.
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="../assets/living-docs-mini-map.js"></script>
+</body>
+</html>

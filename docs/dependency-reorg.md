@@ -1,3 +1,4 @@
+Human skim: `docs/reference-index.html#ops`
 # Dependency split for Electron Vite
 
 依据 electron-vite 的建议，本次调整将所有仅用于 renderer（前端打包）的依赖移动到 `devDependencies`，仅保留主进程（`src/main`）和 preload（`src/preload`）在运行时需要的依赖在 `dependencies` 中。

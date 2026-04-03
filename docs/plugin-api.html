@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plugin API Skim</title>
+  <link rel="stylesheet" href="assets/living-docs-ui.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero">
+      <span class="eyebrow">Chatbox · Plugin API · Human Skim</span>
+      <h1>Manifest, widget, postMessage, host-owned auth.<br />Then K12 policy on top.</h1>
+      <p class="sub">
+        This is the `chatbox` plugin contract as it exists in code today. The plugin API is not only a manifest and a
+        widget bridge. It also carries app-auth modes, proxy and district-key config, K12 trust metadata, and runtime
+        behavior that only becomes true once the host exposes the plugin to the model.
+      </p>
+      <div class="stats">
+        <div class="stat">
+          <div class="num">8</div>
+          <div class="label">builtin manifests in registry</div>
+        </div>
+        <div class="stat">
+          <div class="num">3</div>
+          <div class="label">host → plugin messages</div>
+        </div>
+        <div class="stat">
+          <div class="num">6</div>
+          <div class="label">plugin → host messages</div>
+        </div>
+        <div class="stat">
+          <div class="num">4</div>
+          <div class="label">runtime gate classes over the API</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Consumed By</span>
+          <h2>Where this contract shows up in product</h2>
+        </div>
+        <ul>
+          <li><code>src/renderer/routes/settings/plugins.tsx</code> renders the Installed Plugins operator surface</li>
+          <li><code>src/renderer/routes/settings/plugins-drop.tsx</code> reviews, approves, configures, and installs packages</li>
+          <li><code>src/renderer/stores/pluginRegistry.ts</code> turns manifests into visible tools and runtime instances</li>
+          <li><code>src/renderer/packages/model-calls/toolsets/plugin-tools.ts</code> mounts inline apps and dispatches tool calls</li>
+        </ul>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Reality Check</span>
+          <h2>What makes this repo-specific</h2>
+        </div>
+        <div class="callout warm">
+          A plugin can be installed and still not be callable. `stream-text.ts` only injects plugin availability when
+          the intent heuristic passes, then the registry still filters by K12 scope, app auth, plugin auth, and hidden
+          builtin state.
+        </div>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Manifest Surface</span>
+        <h2>What `plugin.json` carries in this repo</h2>
+      </div>
+      <div class="grid4">
+        <div class="tile">
+          <strong>Core identity</strong>
+          <p class="muted">id, name, version, description, category, tools, widget entrypoint</p>
+        </div>
+        <div class="tile">
+          <strong>Host auth</strong>
+          <p class="muted">oauth2-pkce, device-flow, api-key, plus app auth like Chatbox AI login or K12 login</p>
+        </div>
+        <div class="tile">
+          <strong>Proxy + district config</strong>
+          <p class="muted">district-key requirements, quotas, tracking pattern, and platform-owned usage recording</p>
+        </div>
+        <div class="tile">
+          <strong>K12 compliance</strong>
+          <p class="muted">trust level, COPPA scope, grade targets, PII profile, allowed domains, signature type</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Runtime Contract</span>
+        <h2>What actually happens when the model calls a plugin tool</h2>
+      </div>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 1060 300" role="img" aria-label="Plugin API flow">
+          <defs>
+            <marker id="arr" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+              <path d="M0,0 L12,6 L0,12 z" fill="#9f4d2f" />
+            </marker>
+          </defs>
+          <rect x="24" y="48" rx="18" ry="18" width="204" height="92" fill="#fff" stroke="#ddd2c0" />
+          <text x="52" y="80" font-size="14" fill="#6f675d">1. declare</text>
+          <text x="52" y="110" font-size="26" font-family="Georgia" fill="#1c1814">Manifest</text>
+          <text x="52" y="132" font-size="16" fill="#6f675d">plugin.json + ui.html</text>
+
+          <rect x="284" y="48" rx="18" ry="18" width="204" height="92" fill="#fff" stroke="#ddd2c0" />
+          <text x="312" y="80" font-size="14" fill="#6f675d">2. expose</text>
+          <text x="312" y="110" font-size="26" font-family="Georgia" fill="#1c1814">Registry</text>
+          <text x="312" y="132" font-size="16" fill="#6f675d">visibility + namespaced tools</text>
+
+          <rect x="544" y="48" rx="18" ry="18" width="204" height="92" fill="#fff" stroke="#ddd2c0" />
+          <text x="572" y="80" font-size="14" fill="#6f675d">3. gate</text>
+          <text x="572" y="110" font-size="26" font-family="Georgia" fill="#1c1814">Prompt injection</text>
+          <text x="572" y="132" font-size="16" fill="#6f675d">heuristic + availability prompt</text>
+
+          <rect x="804" y="48" rx="18" ry="18" width="232" height="92" fill="#fff" stroke="#ddd2c0" />
+          <text x="832" y="80" font-size="14" fill="#6f675d">4. mount or dispatch</text>
+          <text x="832" y="110" font-size="26" font-family="Georgia" fill="#1c1814">Inline app flow</text>
+          <text x="832" y="132" font-size="16" fill="#6f675d">mounted app or live TOOL_INVOKE</text>
+
+          <path d="M228 94H276" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+          <path d="M488 94H536" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+          <path d="M748 94H796" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+
+          <rect x="254" y="188" rx="18" ry="18" width="552" height="78" fill="rgba(24,78,74,.08)" stroke="#ddd2c0" />
+          <text x="282" y="218" font-size="14" fill="#6f675d">user-facing consequence</text>
+          <text x="282" y="244" font-size="22" font-family="Georgia" fill="#1c1814">
+            First call can return “Mounted app. Continue through the inline app.” instead of a final tool result
+          </text>
+        </svg>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Message Directions</span>
+          <h2>Host and plugin only speak in these lanes</h2>
+        </div>
+        <ul>
+          <li>Host → plugin: <code>PLUGIN_INIT</code>, <code>TOOL_INVOKE</code>, <code>AUTH_STATUS</code></li>
+          <li>Plugin → host: <code>PLUGIN_READY</code>, <code>STATE_UPDATE</code>, <code>COMPLETION</code></li>
+          <li>Plugin → host errors and auth hooks: <code>TOOL_RESULT</code>, <code>ERROR</code>, <code>AUTH_REQUEST</code></li>
+        </ul>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Auth Matrix</span>
+          <h2>What auth means in Chatbox</h2>
+        </div>
+        <ul>
+          <li><code>chatbox-ai-login</code>: app hidden until Chatbox AI session is connected</li>
+          <li><code>k12-login</code>: app depends on the K12 session state</li>
+          <li><code>oauth2-pkce</code> or <code>device-flow</code>: host owns the broker, widgets get short-lived tokens</li>
+          <li><code>api-key</code> or district key: configuration can be admin-only, with teacher save-disabled fallback</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Builtin Registry</span>
+        <h2>What ships in-tree today</h2>
+      </div>
+      <div class="grid4">
+        <div class="tile"><strong>Chess</strong><p class="muted">internal reference app and inline state proof</p></div>
+        <div class="tile"><strong>Weather</strong><p class="muted">public external utility</p></div>
+        <div class="tile"><strong>Spotify</strong><p class="muted">authenticated PKCE example</p></div>
+        <div class="tile"><strong>GitHub</strong><p class="muted">device-flow example</p></div>
+        <div class="tile"><strong>GeoGebra</strong><p class="muted">education app surface</p></div>
+        <div class="tile"><strong>PhET</strong><p class="muted">education simulation surface</p></div>
+        <div class="tile"><strong>Google Maps</strong><p class="muted">public utility with host-governed use</p></div>
+        <div class="tile"><strong>Wolfram</strong><p class="muted">district-key-compatible student-visible tool path</p></div>
+      </div>
+    </section>
+  </main>
+  <script src="assets/living-docs-mini-map.js"></script>
+</body>
+</html>

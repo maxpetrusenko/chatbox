@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbridge-plugin-platform-verification-ledger",
+  "artifact_type": "verification",
+  "project_id": "chatbox",
+  "title": "ChatBridge Plugin Platform Verification Ledger",
+  "status": "in-progress",
+  "phase": "verification",
+  "owners": ["qa", "reviewer"],
+  "upstream_ids": ["chatbridge-plugin-platform-implementation-contract"],
+  "downstream_ids": [],
+  "last_refreshed_at": "2026-04-03",
+  "freshness": { "score": 0.95, "state": "fresh" },
+  "confidence": "medium",
+  "evidence": { "verified": 20, "inferred": 1, "missing": 1 },
+  "acceptance_criteria": [
+    "Plugin chain verified items listed",
+    "Current repo gates listed",
+    "Publish gate named"
+  ],
+  "open_questions": ["When should extension docs become source-seed only versus fully canonical?"],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Browser proof and product-facing gate visibility proof recorded for plugin chain"
+}

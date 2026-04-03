@@ -1,3 +1,4 @@
+Human skim: `docs/reference-index.html#storage`
 # 首页新会话机制文档
 
 ## 概述

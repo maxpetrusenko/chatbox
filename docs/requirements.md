@@ -1,4 +1,5 @@
 # ChatBridge
+Human skim: `docs/reference-index.html#requirements`
 
 *Building an AI Chat Platform with Third-Party App Integration*
 

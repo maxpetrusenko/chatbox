@@ -2,6 +2,7 @@
 
 Chatbox 跨平台存储方案和版本迁移机制说明。
 
+Human skim: `docs/reference-index.html#storage`
 ## 跨平台存储方案
 
 ### 存储类型

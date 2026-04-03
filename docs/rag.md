@@ -1,5 +1,6 @@
 技术方案
 
+Human skim: `docs/reference-index.html#storage`
 ## 数据流
 
 1. 上传文件到目录

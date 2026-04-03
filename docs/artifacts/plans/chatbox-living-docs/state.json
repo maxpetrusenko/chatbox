@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbox-living-docs-rollout-plan",
+  "artifact_type": "plan",
+  "project_id": "chatbox",
+  "title": "Chatbox Living Docs Rollout Plan",
+  "status": "proposed",
+  "phase": "plan",
+  "owners": ["architect", "pm", "ui-agent"],
+  "upstream_ids": [
+    "chatbox-living-docs-brainlift"
+  ],
+  "downstream_ids": [
+    "chatbox-living-docs-skill-specs",
+    "chatbox-living-docs-verification-ledger"
+  ],
+  "last_refreshed_at": "2026-03-31",
+  "freshness": {
+    "score": 0.84,
+    "state": "fresh"
+  },
+  "confidence": "medium",
+  "evidence": {
+    "verified": 5,
+    "inferred": 10,
+    "missing": 3
+  },
+  "acceptance_criteria": [
+    "Phases and owners defined",
+    "Swarm lanes defined",
+    "Immediate next deliverables named"
+  ],
+  "open_questions": [
+    "When to shift from docs-only to scripts?",
+    "Which plugin docs migrate first?",
+    "What is the minimum verification ledger schema?"
+  ],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Initial project-specific rollout plan"
+}

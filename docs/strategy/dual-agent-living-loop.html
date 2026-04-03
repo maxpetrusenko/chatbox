@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dual Agent Living Loop</title>
+<style>
+:root {
+  --bg: #f6f1e8;
+  --panel: #fffdf8;
+  --panel-2: #efe6d8;
+  --ink: #1c1916;
+  --muted: #655d55;
+  --line: #d8ccb7;
+  --accent: #9f4b2e;
+  --accent-2: #214f4a;
+  --accent-3: #7c2d39;
+  --ok: #166534;
+  --warn: #a16207;
+  --shadow: 0 12px 30px rgba(28, 25, 22, 0.08);
+  --radius: 18px;
+  --sans: "IBM Plex Sans", "Avenir Next", sans-serif;
+  --serif: "Iowan Old Style", Georgia, serif;
+  --mono: "JetBrains Mono", "SFMono-Regular", monospace;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--sans);
+  background:
+    radial-gradient(circle at top left, rgba(159, 75, 46, 0.09), transparent 28%),
+    radial-gradient(circle at top right, rgba(33, 79, 74, 0.08), transparent 32%),
+    var(--bg);
+}
+main {
+  width: min(1180px, calc(100vw - 40px));
+  margin: 0 auto;
+  padding: 40px 0 80px;
+}
+.hero, .grid-2, .grid-3, .stage-row, .memory-row, .heartbeat-row { display: grid; gap: 16px; }
+.hero { grid-template-columns: 1.5fr 1fr; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3, .memory-row, .heartbeat-row { grid-template-columns: repeat(3, 1fr); }
+.stage-row { grid-template-columns: repeat(9, 1fr); }
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.panel { padding: 24px; }
+.eyebrow {
+  display: inline-block;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+h1, h2, h3 { margin: 0; }
+h1 {
+  margin-top: 16px;
+  font-family: var(--serif);
+  font-size: clamp(2.8rem, 5vw, 4.7rem);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+h2 { font-size: 1.45rem; }
+h3 { font-size: 1rem; }
+p { margin: 0; }
+.sub {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 18px;
+  max-width: 780px;
+}
+.stack { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.tag {
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(159, 75, 46, 0.1);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+.mini {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.52);
+}
+.num { font-size: 32px; font-weight: 800; color: var(--accent); }
+.label { margin-top: 6px; color: var(--muted); font-size: 13px; }
+section { margin-top: 28px; }
+.section-head { margin-bottom: 14px; }
+.section-head p { margin-top: 6px; color: var(--muted); }
+.flow {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--panel), var(--panel-2));
+}
+.flow pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.memory, .heartbeat, .step {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.memory p, .heartbeat p, .step p { margin-top: 8px; color: var(--muted); font-size: 13px; }
+.memory code, .flow code, .use code { font-family: var(--mono); font-size: 12px; }
+.step {
+  min-height: 158px;
+  position: relative;
+  overflow: hidden;
+}
+.step::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+}
+.n {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-weight: 800;
+  font-size: 12px;
+}
+.rule {
+  padding: 18px;
+  border-left: 4px solid var(--accent-3);
+  border-radius: 12px;
+  background: rgba(124, 45, 57, 0.08);
+}
+.badge {
+  display: inline-block;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.ok { background: rgba(22, 101, 52, 0.12); color: var(--ok); }
+.warn { background: rgba(161, 98, 7, 0.12); color: var(--warn); }
+.use ul, .memory ul, .heartbeat ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+@media (max-width: 980px) {
+  .hero, .grid-2, .grid-3, .memory-row, .heartbeat-row, .stage-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="card panel">
+      <span class="eyebrow">Dual Agent Runtime</span>
+      <h1>Both listen.<br/>Both challenge.<br/>One reply.</h1>
+      <p class="sub">A living loop for Claude and Codex across research, brainlift, design, plan, implementation, review, fix, verification, and drift. The system keeps truth in repo artifacts, not in chat memory.</p>
+      <div class="stack">
+        <span class="tag">Constructive disagreement first</span>
+        <span class="tag">Shared artifact chain</span>
+        <span class="tag">One human facing reply</span>
+        <span class="tag">Drift checked at every stage</span>
+      </div>
+    </div>
+    <div class="card panel">
+      <div class="grid-2">
+        <div class="mini"><div class="num">3</div><div class="label">memory surfaces</div></div>
+        <div class="mini"><div class="num">2</div><div class="label">heartbeats</div></div>
+        <div class="mini"><div class="num">9</div><div class="label">stages in loop</div></div>
+        <div class="mini"><div class="num">1</div><div class="label">reply lock</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <div class="section-head">
+      <span class="eyebrow">Flow</span>
+      <h2>Proposal and challenge loop</h2>
+      <p>The loop repeats for every stage. Stage changes do not change the protocol.</p>
+    </div>
+    <div class="flow">
+<pre>human intent
+  ↓
+shared memory updated
+  ↓
+one agent proposes
+  ↓
+other agent challenges and improves
+  ↓
+decision locks best packet
+  ↓
+execution runs only from locked packet
+  ↓
+proof ledger updated
+  ↓
+drift heartbeat runs
+  ↓
+stage promotion or repair</pre>
+    </div>
+    <div class="rule" style="margin-top: 16px;">
+      <strong>Default rule</strong>
+      <p>Agreement is not the first goal. The first goal is a stronger alternative. Only after a better option is challenged and either accepted or rejected should the packet lock.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">Memory</span>
+      <h2>Three memory surfaces</h2>
+      <p>Claude and Codex keep their own working memory while shared state carries the canonical truth.</p>
+    </div>
+    <div class="memory-row">
+      <div class="memory card">
+        <h3>Claude memory</h3>
+        <p>Research synthesis, product logic, trade-offs, and narrative continuity.</p>
+        <ul>
+          <li><code>.claude/memory/current.md</code></li>
+          <li>why</li>
+          <li>risks</li>
+          <li>intent continuity</li>
+        </ul>
+      </div>
+      <div class="memory card">
+        <h3>Codex memory</h3>
+        <p>Repo facts, commands, patches, failures, and proof notes.</p>
+        <ul>
+          <li><code>.codex/memory/current.md</code></li>
+          <li>repo truth</li>
+          <li>patch history</li>
+          <li>verification evidence</li>
+        </ul>
+      </div>
+      <div class="memory card">
+        <h3>Shared memory</h3>
+        <p>Current stage, locked packet, disagreement ledger, proof ledger, drift flags, and reply lock.</p>
+        <ul>
+          <li><code>docs/artifacts/runtime/current/state.json</code></li>
+          <li><code>log.md</code></li>
+          <li><code>proof.md</code></li>
+          <li><code>drift.md</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">Stages</span>
+      <h2>Same protocol at every stage</h2>
+      <p>Each stage must produce a packet, a challenge, proof, and a drift check before promotion.</p>
+    </div>
+    <div class="stage-row">
+      <div class="step card"><div class="n">1</div><h3>Presearch</h3><p>Repo map, evidence, questions, constraints.</p></div>
+      <div class="step card"><div class="n">2</div><h3>Brainlift</h3><p>Product model, risks, anti-goals, trust boundaries.</p></div>
+      <div class="step card"><div class="n">3</div><h3>Design</h3><p>Flows, state, edges, quality bar.</p></div>
+      <div class="step card"><div class="n">4</div><h3>Plan</h3><p>Human skim map and machine packet lock.</p></div>
+      <div class="step card"><div class="n">5</div><h3>Implement</h3><p>Bounded build packet against locked intent.</p></div>
+      <div class="step card"><div class="n">6</div><h3>Review</h3><p>Best objection and best alternative.</p></div>
+      <div class="step card"><div class="n">7</div><h3>Fix</h3><p>Repair packet, narrow scope, fresh proof.</p></div>
+      <div class="step card"><div class="n">8</div><h3>Verify</h3><p>Proof ledger, gaps, verified versus inferred.</p></div>
+      <div class="step card"><div class="n">9</div><h3>Drift</h3><p>Mismatch scan and stale propagation.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <span class="eyebrow">Heartbeats</span>
+      <h2>Two heartbeats keep the loop honest</h2>
+      <p>One reports coordination state. One reports freshness and mismatch.</p>
+    </div>
+    <div class="heartbeat-row">
+      <div class="heartbeat card">
+        <h3>Coordination heartbeat</h3>
+        <ul>
+          <li>active stage</li>
+          <li>proposal owner</li>
+          <li>challenge owner</li>
+          <li>blocked or unblocked</li>
+          <li>next move</li>
+        </ul>
+      </div>
+      <div class="heartbeat card">
+        <h3>Drift heartbeat</h3>
+        <ul>
+          <li>artifact versus repo</li>
+          <li>design versus implementation</li>
+          <li>plan versus current code</li>
+          <li>review claim versus proof</li>
+          <li>stale edges</li>
+        </ul>
+      </div>
+      <div class="heartbeat card">
+        <h3>Human skim contract</h3>
+        <ul>
+          <li>show stage</li>
+          <li>show best current packet</li>
+          <li>show open disagreement</li>
+          <li>show proof status</li>
+          <li>show drift status</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="card panel use">
+      <div class="section-head">
+        <span class="eyebrow">How To Use It</span>
+        <h2>Operator path</h2>
+      </div>
+      <ul>
+        <li>Capture one plain language intent.</li>
+        <li>Create or update the intent chain.</li>
+        <li>Write active stage and reply lock to shared state.</li>
+        <li>Let one agent propose the next packet.</li>
+        <li>Force the other to challenge and improve it.</li>
+        <li>Lock the stronger packet.</li>
+        <li>Execute from the locked packet only.</li>
+        <li>Record proof and run drift heartbeat.</li>
+      </ul>
+    </div>
+    <div class="card panel use">
+      <div class="section-head">
+        <span class="eyebrow">Runtime Files</span>
+        <h2>Single source chain</h2>
+      </div>
+      <ul>
+        <li><code>docs/artifacts/presearch/&lt;intent&gt;/index.md</code></li>
+        <li><code>docs/artifacts/brainlift/&lt;intent&gt;/index.md</code></li>
+        <li><code>docs/artifacts/design/&lt;intent&gt;/index.md</code></li>
+        <li><code>docs/artifacts/plans/&lt;intent&gt;/index.md</code></li>
+        <li><code>docs/artifacts/implementation/&lt;intent&gt;/index.md</code></li>
+        <li><code>docs/artifacts/verification/&lt;intent&gt;/index.md</code></li>
+        <li><code>docs/artifacts/drift/&lt;intent&gt;/index.md</code></li>
+        <li><code>docs/artifacts/runtime/current/state.json</code></li>
+      </ul>
+      <p><span class="badge ok">Good</span> Truth lives in repo. Chat stays transport only.</p>
+      <p style="margin-top: 8px;"><span class="badge warn">Watch</span> No stage promotion if proof or drift is incomplete.</p>
+    </div>
+  </section>
+</main>
+</body>
+</html>

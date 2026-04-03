@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbridge-plugin-platform-presearch",
+  "artifact_type": "presearch",
+  "project_id": "chatbox",
+  "title": "ChatBridge Plugin Platform Presearch",
+  "status": "published",
+  "phase": "presearch",
+  "owners": ["research", "architect"],
+  "upstream_ids": [],
+  "downstream_ids": [
+    "chatbridge-plugin-platform-brainlift"
+  ],
+  "last_refreshed_at": "2026-04-03",
+  "freshness": {
+    "score": 0.9,
+    "state": "fresh"
+  },
+  "confidence": "high",
+  "evidence": {
+    "verified": 10,
+    "inferred": 2,
+    "missing": 3
+  },
+  "acceptance_criteria": [
+    "Source seed docs named",
+    "Repo-alignment facts captured",
+    "Key tension between docs and code identified"
+  ],
+  "open_questions": [
+    "Open plugin system versus district-reviewed platform?",
+    "One chain or split chains for consumer versus K12?",
+    "Heuristic tool gating as product or compromise?"
+  ],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Weekly refresh confirmed migration pilot and source-seed routing"
+}

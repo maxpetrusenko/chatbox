@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbridge-plugin-platform-implementation-contract",
+  "artifact_type": "implementation-contract",
+  "project_id": "chatbox",
+  "title": "ChatBridge Plugin Platform Implementation Contract",
+  "status": "proposed",
+  "phase": "implementation-contract",
+  "owners": ["pm", "architect", "engineer"],
+  "upstream_ids": ["chatbridge-plugin-platform-plan"],
+  "downstream_ids": ["chatbridge-plugin-platform-verification-ledger"],
+  "last_refreshed_at": "2026-03-31",
+  "freshness": { "score": 0.86, "state": "fresh" },
+  "confidence": "medium",
+  "evidence": { "verified": 4, "inferred": 3, "missing": 1 },
+  "acceptance_criteria": [
+    "Plugin chain next deliverables named",
+    "Hidden gates explicitly listed",
+    "Verification target stated"
+  ],
+  "open_questions": ["Should repo-alignment appendix be embedded or separate?"],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Initial plugin-platform implementation contract"
+}

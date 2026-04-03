@@ -1,3 +1,4 @@
+Human skim: `docs/reference-index.html#requirements`
 # Token Estimation System
 
 Token 预估系统用于异步计算聊天消息和附件的 token 数量，在不阻塞 UI 的情况下提供实时的 token 统计。

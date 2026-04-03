@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbox-living-docs-implementation-contract",
+  "artifact_type": "implementation-contract",
+  "project_id": "chatbox",
+  "title": "Chatbox Living Docs Implementation Contract",
+  "status": "proposed",
+  "phase": "implementation-contract",
+  "owners": ["pm", "engineer", "architect"],
+  "upstream_ids": [
+    "chatbox-living-docs-rollout-plan"
+  ],
+  "downstream_ids": [
+    "chatbox-living-docs-verification-ledger"
+  ],
+  "last_refreshed_at": "2026-04-03",
+  "freshness": {
+    "score": 0.9,
+    "state": "fresh"
+  },
+  "confidence": "medium",
+  "evidence": {
+    "verified": 8,
+    "inferred": 6,
+    "missing": 2
+  },
+  "acceptance_criteria": [
+    "Wave 1 file scope defined",
+    "Migration sources named",
+    "Hidden preconditions named"
+  ],
+  "open_questions": [
+    "Should browser proof happen before scheduled stale execution?",
+    "Should plugin corpus migration happen before or after template wave?"
+  ],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Wave 1 refreshed after weekly execution, stale checker, and backlink proof"
+}

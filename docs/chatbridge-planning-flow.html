@@ -30,6 +30,8 @@ body{font-family:var(--font);font-size:13px;color:var(--ink);background:var(--bg
   display:flex;align-items:center;gap:8px;
 }
 .sec-title::after{content:"";flex:1;height:1px;background:var(--line)}
+.canon-note{margin:0 0 18px;padding:10px 12px;border:1px solid var(--line);border-left:4px solid var(--ac);border-radius:10px;background:#fff;font-size:11px;line-height:1.5;color:var(--mid)}
+.canon-note a{color:var(--ac);font-weight:700;text-decoration:none}
 
 /* ══════════════════════════════════════
    1. BUILD MAP — dominant, langgraph nodes
@@ -184,6 +186,8 @@ body{font-family:var(--font);font-size:13px;color:var(--ink);background:var(--bg
 </head>
 <body>
 <main class="page">
+
+<div class="canon-note">Source seed doc. Canonical managed plan: <a href="artifacts/plans/chatbridge-plugin-platform/visual.html">`docs/artifacts/plans/chatbridge-plugin-platform/visual.html`</a>. Sidecar: <a href="artifacts/plans/chatbridge-plugin-platform/state.json">`state.json`</a>.</div>
 
 <header class="hdr">
   <h1>ChatBridge</h1>

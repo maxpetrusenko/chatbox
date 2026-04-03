@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chatbox Living Docs Brainlift</title>
+<style>
+:root{--bg:#f6f1e8;--panel:#fffdf8;--ink:#1c1814;--muted:#6f675d;--line:#ddd2c0;--ac:#9f4d2f;--ac2:#184e4a;--acbg:rgba(159,77,47,.1);--ok:#166534;--warn:#b45309;--danger:#b91c1c;--shadow:0 14px 34px rgba(0,0,0,.08);--sans:"IBM Plex Sans","Avenir Next",sans-serif;--serif:"Iowan Old Style",Georgia,serif}*{box-sizing:border-box}body{margin:0;font-family:var(--sans);color:var(--ink);background:radial-gradient(circle at 0 0,rgba(159,77,47,.08),transparent 28%),radial-gradient(circle at 100% 0,rgba(24,78,74,.08),transparent 24%),var(--bg)}.page{width:min(1160px,calc(100vw - 40px));margin:0 auto;padding:40px 0 80px}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}.hero{padding:28px}.eyebrow{display:inline-block;padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}h1,h2,h3,p{margin:0}h1{font-family:var(--serif);font-size:clamp(2.5rem,5vw,4.2rem);line-height:.98;letter-spacing:-.03em;margin-top:16px}.sub{margin-top:14px;color:var(--muted);font-size:18px;max-width:760px}.meta,.stats,.grid2,.grid4{display:grid;gap:14px}.meta{grid-template-columns:repeat(4,max-content);margin-top:18px}.tag{padding:6px 10px;border-radius:999px;background:var(--acbg);color:var(--ac);font-size:12px;font-weight:700}.stats{grid-template-columns:repeat(4,1fr);margin-top:20px}.stat,.mini,.dok{padding:16px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.5)}.num{font-size:28px;font-weight:800;color:var(--ac)}.label{font-size:13px;color:var(--muted)}section{margin-top:22px}.panel{padding:22px}.grid2{grid-template-columns:repeat(2,1fr)}.grid4{grid-template-columns:repeat(4,1fr)}.section-head{margin-bottom:12px}.section-head p,.mini p,.dok p{color:var(--muted);margin-top:6px}.callout{padding:16px;border-left:4px solid var(--ac2);border-radius:12px;background:rgba(24,78,74,.08)}ul{margin:10px 0 0;padding-left:18px;color:var(--muted)}code{font-family:"JetBrains Mono","SFMono-Regular",monospace;font-size:12px}.risk{color:var(--danger);font-weight:700}.opp{color:var(--ok);font-weight:700}@media (max-width:900px){.meta,.stats,.grid2,.grid4{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="page">
+  <section class="card hero">
+    <span class="eyebrow">Brainlift · Canonical · Human Review</span>
+    <h1>Controller first.<br/>Docs are the boundary.</h1>
+    <p class="sub">Review surface for the living-docs system. It separates shipped settings routes and gate code from what is still strategy, and it keeps the proof boundary explicit for humans and agents.</p>
+    <div class="meta"><span class="tag">#insights</span><span class="tag">#strategic</span><span class="tag">#trust-boundaries</span><span class="tag">#repo-first</span></div>
+    <div class="stats">
+      <div class="stat"><div class="num">5</div><div class="label">repo signals</div></div>
+      <div class="stat"><div class="num">5</div><div class="label">shipped gates</div></div>
+      <div class="stat"><div class="num">3</div><div class="label">proof boundaries</div></div>
+      <div class="stat"><div class="num">1</div><div class="label">open decision</div></div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <div class="section-head"><span class="eyebrow">DOK Ladder</span><h2>How repo knowledge compresses</h2></div>
+    <div class="grid4">
+      <div class="dok"><strong>DOK 1</strong><p>facts</p><ul><li><code>src/renderer/routes/settings/route.tsx:79</code> exposes Installed Plugins and Plugin Drop</li><li><code>plugins-drop.tsx:91</code> is desktop-only</li><li><code>plugins.tsx:124</code> is permission-gated</li><li><code>stream-text.ts:216</code> injects tools heuristically</li></ul></div>
+      <div class="dok"><strong>DOK 2</strong><p>knowledge</p><ul><li>the problem is artifact control</li><li>humans and agents read different layers</li><li>product behavior hides behind settings routes and gates</li><li>plugin docs are the right seed corpus</li></ul></div>
+      <div class="dok"><strong>DOK 3</strong><p>insights</p><ul><li>the highest-value product is controller truth tied to shipped routes</li><li>visual skim stays light, sidecar stays exact</li><li>drift is state management, not prose</li><li>trust, auth, and K12 filters are core behavior</li></ul></div>
+      <div class="dok"><strong>DOK 4</strong><p>SPOVs</p><ul><li>artifact graph beats spec dump</li><li>beautiful plan without sidecar is half a product</li><li>first build is docs runtime plus refresh proof</li><li>gates must be first-class facts</li></ul></div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card panel">
+      <div class="section-head"><span class="eyebrow">Boundary</span><h2>Product and trust model</h2></div>
+      <div class="mini"><strong>Should do</strong><ul><li>maintain the canonical artifact chain in <code>docs/</code></li><li>keep visual skim files for humans</li><li>keep strict sidecars for agents</li><li>mark stale downstream artifacts</li><li>record phase, owners, cadence, and decisions in artifacts</li></ul></div>
+      <div class="mini" style="margin-top:14px"><strong>Should not do yet</strong><ul><li>full dashboard</li><li>auto-edit code from docs churn</li><li>solve every repo doc need in wave 1</li></ul></div>
+      <div class="callout" style="margin-top:14px">Decision: use Chatbox as the reference implementation for living docs. Ship controller artifacts before any dashboard, and do not claim maturity until local proof and remote proof are split cleanly.</div>
+    </div>
+    <div class="card panel">
+      <div class="section-head"><span class="eyebrow">Shipped gates</span><h2>Real behavior gates</h2></div>
+      <div class="mini"><ul><li><code>src/renderer/routes/settings/route.tsx:79</code> settings surface entry</li><li><code>plugins-drop.tsx:91</code> desktop-only drop</li><li><code>plugins.tsx:124</code> enable and disable permission gate</li><li><code>pluginRegistry.ts:190</code> auth and K12 filtered visibility</li><li><code>stream-text.ts:216</code> heuristic tool injection</li></ul></div>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <div class="card panel"><div class="section-head"><span class="eyebrow">Risks</span><h2>What can break</h2></div><div class="mini"><ul><li><span class="risk">Too much abstraction too early</span></li><li><span class="risk">HTML without sidecars</span></li><li><span class="risk">Sidecars without visual quality</span></li><li><span class="risk">Refresh without authority</span></li></ul></div></div>
+    <div class="card panel"><div class="section-head"><span class="eyebrow">Opportunity</span><h2>Why this repo is the right pilot</h2></div><div class="mini"><ul><li><span class="opp">polished visual HTML docs</span></li><li><span class="opp">deep architecture writing</span></li><li><span class="opp">real product code with drift risk</span></li><li><span class="opp">tests and plugin runtime concepts</span></li></ul></div></div>
+  </section>
+
+  <section class="card panel">
+    <div class="section-head"><span class="eyebrow">Next</span><h2>Next action</h2></div>
+    <div class="callout">Produce the rollout plan. Make phases, swarm lanes, cadence, deliverables, and the shipped gate surface visually obvious before any broader migration.</div>
+    <p style="margin-top:12px;color:var(--muted)">Machine pair: <code>index.md</code> and <code>state.json</code>.</p>
+  </section>
+</main>
+</body>
+</html>

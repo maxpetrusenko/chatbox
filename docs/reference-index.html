@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reference Hub</title>
+  <link rel="stylesheet" href="assets/living-docs-ui.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero">
+      <span class="eyebrow">Chatbox · Reference Hub · Human Skim</span>
+      <h1>Reference docs by question.<br />Not one generic pile.</h1>
+      <p class="sub">
+        This hub groups markdown by what a human is trying to confirm in `chatbox`: plugin contracts, runtime behavior,
+        requirements history, provider work, and ops notes. It also calls out when a doc is current reference versus
+        historical, draft, or language-specific context.
+      </p>
+    </section>
+
+    <section class="grid3">
+      <a id="plugin-api" class="card panel link-card" href="plugin-api.md">
+        <div class="section-head">
+          <span class="eyebrow">Detail Layer</span>
+          <h2>How plugins work in the shipped app</h2>
+        </div>
+        <p class="muted">manifest, protocol, auth model, builtin examples, and host behavior</p>
+        <p class="small muted"><code>docs/plugin-api.md</code></p>
+        <p class="muted">Anchor: <code>src/shared/plugin-types.ts</code> and <code>src/shared/plugin-protocol.ts</code></p>
+      </a>
+      <a id="testing" class="card panel link-card" href="testing.md">
+        <div class="section-head">
+          <span class="eyebrow">Detail Layer</span>
+          <h2>How plugin and app changes get checked</h2>
+        </div>
+        <p class="muted">testing strategy plus submission gate docs</p>
+        <p class="small muted"><code>docs/testing.md</code> · <code>docs/submission-checklist.md</code></p>
+        <p class="muted">Anchor: plugin settings and registry tests under <code>src/renderer/</code></p>
+      </a>
+      <a id="storage" class="card panel link-card" href="storage.md">
+        <div class="section-head">
+          <span class="eyebrow">Mixed Status</span>
+          <h2>How runtime state, sessions, and RAG are explained</h2>
+        </div>
+        <p class="muted">storage, session split, and RAG notes; useful but not all equally current</p>
+        <p class="small muted"><code>docs/storage.md</code> · <code>docs/rag.md</code> · <code>docs/new-session-mechanism.md</code></p>
+        <p class="muted">Note: some storage and RAG detail is legacy or Chinese-first context</p>
+      </a>
+      <a id="requirements" class="card panel link-card" href="requirements.md">
+        <div class="section-head">
+          <span class="eyebrow">Historical Scope</span>
+          <h2>Why this product exists and what shaped early scope</h2>
+        </div>
+        <p class="muted">requirements brief, cost analysis, token estimation, and early product framing</p>
+        <p class="small muted"><code>docs/requirements.md</code> · <code>docs/cost-analysis.md</code> · <code>docs/token-estimation.md</code></p>
+        <p class="muted">Useful for strategy context, not always the latest shipped reality</p>
+      </a>
+      <a id="provider-integration" class="card panel link-card" href="adding-provider.md">
+        <div class="section-head">
+          <span class="eyebrow">Implementation Guide</span>
+          <h2>How provider integrations are added or changed</h2>
+        </div>
+        <p class="muted">provider onboarding and extension notes</p>
+        <p class="small muted"><code>docs/adding-provider.md</code> · <code>docs/adding-new-provider.md</code></p>
+        <p class="muted">Check commands against <code>package.json</code>; some older guide text still needs cleanup</p>
+      </a>
+      <a id="ops" class="card panel link-card" href="deploy-coolify.md">
+        <div class="section-head">
+          <span class="eyebrow">Ops Notes</span>
+          <h2>How deployment and repo structure have been handled</h2>
+        </div>
+        <p class="muted">deploy notes, dependency reorg, and infrastructure-adjacent references</p>
+        <p class="small muted"><code>docs/deploy-coolify.md</code> · <code>docs/dependency-reorg.md</code></p>
+        <p class="muted">Useful for operators; not the source of plugin runtime truth</p>
+      </a>
+      <a id="faq" class="card panel link-card" href="FAQ.md">
+        <div class="section-head">
+          <span class="eyebrow">Support Surface</span>
+          <h2>What users or reviewers can scan quickly</h2>
+        </div>
+        <p class="muted">English and Chinese FAQ pages</p>
+        <p class="small muted"><code>docs/FAQ.md</code> · <code>docs/FAQ-CN.md</code></p>
+        <p class="muted">Best for support and orientation, not architecture decisions</p>
+      </a>
+    </section>
+
+    <section class="grid2">
+      <a class="card panel link-card" href="artifacts/runtime/current/index.html">
+        <div class="section-head">
+          <span class="eyebrow">Runtime Question</span>
+          <h2>What does the shared runtime say right now</h2>
+        </div>
+        <p class="muted">use the runtime node for current stage, proof, drift, and handoff refs before opening deeper markdown</p>
+      </a>
+      <a class="card panel link-card" href="decisions/index.html">
+        <div class="section-head">
+          <span class="eyebrow">Decision Question</span>
+          <h2>Which policy edges are already settled</h2>
+        </div>
+        <p class="muted">use the decisions hub and source-seed registry when the question is governance, especially for the now-explicit extension source-seed policy</p>
+      </a>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">How To Use This Hub</span>
+          <h2>Read by decision, not by folder</h2>
+        </div>
+        <ul>
+          <li>use plugin docs when deciding what the shipped plugin platform really does</li>
+          <li>use runtime/storage docs when debugging session or persistence behavior</li>
+          <li>use requirements and cost docs as historical context, not sole product truth</li>
+          <li>treat older provider and ops guides as needing command sanity-checks against the current repo scripts</li>
+        </ul>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Why This Matters</span>
+          <h2>What this page prevents</h2>
+        </div>
+        <div class="callout warm">
+          Without this split, a skim reader can easily mistake historical briefs, language-specific notes, and current
+          implementation references for the same class of truth. This hub makes that distinction explicit.
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="assets/living-docs-mini-map.js"></script>
+</body>
+</html>

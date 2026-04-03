@@ -1,0 +1,56 @@
+name: Living Docs Refresh
+
+on:
+  workflow_dispatch:
+  push:
+  schedule:
+    - cron: '0 9 * * 1'
+
+jobs:
+  stale-check:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Refresh living docs runtime
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_BEFORE: ${{ github.event.before }}
+          GITHUB_SHA_VALUE: ${{ github.sha }}
+          GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          pnpm docs:stale-check:write
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ -n "$GITHUB_BEFORE" ] && [ "$GITHUB_BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            node scripts/runtime-heartbeat.mjs --write --base "$GITHUB_BEFORE" --head "$GITHUB_SHA_VALUE" --remote-run-id "$GITHUB_RUN_ID_VALUE" --remote-run-url "$GITHUB_RUN_URL"
+          else
+            node scripts/runtime-heartbeat.mjs --write --remote-run-id "$GITHUB_RUN_ID_VALUE" --remote-run-url "$GITHUB_RUN_URL"
+          fi
+          pnpm docs:stale-check:verify
+          pnpm docs:runtime:verify
+
+      - name: Commit living docs runtime if changed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore: refresh living docs runtime'
+          file_pattern: docs/indexes/stale-report.md docs/artifacts/runtime/current/state.json docs/artifacts/runtime/current/log.md docs/artifacts/runtime/current/proof.md docs/artifacts/runtime/current/drift.md

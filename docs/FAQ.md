@@ -1,5 +1,7 @@
 # Frequently Asked Questions
 
+Human skim: `docs/reference-index.html#faq`
+
 <p align="center">
     English | <a href="./FAQ-CN.md">中文</a>
 </p>

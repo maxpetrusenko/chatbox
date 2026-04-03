@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Swarm Dispatch Board</title>
+  <link rel="stylesheet" href="../assets/living-docs-ui.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero">
+      <span class="eyebrow">Swarm Dispatch · Human Skim</span>
+      <h1>Who is moving what.<br />And what is actually next now.</h1>
+      <p class="sub">
+        This board is the execution readout for the two active chains. It is grounded in the current task board and
+        artifact statuses, so it should show current blockers and next packets, not stale bootstrap sequencing.
+      </p>
+      <div class="stats">
+        <div class="stat">
+          <div class="num">2</div>
+          <div class="label">active chains</div>
+        </div>
+        <div class="stat">
+          <div class="num">2</div>
+          <div class="label">runtime tasks still next</div>
+        </div>
+        <div class="stat">
+          <div class="num">2</div>
+          <div class="label">maturity gaps still blocking “done”</div>
+        </div>
+        <div class="stat">
+          <div class="num">1</div>
+          <div class="label">weekly refresh already landed</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Board</span>
+        <h2>Current chain state</h2>
+      </div>
+      <div class="board">
+        <div class="kanban">
+          <h3>`chatbox-living-docs`</h3>
+          <div class="stack">
+            <div class="item"><strong>Presearch / brainlift</strong><span class="pill ok">published</span></div>
+            <div class="item"><strong>Design</strong><span class="pill warn">active</span></div>
+            <div class="item"><strong>Plan / implementation</strong><span class="pill warn">proposed</span></div>
+            <div class="item"><strong>Verification</strong><span class="pill warn">in progress</span></div>
+            <div class="item"><strong>Drift</strong><span class="pill warn">active</span></div>
+            <div class="item"><strong>Owner lane</strong><small>PM + engineer + QA on runtime heartbeat loop</small></div>
+            <div class="item"><strong>Next packet</strong><small>coordination heartbeat and runtime-state proof refresh</small></div>
+          </div>
+        </div>
+        <div class="kanban">
+          <h3>`chatbridge-plugin-platform`</h3>
+          <div class="stack">
+            <div class="item"><strong>Presearch / brainlift</strong><span class="pill ok">published</span></div>
+            <div class="item"><strong>Design</strong><span class="pill warn">active</span></div>
+            <div class="item"><strong>Plan / implementation</strong><span class="pill warn">proposed</span></div>
+            <div class="item"><strong>Verification</strong><span class="pill warn">in progress</span></div>
+            <div class="item"><strong>Drift</strong><span class="pill warn">active</span></div>
+            <div class="item"><strong>Owner lane</strong><small>architect + reviewer + repair on source-seed truth and repo alignment</small></div>
+            <div class="item"><strong>Next packet</strong><small>keep repo-alignment and source-seed policy honest</small></div>
+          </div>
+        </div>
+        <div class="kanban">
+          <h3>Priority stack</h3>
+          <div class="stack">
+            <div class="item"><strong>1</strong><small>coordination heartbeat into runtime state</small></div>
+            <div class="item"><strong>2</strong><small>drift heartbeat into runtime drift and artifact drift docs</small></div>
+            <div class="item"><strong>Done</strong><small>runtime skim page now reads the shared runtime files</small></div>
+            <div class="item"><strong>Completion gate A</strong><small>remote stale-check execution still unverified</small></div>
+            <div class="item"><strong>Resolved</strong><small>extension docs now stay source-seed overlays under current policy</small></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Dispatch Logic</span>
+          <h2>How tasks should move through the swarm</h2>
+        </div>
+        <div class="svg-wrap">
+          <svg viewBox="0 0 920 260" role="img" aria-label="Dispatch flow">
+            <defs>
+              <marker id="arr" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+                <path d="M0,0 L12,6 L0,12 z" fill="#9f4d2f" />
+              </marker>
+            </defs>
+            <rect x="20" y="46" rx="18" ry="18" width="170" height="82" fill="#fff" stroke="#ddd2c0" />
+            <text x="48" y="80" font-size="14" fill="#6f675d">controller</text>
+            <text x="48" y="108" font-size="26" font-family="Georgia" fill="#1c1814">tasks.md</text>
+            <rect x="246" y="46" rx="18" ry="18" width="170" height="82" fill="#fff" stroke="#ddd2c0" />
+            <text x="274" y="80" font-size="14" fill="#6f675d">shape</text>
+            <text x="274" y="108" font-size="26" font-family="Georgia" fill="#1c1814">packet split</text>
+            <rect x="472" y="46" rx="18" ry="18" width="170" height="82" fill="#fff" stroke="#ddd2c0" />
+            <text x="500" y="80" font-size="14" fill="#6f675d">execution</text>
+            <text x="500" y="108" font-size="26" font-family="Georgia" fill="#1c1814">artifact work</text>
+            <rect x="698" y="46" rx="18" ry="18" width="170" height="82" fill="#fff" stroke="#ddd2c0" />
+            <text x="726" y="80" font-size="14" fill="#6f675d">feedback</text>
+            <text x="726" y="108" font-size="26" font-family="Georgia" fill="#1c1814">verify + drift</text>
+            <path d="M190 88H238" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+            <path d="M416 88H464" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+            <path d="M642 88H690" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+            <path d="M782 144C782 202 106 202 106 144" stroke="#184e4a" stroke-width="4" fill="none" marker-end="url(#arr)" />
+          </svg>
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Human Read</span>
+          <h2>How to use this board</h2>
+        </div>
+        <ul>
+          <li>use it to confirm the next artifact or runtime packet, not only the current phase name</li>
+          <li>treat blockers as first-class board state, not footnotes</li>
+          <li>if this page disagrees with <code>docs/tasks.md</code>, the task board wins and this page is stale</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+  <script src="../assets/living-docs-mini-map.js"></script>
+</body>
+</html>

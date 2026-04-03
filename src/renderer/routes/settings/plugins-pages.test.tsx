@@ -257,6 +257,7 @@ describe('plugin settings routes', () => {
 
     renderWithMantine(<RouteComponent />)
 
+    expect(screen.getByText('AI intent gated')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Enable' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Enable' }))
 

@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Living Docs Task Board</title>
+  <link rel="stylesheet" href="assets/living-docs-ui.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero">
+      <span class="eyebrow">Chatbox · Task Board · Human Skim</span>
+      <h1>Two runtime moves left.<br />Shared-state skim is live.</h1>
+      <p class="sub">
+        `docs/tasks.md` is the controller surface for the living-docs rollout. Today it says the bootstrap artifacts
+        exist, the stale checker landed, the runtime skim now reads shared files directly, and the next wave is
+        coordination/drift heartbeats plus operational proof closure.
+      </p>
+      <div class="stats">
+        <div class="stat">
+          <div class="num">5</div>
+          <div class="label">ordered next tasks</div>
+        </div>
+        <div class="stat">
+          <div class="num">2</div>
+          <div class="label">active canonical chains</div>
+        </div>
+        <div class="stat">
+          <div class="num">2</div>
+          <div class="label">runtime steps still next</div>
+        </div>
+        <div class="stat">
+          <div class="num">1</div>
+          <div class="label">remote proof gap still open</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid3">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Why Plugins Stay First</span>
+          <h2>Settings routes are already shipped and user-facing</h2>
+        </div>
+        <div class="mini">
+          <p><code>src/renderer/routes/settings/plugins.tsx</code> + <code>plugins-drop.tsx</code></p>
+          <ul>
+            <li>Installed Plugins is where role-specific access is explained</li>
+            <li>Plugin Drop is where AI review, setup, and activation actually happen</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Why Gates Matter</span>
+          <h2>Tool access is shaped by runtime logic, not only docs policy</h2>
+        </div>
+        <div class="mini">
+          <p><code>src/renderer/packages/model-calls/stream-text.ts:216</code></p>
+          <ul>
+            <li>plugin tool prompts are injected only when the heuristic passes</li>
+            <li>the runtime skim surface must show this as shipped behavior, not future polish</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Why Registry Truth Matters</span>
+          <h2>Installed does not mean visible or callable</h2>
+        </div>
+        <div class="mini">
+          <p><code>src/renderer/stores/pluginRegistry.ts:190</code></p>
+          <ul>
+            <li>K12 scope filters manifests by role, school, and active scope</li>
+            <li>student tool access still depends on auth type and connection state</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Ordered Next</span>
+        <h2>What still needs to land</h2>
+      </div>
+      <div class="grid5">
+        <div class="tile">
+          <strong>1</strong>
+          <p class="muted">runtime starter files landed under <code>docs/artifacts/runtime/current/</code></p>
+          <span class="pill ok">done</span>
+        </div>
+        <div class="tile">
+          <strong>2</strong>
+          <p class="muted">shared schema hook landed in <code>docs/strategy/artifact-schemas.md</code></p>
+          <span class="pill ok">done</span>
+        </div>
+        <div class="tile">
+          <strong>3</strong>
+          <p class="muted">build coordination heartbeat into <code>state.json</code></p>
+          <span class="pill warn">next</span>
+        </div>
+        <div class="tile">
+          <strong>4</strong>
+          <p class="muted">write drift heartbeat into runtime drift plus artifact drift docs</p>
+          <span class="pill warn">next</span>
+        </div>
+        <div class="tile">
+          <strong>5</strong>
+          <p class="muted">runtime skim now reads the shared runtime files directly</p>
+          <span class="pill ok">done</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Already Real</span>
+          <h2>What this repo can already prove</h2>
+        </div>
+        <ul>
+          <li>both canonical chains exist end to end inside <code>docs/artifacts/</code></li>
+          <li><code>scripts/stale-check.mjs</code> and <code>scripts/verify-stale-report.mjs</code> landed</li>
+          <li><code>docs/artifacts/runtime/current/index.html</code> now reads shared runtime files directly</li>
+          <li>plugin settings UI now exposes the <code>AI intent gated</code> message in product code</li>
+          <li>browser proof exists for the current visual artifact wave</li>
+        </ul>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Still Not Proven</span>
+          <h2>Why the task board stays honest</h2>
+        </div>
+        <div class="callout warm">
+          The runtime is not yet self-updating. The skim node now reads shared runtime files directly, but heartbeat
+          writes are still manual. Remote stale-check execution is still unverified, and the runtime story remains
+          local-only until that blocker closes.
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Active Chains</span>
+          <h2>Why there are two, not one</h2>
+        </div>
+        <ul>
+          <li><code>chatbox-living-docs</code> is the pilot for the docs runtime itself</li>
+          <li><code>chatbridge-plugin-platform</code> is the migrated plugin corpus that proves the runtime on real product history</li>
+          <li>the first chain defines the operating model; the second tests whether it survives real legacy material</li>
+        </ul>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Best Next Reads</span>
+          <h2>Where to approve direction fast</h2>
+        </div>
+        <div class="grid2">
+          <a class="tile link-card" href="artifacts/runtime/current/index.html">
+            <strong>Runtime dashboard</strong>
+            <p class="muted">how real the shared runtime is today</p>
+          </a>
+          <a class="tile link-card" href="indexes/stale-report.html">
+            <strong>Stale report</strong>
+            <p class="muted">what is fresh, and what still gates trust</p>
+          </a>
+          <a class="tile link-card" href="indexes/artifacts-index.html">
+            <strong>Artifacts index</strong>
+            <p class="muted">phase-by-phase map of both chains</p>
+          </a>
+          <a class="tile link-card" href="indexes/living-docs-control-center.html">
+            <strong>Control center</strong>
+            <p class="muted">top-level approval view across all skim pages</p>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="assets/living-docs-mini-map.js"></script>
+</body>
+</html>

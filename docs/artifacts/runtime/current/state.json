@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "active_intent": "living-docs-tree-handoff",
+  "active_stage": "verification",
+  "reply_lock": {
+    "held": false,
+    "owner": null,
+    "started_at": null
+  },
+  "proposal_token_owner": "claude",
+  "challenge_token_owner": "codex",
+  "locked_packet_id": "runtime-skim-bind",
+  "agent_handoffs": {
+    "claude": {
+      "prompt_ref": "docs/plans/2026-04-03-living-docs-tree-handoff.md:102",
+      "dispatch": "Follow Direction Of Travel and keep the tree operator-first, not showcase-first."
+    },
+    "codex": {
+      "prompt_ref": "docs/plans/2026-04-03-living-docs-tree-handoff.md:119",
+      "dispatch": "Work the completion list, starting with shared-state runtime skim and current repo-truth cleanup."
+    },
+    "extra_refs": [
+      "docs/plans/2026-04-03-living-docs-tree-handoff.md:136",
+      "docs/tasks.md:29",
+      "docs/indexes/plugin-source-seed-registry.md:49"
+    ]
+  },
+  "open_disagreements": [],
+  "proof_status": "local-only",
+  "drift_status": "tracked",
+  "heartbeats": {
+    "coordination": {
+      "last_updated_at": "2026-04-03T20:34:11Z",
+      "status": "tracked",
+      "next_move": "Run the living-docs refresh workflow remotely once so runtime records remote proof.",
+      "blocked": false
+    },
+    "drift": {
+      "last_updated_at": "2026-04-03T20:34:11Z",
+      "status": "tracked",
+      "flags": [
+        "remote living-docs refresh proof missing"
+      ]
+    }
+  },
+  "repo_delta": {
+    "compared_base": null,
+    "compared_head": null,
+    "files": []
+  },
+  "extension_policy": {
+    "resolved": true,
+    "summary": "Legacy plugin docs stay source seeds and K12 plans stay source-seed overlays."
+  },
+  "remote_proof": {
+    "status": "missing",
+    "run_id": null,
+    "run_url": null,
+    "verified_at": null
+  },
+  "blocked": {
+    "status": "tracked",
+    "reasons": [
+      "remote living-docs refresh proof missing"
+    ]
+  }
+}

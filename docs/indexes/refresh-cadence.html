@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Refresh Cadence</title>
+  <link rel="stylesheet" href="../assets/living-docs-ui.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero">
+      <span class="eyebrow">Refresh Cadence · Human Skim</span>
+      <h1>One workflow is automated.<br />The rest is still disciplined manual ops.</h1>
+      <p class="sub">
+        This page separates what the repo actually automates from what the team currently does by procedure. The only
+        coded automation today is the weekly stale-check workflow. Daily review lanes and most weekly refresh work are
+        still human-owned.
+      </p>
+      <div class="stats">
+        <div class="stat">
+          <div class="num">2</div>
+          <div class="label">active chains to refresh</div>
+        </div>
+        <div class="stat">
+          <div class="num">1</div>
+          <div class="label">coded workflow in repo</div>
+        </div>
+        <div class="stat">
+          <div class="num">1</div>
+          <div class="label">manual refresh already executed</div>
+        </div>
+        <div class="stat">
+          <div class="num">1</div>
+          <div class="label">remote proof still missing</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Automated Now</span>
+          <h2>What the repo can already run on schedule</h2>
+        </div>
+        <ul>
+          <li><code>.github/workflows/stale-check.yml</code> runs Mondays at 09:00 UTC</li>
+          <li>the workflow drives <code>pnpm docs:stale-check:write</code></li>
+          <li>local proof exists for stale-check generation and verification</li>
+          <li>first remote execution is still a maturity gap, not an assumed fact</li>
+        </ul>
+        <div class="callout" style="margin-top:14px">
+          Proven scope: stale-check generation and verification. Not proven yet: remote execution plus any automatic skim-page refresh.
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Manual Now</span>
+          <h2>What still depends on operator review</h2>
+        </div>
+        <ul>
+          <li>updating <code>docs/tasks.md</code> after real repo deltas</li>
+          <li>refreshing presearch and brainlift only when evidence actually moved</li>
+          <li>reviewing hidden plugin gates in settings, tool routing, and registry logic</li>
+          <li>keeping the accepted extension source-seed policy visible until a later product decision changes it</li>
+        </ul>
+        <div class="grid2" style="margin-top:14px">
+          <a class="tile link-card" href="../tasks.html"><strong>updates tasks</strong><p class="muted">controller source of truth</p></a>
+          <a class="tile link-card" href="stale-report.html"><strong>updates stale report</strong><p class="muted">artifact freshness readout</p></a>
+          <a class="tile link-card" href="../artifacts/verification/chatbox-living-docs/index.html"><strong>updates verification</strong><p class="muted">proof ledger when evidence changes</p></a>
+          <a class="tile link-card" href="../artifacts/drift/chatbox-living-docs/index.html"><strong>updates drift</strong><p class="muted">repair packets and active mismatches</p></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Cadence Split</span>
+        <h2>What happens daily, weekly, monthly</h2>
+      </div>
+      <div class="timeline">
+        <div class="time-col">
+          <span class="pill ok">Daily</span>
+          <p class="muted">manual current</p>
+          <div class="step">
+            <span class="dot">1</span>
+            <div>
+              <strong>Controller sync</strong>
+              <p class="muted">update <a href="../runbooks/index.html#daily"><code>docs/tasks.md</code></a> if priorities or proof state changed</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="dot">2</span>
+            <div>
+              <strong>Local stale scan</strong>
+              <p class="muted">run <code>pnpm docs:stale-check</code> during active docs waves</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="dot">3</span>
+            <div>
+              <strong>Proof and drift sync</strong>
+              <p class="muted">touch verification and drift artifacts only when evidence changed</p>
+            </div>
+          </div>
+        </div>
+        <div class="time-col">
+          <span class="pill warn">Weekly</span>
+          <p class="muted">mixed: one workflow automated, rest manual current</p>
+          <div class="step">
+            <span class="dot">1</span>
+            <div>
+              <strong>Write stale report</strong>
+              <p class="muted">run <a href="../runbooks/index.html#weekly"><code>pnpm docs:stale-check:write</code></a></p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="dot">2</span>
+            <div>
+              <strong>Refresh active chains</strong>
+              <p class="muted">review both <code>chatbox-living-docs</code> and <code>chatbridge-plugin-platform</code></p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="dot">3</span>
+            <div>
+              <strong>Recheck gates</strong>
+              <p class="muted">settings routes, tool routing, registry filters, and whether remote workflow proof has landed</p>
+            </div>
+          </div>
+        </div>
+        <div class="time-col">
+          <span class="pill">Monthly</span>
+          <p class="muted">manual current, partly aspirational</p>
+          <div class="step">
+            <span class="dot">1</span>
+            <div>
+              <strong>Archive and schema review</strong>
+              <p class="muted">check whether <a href="../runbooks/index.html#monthly">hot-path artifacts should be archived or stabilized</a></p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="dot">2</span>
+            <div>
+              <strong>Skill and agent review</strong>
+              <p class="muted">confirm the docs runtime still matches the repo’s active work shape</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Chain Scope</span>
+          <h2>What this cadence protects</h2>
+        </div>
+        <ul>
+          <li><code>chatbox-living-docs</code>: keep the docs-runtime pilot honest about maturity</li>
+          <li><code>chatbridge-plugin-platform</code>: keep migrated plugin docs aligned with shipped repo constraints</li>
+          <li>legacy plugin docs: maintain canonical backlinks even before final replacement decisions</li>
+        </ul>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Approval Read</span>
+          <h2>What follows from this page</h2>
+        </div>
+        <div class="callout warm">
+          The next improvement is not “invent more cadence.” It is proving the one scheduled workflow remotely, then
+          deciding whether more of the daily loop should be scripted or remain manual for now.
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="../assets/living-docs-mini-map.js"></script>
+</body>
+</html>

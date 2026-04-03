@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbox-plugin-corpus-migration-plan",
+  "artifact_type": "plan",
+  "project_id": "chatbox",
+  "title": "Chatbox Plugin Corpus Migration Plan",
+  "status": "proposed",
+  "phase": "plan",
+  "owners": ["architect", "pm", "repair"],
+  "upstream_ids": [
+    "chatbox-living-docs-drift-report"
+  ],
+  "downstream_ids": [],
+  "last_refreshed_at": "2026-03-31",
+  "freshness": {
+    "score": 0.85,
+    "state": "fresh"
+  },
+  "confidence": "high",
+  "evidence": {
+    "verified": 7,
+    "inferred": 5,
+    "missing": 1
+  },
+  "acceptance_criteria": [
+    "Source corpus named",
+    "Migration mapping defined",
+    "Decision on source doc handling recommended"
+  ],
+  "open_questions": [
+    "Should migrated plugin artifacts live under `chatbridge-plugin-platform` or another slug?"
+  ],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Initial plugin corpus migration plan"
+}

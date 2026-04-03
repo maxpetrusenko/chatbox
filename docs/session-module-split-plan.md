@@ -1,3 +1,4 @@
+Human skim: `docs/reference-index.html#storage`
 # Session Module Split Plan
 
 **Purpose**: Document the dependency analysis and proposed module split for `src/renderer/stores/sessionActions.ts` (1799 lines) to enable safe refactoring without circular imports.

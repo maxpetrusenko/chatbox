@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "artifact_id": "chatbridge-plugin-platform-plan",
+  "artifact_type": "plan",
+  "project_id": "chatbox",
+  "title": "ChatBridge Plugin Platform Plan",
+  "status": "proposed",
+  "phase": "plan",
+  "owners": ["architect", "ui-agent", "pm"],
+  "upstream_ids": [
+    "chatbridge-plugin-platform-brainlift"
+  ],
+  "downstream_ids": [
+    "chatbridge-plugin-platform-implementation-contract",
+    "chatbridge-plugin-platform-verification-ledger"
+  ],
+  "last_refreshed_at": "2026-03-31",
+  "freshness": {
+    "score": 0.87,
+    "state": "fresh"
+  },
+  "confidence": "high",
+  "evidence": {
+    "verified": 5,
+    "inferred": 5,
+    "missing": 1
+  },
+  "acceptance_criteria": [
+    "Six canonical lanes defined",
+    "Shipped gates included as first-class plan content",
+    "Next implementation and verification artifacts implied"
+  ],
+  "open_questions": [
+    "Should Lane 6 be visualized as overlay or primary lane?"
+  ],
+  "stale_inputs": [],
+  "stale_downstream": [],
+  "supersedes": null,
+  "change_summary": "Initial canonical plugin-platform plan"
+}

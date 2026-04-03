@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Living Docs Control Center</title>
+  <link rel="stylesheet" href="../assets/living-docs-ui.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero">
+      <span class="eyebrow">Chatbox · Control Center · Human Skim</span>
+      <h1>Approve the shipped plugin story.<br />Then approve the docs runtime around it.</h1>
+      <p class="sub">
+        `chatbox` already ships two concrete plugin settings routes, a heuristic tool-injection layer, and a
+        K12/auth-filtered registry. This hub exists so Max can review that real surface area, then decide how far the
+        living-docs runtime should formalize it.
+      </p>
+      <div class="meta">
+        <span class="tag">#installed-plugins</span>
+        <span class="tag">#plugin-drop</span>
+        <span class="tag">#stream-text</span>
+        <span class="tag">#plugin-registry</span>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div class="num">2</div>
+          <div class="label">canonical chains in play</div>
+        </div>
+        <div class="stat">
+          <div class="num">4</div>
+          <div class="label">shipped gate classes to expose</div>
+        </div>
+        <div class="stat">
+          <div class="num">15/15</div>
+          <div class="label">artifact states fresh in scan scope</div>
+        </div>
+        <div class="stat">
+          <div class="num">1</div>
+          <div class="label">approval call still open</div>
+        </div>
+      </div>
+      <div class="callout warm">
+        Freshness here inherits <a href="stale-report.html">the stale report scope</a>: artifact <code>state.json</code>
+        files plus six legacy backlinks. It is not a claim that every skim page is auto-verified.
+      </div>
+    </section>
+
+    <section class="grid3">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Shipped UI</span>
+          <h2>Installed Plugins is the real operator surface</h2>
+        </div>
+        <div class="mini">
+          <p><code>src/renderer/routes/settings/plugins.tsx</code></p>
+          <ul>
+            <li>role-based copy changes by signed-out, student, teacher, admin state</li>
+            <li>enable and delete actions are permission-gated</li>
+            <li>tool badges now say <code>AI intent gated</code></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Shipped UI</span>
+          <h2>Plugin Drop is a K12 review flow, not a generic upload page</h2>
+        </div>
+        <div class="mini">
+          <p><code>src/renderer/routes/settings/plugins-drop.tsx</code></p>
+          <ul>
+            <li>drop and manifest review require the desktop runtime</li>
+            <li>teachers can request; students cannot install</li>
+            <li>district API keys stay encrypted and admin-managed</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Runtime Gate</span>
+          <h2>The model never sees every plugin tool by default</h2>
+        </div>
+        <div class="mini">
+          <p><code>src/renderer/packages/model-calls/stream-text.ts</code> + <code>src/renderer/stores/pluginRegistry.ts</code></p>
+          <ul>
+            <li><code>shouldEnablePluginTools(...)</code> and active inline-app state decide when plugin tools enter the prompt</li>
+            <li>K12 scope, app auth, hidden builtins, and student connection state still filter the registry</li>
+            <li>docs must show the full gate stack above the fold or they misstate shipped behavior</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Approval Lens</span>
+          <h2>What Max is actually approving here</h2>
+        </div>
+        <div class="callout warm">
+          Not a reusable docs framework. This control center is a product-ops layer for one repo: how plugin reality,
+          canonical artifacts, and refresh proof stay aligned as the plugin platform and living-docs runtime evolve.
+        </div>
+      </div>
+      <div class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Open Decisions</span>
+          <h2>What still needs proof</h2>
+        </div>
+        <ul>
+          <li>verify one remote run of <code>.github/workflows/stale-check.yml</code></li>
+          <li>keep extension plans as source-seed overlays unless a new canonical branch is explicitly approved later</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <a class="card panel link-card" href="artifacts-index.html">
+        <div class="section-head">
+          <span class="eyebrow">Artifact Graph</span>
+          <h2>Which chains are authoritative right now</h2>
+        </div>
+        <div class="callout warm">
+          Compare the living-docs pilot chain with the migrated ChatBridge plugin chain, phase by phase.
+        </div>
+      </a>
+      <a class="card panel link-card" href="plugin-source-seed-registry.html">
+        <div class="section-head">
+          <span class="eyebrow">Legacy Plugin Docs</span>
+          <h2>Which old docs still matter and why</h2>
+        </div>
+        <div class="callout">
+          See which source-seed docs still contain original architectural thinking and where humans should route instead.
+        </div>
+      </a>
+      <a class="card panel link-card" href="refresh-cadence.html">
+        <div class="section-head">
+          <span class="eyebrow">Refresh Loop</span>
+          <h2>What runs daily, weekly, and what still lacks proof</h2>
+        </div>
+        <div class="callout warm">
+          Ties <code>docs/tasks.md</code>, stale-check scripts, and weekly review work to actual repo files.
+        </div>
+      </a>
+      <a class="card panel link-card" href="stale-report.html">
+        <div class="section-head">
+          <span class="eyebrow">Freshness</span>
+          <h2>Where the docs are green but maturity is still incomplete</h2>
+        </div>
+        <div class="callout">
+          All tracked artifacts are fresh, but remote schedule proof still gates maturity.
+        </div>
+      </a>
+      <a class="card panel link-card" href="../decisions/index.html">
+        <div class="section-head">
+          <span class="eyebrow">Governance</span>
+          <h2>Where the remaining policy calls actually close</h2>
+        </div>
+        <div class="callout warm">
+          The extension policy is now explicit. Route final “done” ownership through the decisions hub and remote-proof nodes, not scattered page notes.
+        </div>
+      </a>
+      <a class="card panel link-card" href="swarm-dispatch-board.html">
+        <div class="section-head">
+          <span class="eyebrow">Active Work</span>
+          <h2>Which lanes are consuming attention now</h2>
+        </div>
+        <div class="callout warm">
+          See current chain state, priority order, and why verification plus drift stay in the loop.
+        </div>
+      </a>
+      <a class="card panel link-card" href="../tasks.html">
+        <div class="section-head">
+          <span class="eyebrow">Controller</span>
+          <h2>What the next implementation move actually is</h2>
+        </div>
+        <div class="callout">
+          The task board translates artifact theory into the remaining concrete runtime automation steps.
+        </div>
+      </a>
+      <a class="card panel link-card" href="../artifacts/runtime/current/index.html">
+        <div class="section-head">
+          <span class="eyebrow">Runtime Memory</span>
+          <h2>How real the docs runtime is today</h2>
+        </div>
+        <div class="callout warm">
+          Read the current state files before assuming the runtime heartbeats are already automated.
+        </div>
+      </a>
+      <a class="card panel link-card" href="../plugin-api.html">
+        <div class="section-head">
+          <span class="eyebrow">Plugin Contract</span>
+          <h2>What the host, widget, and auth layers actually promise</h2>
+        </div>
+        <div class="callout">
+          Manifest, postMessage, host-owned auth, and inline-app mounting tied to the shipped code paths.
+        </div>
+      </a>
+      <a class="card panel link-card" href="../reference-index.html">
+        <div class="section-head">
+          <span class="eyebrow">Deep Refs</span>
+          <h2>Which markdown docs answer which human questions</h2>
+        </div>
+        <div class="callout warm">
+          Use this when you need the exact implementation detail behind the skim pages.
+        </div>
+      </a>
+      <a class="card panel link-card" href="../agents/index.html">
+        <div class="section-head">
+          <span class="eyebrow">Swarm Roles</span>
+          <h2>Who owns research, UI, proof, and repair in this repo</h2>
+        </div>
+        <div class="callout">
+          The hub is about `chatbox`’s docs/runtime workload, not a generic multi-agent pattern.
+        </div>
+      </a>
+    </section>
+
+    <section class="card panel">
+      <div class="section-head">
+        <span class="eyebrow">Review Flow</span>
+        <h2>How a repo fact becomes an approval surface</h2>
+      </div>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 1060 280" role="img" aria-label="Chatbox docs approval flow">
+          <defs>
+            <marker id="arr" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+              <path d="M0,0 L12,6 L0,12 z" fill="#9f4d2f" />
+            </marker>
+          </defs>
+          <rect x="24" y="34" rx="22" ry="22" width="214" height="100" fill="#fff" stroke="#ddd2c0" />
+          <text x="52" y="68" font-size="14" fill="#6f675d">repo surface</text>
+          <text x="52" y="98" font-size="24" font-family="Georgia" fill="#1c1814">Settings routes</text>
+          <text x="52" y="122" font-size="16" fill="#6f675d">plugins + plugin-drop</text>
+
+          <rect x="286" y="34" rx="22" ry="22" width="214" height="100" fill="#fff" stroke="#ddd2c0" />
+          <text x="314" y="68" font-size="14" fill="#6f675d">gates</text>
+          <text x="314" y="98" font-size="24" font-family="Georgia" fill="#1c1814">Runtime filters</text>
+          <text x="314" y="122" font-size="16" fill="#6f675d">desktop, K12, auth, heuristics</text>
+
+          <rect x="548" y="34" rx="22" ry="22" width="214" height="100" fill="#fff" stroke="#ddd2c0" />
+          <text x="576" y="68" font-size="14" fill="#6f675d">canon</text>
+          <text x="576" y="98" font-size="24" font-family="Georgia" fill="#1c1814">Artifact chain</text>
+          <text x="576" y="122" font-size="16" fill="#6f675d">presearch to drift</text>
+
+          <rect x="810" y="34" rx="22" ry="22" width="214" height="100" fill="#fff" stroke="#ddd2c0" />
+          <text x="838" y="68" font-size="14" fill="#6f675d">human skim</text>
+          <text x="838" y="98" font-size="24" font-family="Georgia" fill="#1c1814">Approval screen</text>
+          <text x="838" y="122" font-size="16" fill="#6f675d">what exists, risk, next</text>
+
+          <path d="M238 84H278" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+          <path d="M500 84H540" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+          <path d="M762 84H802" stroke="#9f4d2f" stroke-width="4" marker-end="url(#arr)" />
+
+          <rect x="300" y="176" rx="18" ry="18" width="458" height="68" fill="rgba(24,78,74,.08)" stroke="#ddd2c0" />
+          <text x="328" y="204" font-size="14" fill="#6f675d">why this control center exists</text>
+          <text x="328" y="228" font-size="21" font-family="Georgia" fill="#1c1814">
+            Keep the skim layer tied to code paths, not documentation-system abstractions
+          </text>
+        </svg>
+      </div>
+    </section>
+  </main>
+  <script src="../assets/living-docs-mini-map.js"></script>
+</body>
+</html>

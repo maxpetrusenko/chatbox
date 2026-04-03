@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Decision Records</title>
+  <link rel="stylesheet" href="../assets/living-docs-ui.css" />
+</head>
+<body>
+  <main class="page">
+    <section class="card hero">
+      <span class="eyebrow">Decisions · Human Skim</span>
+      <h1>Accepted calls.<br />Remote proof still gates completion.</h1>
+      <p class="sub">
+        This page is the contract boundary for the tree. The accepted ADRs define graph shape, human-versus-machine
+        pairing, and current treatment of old plugin docs. Extension plans now stay source-seed overlays under current
+        policy. The remaining incomplete trust edge is remote stale-check proof.
+      </p>
+    </section>
+
+    <section class="grid2">
+      <a class="card panel link-card" href="../indexes/plugin-source-seed-registry.html">
+        <div class="section-head">
+          <span class="eyebrow">Resolved Policy</span>
+          <h2>Extension plans stay source-seed overlays for now</h2>
+        </div>
+        <p class="muted">The registry now records the explicit policy: no K12 extension overlay becomes canonical in the current tree.</p>
+      </a>
+      <a class="card panel link-card" href="../indexes/stale-report.html">
+        <div class="section-head">
+          <span class="eyebrow">Related Gate</span>
+          <h2>Freshness green still does not close maturity</h2>
+        </div>
+        <p class="muted">Remote stale-check proof still gates a full “done” claim even after the extension policy is explicit.</p>
+      </a>
+      <a class="card panel link-card" href="../indexes/refresh-cadence.html">
+        <div class="section-head">
+          <span class="eyebrow">Operational Gate</span>
+          <h2>Remote stale-check proof is part of completion, not a side note</h2>
+        </div>
+        <p class="muted">Use the cadence node to verify the first remote workflow run before claiming the tree is direction-complete.</p>
+      </a>
+      <a class="card panel link-card" href="../artifacts/runtime/current/index.html">
+        <div class="section-head">
+          <span class="eyebrow">Runtime Read</span>
+          <h2>Shared state now shows the live blocker set</h2>
+        </div>
+        <p class="muted">The runtime node carries the active intent, handoff refs, and the remaining remote-proof blocker.</p>
+      </a>
+    </section>
+
+    <section class="grid3">
+      <div id="adr-0001" class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Accepted</span>
+          <h2>Canonical artifact graph</h2>
+        </div>
+        <p class="muted"><a href="./0001-canonical-artifact-graph.md">0001-canonical-artifact-graph.md</a> answers how truth flows through <code>docs/artifacts/*</code>.</p>
+      </div>
+      <div id="adr-0002" class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Accepted</span>
+          <h2>Human projection + machine sidecar</h2>
+        </div>
+        <p class="muted"><a href="./0002-dual-artifact-pairing.md">0002-dual-artifact-pairing.md</a> answers how humans and agents read the same artifact.</p>
+      </div>
+      <div id="adr-0003" class="card panel">
+        <div class="section-head">
+          <span class="eyebrow">Current Policy</span>
+          <h2>Legacy plugin docs stay source seeds</h2>
+        </div>
+        <p class="muted"><a href="./0003-plugin-corpus-source-seed.md">0003-plugin-corpus-source-seed.md</a> answers how the old plugin corpus is treated today.</p>
+      </div>
+    </section>
+  </main>
+  <script src="../assets/living-docs-mini-map.js"></script>
+</body>
+</html>

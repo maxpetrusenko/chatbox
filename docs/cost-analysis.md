@@ -1,3 +1,4 @@
+Human skim: `docs/reference-index.html#requirements`
 # ChatBridge Cost Analysis
 
 ## Assumptions
