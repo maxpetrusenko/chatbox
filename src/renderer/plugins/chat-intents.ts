@@ -383,7 +383,7 @@ export function resolvePluginChatIntent(text: string): PluginChatIntent | null {
   }
 
   const weatherMatch = normalized.match(
-    /(?:^|\b)(?:what(?:'s| is) the weather|show weather|weather|forecast)(?:\s+(?:in|for))\s+(.+)$/
+    /(?:^|\b)(?:what(?:'s| is) the weather|show weather|check weather|weather|forecast)(?:.*?\b(?:in|for)\b\s+)(.+)$/
   )
   if (isInstalledPlugin('weather') && weatherMatch?.[1]) {
     const city = weatherMatch[1].trim().replace(/[?.!]+$/, '')

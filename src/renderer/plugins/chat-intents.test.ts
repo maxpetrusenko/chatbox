@@ -171,6 +171,14 @@ describe('plugin chat intents', () => {
     })
   })
 
+  it('resolves natural weather phrases that mention using the app', () => {
+    expect(resolvePluginChatIntent('hey check weather using our app in london')).toMatchObject({
+      pluginId: 'weather',
+      toolName: 'lookup_forecast',
+      parameters: { city: 'london' },
+    })
+  })
+
   it('resolves open spotify phrases', () => {
     expect(resolvePluginChatIntent('open spotify')).toMatchObject({
       pluginId: 'spotify',
