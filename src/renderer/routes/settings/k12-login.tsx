@@ -176,7 +176,7 @@ function LoggedInView() {
             void navigate({ to: '/settings/k12-admin' })
           }}
         >
-          {role === 'student' ? 'Open Student Chat' : 'Open K12 Workspace'}
+          {role === 'student' ? 'Open Student Chat' : 'Open Installed Plugins'}
         </Button>
       </Group>
     </Stack>

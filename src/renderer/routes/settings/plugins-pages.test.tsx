@@ -227,7 +227,7 @@ describe('plugin settings routes', () => {
   it('renders marketplace CTAs and navigates from the demo card', () => {
     renderWithMantine(<RouteComponent />)
 
-    expect(screen.getByRole('heading', { name: 'Plugin Marketplace' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Installed Plugins' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Open K12 Login' }))
     expect(navigateSpy).toHaveBeenCalledWith({ to: '/settings/k12-login' })
@@ -270,7 +270,7 @@ describe('plugin settings routes', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open K12 Login' }))
     expect(navigateSpy).toHaveBeenCalledWith({ to: '/settings/k12-login' })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open Plugin Marketplace' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Installed Plugins' }))
     expect(navigateSpy).toHaveBeenCalledWith({ to: '/settings/plugins' })
   })
 

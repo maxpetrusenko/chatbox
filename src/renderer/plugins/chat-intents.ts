@@ -724,7 +724,7 @@ export async function executePluginChatIntent(
     return applyPluginIntentMessageMetadata(
       createMessage(
         'assistant',
-        `${getPluginDisplayName(intent.pluginId)} is not installed. Install it from Plugin Marketplace or Plugin Drop first.`
+        `${getPluginDisplayName(intent.pluginId)} is not installed. Install it from Plugin Drop first, then manage it in Installed Plugins.`
       ),
       metadata
     )
@@ -744,7 +744,7 @@ export async function executePluginChatIntent(
     return applyPluginIntentMessageMetadata(
       createMessage(
         'assistant',
-        `${getPluginDisplayName(intent.pluginId)} is disabled for the current scope. Enable it in Plugin Marketplace first.`
+        `${getPluginDisplayName(intent.pluginId)} is disabled for the current scope. Enable it in Installed Plugins first.`
       ),
       metadata
     )

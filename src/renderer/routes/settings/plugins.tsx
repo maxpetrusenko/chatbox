@@ -506,7 +506,7 @@ export function RouteComponent() {
       <Flex align="center" justify="space-between" gap="xs">
         <Group gap="xs">
           <IconPuzzle size={20} />
-          <Title order={5}>Plugin Marketplace</Title>
+          <Title order={5}>Installed Plugins</Title>
           {isAuthenticated && currentUser && (
             <Badge size="sm" variant="light" color="blue">
               {ROLE_LABELS[currentUser.role] || currentUser.role}

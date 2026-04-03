@@ -7,6 +7,7 @@ import {
   createRouter,
   RouterProvider,
   useLocation,
+  useNavigate,
 } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { type FC, useCallback, useEffect } from 'react'
@@ -272,6 +273,15 @@ export function createSettingsModalRouter(history = createMemoryHistory()) {
     routeTree,
     history,
     defaultPreload: 'intent',
+    defaultNotFoundComponent: () => {
+      const navigate = useNavigate()
+
+      useEffect(() => {
+        navigate({ to: '/settings/plugins', replace: true })
+      }, [navigate])
+
+      return null
+    },
     scrollRestoration: true,
   })
 }

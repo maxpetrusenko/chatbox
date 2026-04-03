@@ -699,7 +699,7 @@ export function RouteComponent() {
                 Open K12 Login
               </Button>
               <Button size="sm" variant="light" onClick={() => void navigate({ to: '/settings/plugins' })}>
-                Open Plugin Marketplace
+                Open Installed Plugins
               </Button>
             </Group>
           </Stack>
@@ -722,7 +722,7 @@ export function RouteComponent() {
             </Alert>
             <Group>
               <Button size="sm" variant="light" onClick={() => void navigate({ to: '/settings/plugins' })}>
-                Open Plugin Marketplace
+                Open Installed Plugins
               </Button>
             </Group>
           </Stack>

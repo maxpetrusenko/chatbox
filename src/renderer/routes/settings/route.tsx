@@ -78,7 +78,7 @@ const ITEMS = [
   },
   {
     key: 'plugins',
-    label: 'Plugin Marketplace',
+    label: 'Installed Plugins',
     icon: <IconPuzzle className="w-full h-full" />,
   },
   {

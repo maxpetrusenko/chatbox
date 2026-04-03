@@ -512,7 +512,10 @@ describe('plugin chat intents', () => {
     })
 
     expect(message.contentParts).toEqual([
-      { type: 'text', text: 'Weather Lab is not installed. Install it from Plugin Marketplace or Plugin Drop first.' },
+      {
+        type: 'text',
+        text: 'Weather Lab is not installed. Install it from Plugin Drop first, then manage it in Installed Plugins.',
+      },
     ])
   })
 
@@ -539,7 +542,10 @@ describe('plugin chat intents', () => {
     })
 
     expect(message.contentParts).toEqual([
-      { type: 'text', text: 'Weather Lab is not installed. Install it from Plugin Marketplace or Plugin Drop first.' },
+      {
+        type: 'text',
+        text: 'Weather Lab is not installed. Install it from Plugin Drop first, then manage it in Installed Plugins.',
+      },
     ])
   })
 
@@ -556,7 +562,10 @@ describe('plugin chat intents', () => {
     })
 
     expect(message.contentParts).toEqual([
-      { type: 'text', text: 'Weather Lab is not installed. Install it from Plugin Marketplace or Plugin Drop first.' },
+      {
+        type: 'text',
+        text: 'Weather Lab is not installed. Install it from Plugin Drop first, then manage it in Installed Plugins.',
+      },
     ])
   })
 
@@ -591,7 +600,7 @@ describe('plugin chat intents', () => {
     })
 
     expect(message.contentParts).toEqual([
-      { type: 'text', text: 'Chess is disabled for the current scope. Enable it in Plugin Marketplace first.' },
+      { type: 'text', text: 'Chess is disabled for the current scope. Enable it in Installed Plugins first.' },
     ])
   })
 
