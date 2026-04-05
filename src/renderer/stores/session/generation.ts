@@ -28,6 +28,7 @@ import { generateImage, streamText } from '@/packages/model-calls'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
 import { estimateTokensFromMessages } from '@/packages/token'
 import platform from '@/platform'
+import { getPluginAccessState } from '@/plugins/plugin-access'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { trackEvent } from '@/utils/track'
@@ -65,6 +66,7 @@ function buildPluginContextText(sessionId: string): string | null {
     const manifest = store.getManifest(instance.pluginId)
     const name = manifest?.name || instance.pluginId
     const authSegment = instance.authStatus && instance.authStatus !== 'none' ? ` auth=${instance.authStatus}.` : ''
+    const access = manifest ? getPluginAccessState(manifest) : null
     if (instance.lastCompletion) {
       lines.push(`- ${name}: completed.${authSegment} Summary: ${instance.lastCompletion.summary}`)
       continue
@@ -72,6 +74,10 @@ function buildPluginContextText(sessionId: string): string | null {
     if (instance.lastState) {
       const summary = JSON.stringify(instance.lastState).slice(0, 1200)
       lines.push(`- ${name}: status=${instance.status}.${authSegment} Latest state: ${summary}`)
+      continue
+    }
+    if (access?.launchBlockedMessage) {
+      lines.push(`- ${name}: blocked.${authSegment} ${access.launchBlockedMessage}`)
       continue
     }
     lines.push(`- ${name}: status=${instance.status}.${authSegment} Widget mounted and awaiting interaction.`)

@@ -1,6 +1,6 @@
 import { createMessage, type Message } from '@shared/types'
 import { getPluginToolSet, isPluginMountToolResult } from '@/packages/model-calls/toolsets/plugin-tools'
-import { getPluginAppAuthBlockedMessage, hasRequiredAppAuth } from '@/plugins/plugin-access'
+import { getPluginAccessState } from '@/plugins/plugin-access'
 import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
 import { hiddenBuiltinPluginsStore } from '@/stores/hiddenBuiltinPluginsStore'
 import { k12Store } from '@/stores/k12Store'
@@ -68,11 +68,13 @@ const ACTIVE_APP_QUERY =
   /(?:^|\b)(?:what|which|show|list|is)\b(?: .*?)\b(?:app|apps|application|applications|plugin|plugins|tool|tools|game|games)\b(?: .*?)\b(?:open|active|running)\b/
 const ANY_ACTIVE_APP_QUERY = /(?:^|\b)is(?: .*?)\b(?:anything|something)\b(?: .*?)\b(?:open|active|running)\b/
 const SHORT_PLUGIN_FOLLOWUP = /^(continue|resume|keep going|go on|again|next|another)\b/
-const DEICTIC_PLUGIN_FOLLOWUP = /^(what about|how about)\b|\b(what should i do|what do i do|what now|next move|my move|your move|here|there|this position|this board)\b/
+const DEICTIC_PLUGIN_FOLLOWUP =
+  /^(what about|how about)\b|\b(what should i do|what do i do|what now|next move|my move|your move|here|there|this position|this board)\b/
 const ACTION_PLUGIN_FOLLOWUP =
   /\b(move|castle|search|find|lookup|forecast|playlist|playlists|repo|repos|graph|plot|equation|simulate|simulation)\b/
 const CHESS_MOVE_FOLLOWUP = /\b(?:o-o(?:-o)?|[nbrqk]?[a-h]?[1-8]?x?[a-h][1-8](?:=[nbrq])?[+#]?)\b/i
 const CHESS_COORDINATE_MOVE = /\b[a-h][1-8]\s*(?:to|-)\s*[a-h][1-8]\b/i
+const AUTH_FOLLOWUP = /^(?:login|log in|signin|sign in|authenticate|auth)(?:\s+(?:to|for|into))?(?:\s+(?:this|that|the)?\s*(?:app|plugin|tool|account))?$/i
 
 function normalize(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, ' ')
@@ -368,7 +370,9 @@ function isGameManifest(pluginId: string, name: string, description: string, too
 }
 
 function buildDiscoveryText(topic: 'games' | 'apps' | 'plugins' | 'tools'): string {
-  const manifests = [...getCatalogSnapshot().manifests].sort((left, right) => left.name.localeCompare(right.name))
+  const manifests = [...getCatalogSnapshot().manifests]
+    .filter((manifest) => !getPluginAccessState(manifest).scope.blockedReason)
+    .sort((left, right) => left.name.localeCompare(right.name))
   const allNames = manifests.map((manifest) => manifest.name)
   const gameNames = manifests
     .filter((manifest) =>
@@ -422,7 +426,10 @@ export function shouldEnablePluginTools(text: string, sessionId: string): boolea
     return true
   }
 
-  if (resolveActivePluginStatusMessage(normalized, sessionId) || resolveGenericPluginActionMessage(normalized, sessionId)) {
+  if (
+    resolveActivePluginStatusMessage(normalized, sessionId) ||
+    resolveGenericPluginActionMessage(normalized, sessionId)
+  ) {
     return false
   }
 
@@ -466,6 +473,35 @@ export function resolvePluginDiscoveryMessage(text: string, metadata?: PluginInt
 
   if (!topic) return null
   return applyPluginIntentMessageMetadata(createMessage('assistant', buildDiscoveryText(topic)), metadata)
+}
+
+export function resolvePluginAuthFollowupMessage(
+  text: string,
+  sessionId: string,
+  metadata?: PluginIntentMessageMetadata
+): Message | null {
+  const normalized = normalize(text)
+  if (!normalized || !AUTH_FOLLOWUP.test(normalized)) return null
+
+  const blockedInstance = pluginRegistryStore
+    .getState()
+    .getInstancesForSession(sessionId)
+    .filter((instance) => instance.status !== 'completed' && instance.status !== 'error')
+    .sort((left, right) => right.createdAt - left.createdAt)
+    .find((instance) => {
+      const manifest = pluginRegistryStore.getState().getManifest(instance.pluginId)
+      return manifest ? getPluginAccessState(manifest).launchBlockedReason === 'app-auth' : false
+    })
+
+  if (!blockedInstance) return null
+
+  const manifest = pluginRegistryStore.getState().getManifest(blockedInstance.pluginId)
+  if (!manifest) return null
+
+  return applyPluginIntentMessageMetadata(
+    buildPluginAssistantMessage(blockedInstance.pluginId, blockedInstance.instanceId, `Sign in to continue with ${manifest.name}.`),
+    metadata
+  )
 }
 
 function getCloseableInstance(pluginId: string, sessionId: string) {
@@ -613,7 +649,11 @@ function resolveOpenIntent(text: string, sessionId?: string): PluginChatIntent |
 
   const normalized = normalize(text)
   if (!OPEN_VERB.test(normalized)) return null
-  if (resolveExplicitAppAlias(normalized) || hasGenericChessReference(normalized) || !hasGenericAppReference(normalized)) {
+  if (
+    resolveExplicitAppAlias(normalized) ||
+    hasGenericChessReference(normalized) ||
+    !hasGenericAppReference(normalized)
+  ) {
     return null
   }
 
@@ -717,8 +757,6 @@ export async function executePluginChatIntent(
 ): Promise<Message> {
   const store = pluginRegistryStore.getState()
   const manifest = isHiddenManifest(intent.pluginId) ? undefined : store.getManifest(intent.pluginId)
-  const appAuthBlockedMessage =
-    manifest && !hasRequiredAppAuth(manifest) ? getPluginAppAuthBlockedMessage(manifest) : null
 
   if (!manifest) {
     return applyPluginIntentMessageMetadata(
@@ -730,21 +768,38 @@ export async function executePluginChatIntent(
     )
   }
 
-  if (appAuthBlockedMessage) {
-    return applyPluginIntentMessageMetadata(createMessage('assistant', appAuthBlockedMessage), metadata)
-  }
+  const access = getPluginAccessState(manifest)
 
   const k12State = k12Store.getState()
   if (
     !intent.requiresActiveInstance &&
     k12State.isAuthenticated &&
     k12State.currentUser &&
-    !k12State.isPluginActiveForCurrentScope(intent.pluginId)
+    access.scope.blockedReason === 'disabled'
   ) {
+    const instance =
+      store.getActiveInstanceForPlugin(intent.pluginId, sessionId) ?? store.createInstance(intent.pluginId, sessionId)
+    if (instance) {
+      return applyPluginIntentMessageMetadata(
+        buildPluginAssistantMessage(intent.pluginId, instance.instanceId, intent.assistantText),
+        metadata
+      )
+    }
+  }
+
+  if (access.launchBlockedReason) {
+    const instance =
+      store.getActiveInstanceForPlugin(intent.pluginId, sessionId) ?? store.createInstance(intent.pluginId, sessionId)
+    if (instance) {
+      return applyPluginIntentMessageMetadata(
+        buildPluginAssistantMessage(intent.pluginId, instance.instanceId, intent.assistantText),
+        metadata
+      )
+    }
     return applyPluginIntentMessageMetadata(
       createMessage(
         'assistant',
-        `${getPluginDisplayName(intent.pluginId)} is disabled for the current scope. Enable it in Installed Plugins first.`
+        access.launchBlockedMessage || `${getPluginDisplayName(intent.pluginId)} is not available right now.`
       ),
       metadata
     )
@@ -800,18 +855,11 @@ export async function executePluginChatIntent(
       const result = await execute(intent.parameters || {})
       if (isPluginMountToolResult(result)) {
         return applyPluginIntentMessageMetadata(
-          buildPluginAssistantMessage(
-            intent.pluginId,
-            result.pluginMount.instanceId,
-            appAuthBlockedMessage || intent.assistantText
-          ),
+          buildPluginAssistantMessage(intent.pluginId, result.pluginMount.instanceId, intent.assistantText),
           metadata
         )
       }
-      return applyPluginIntentMessageMetadata(
-        createMessage('assistant', appAuthBlockedMessage || intent.assistantText),
-        metadata
-      )
+      return applyPluginIntentMessageMetadata(createMessage('assistant', intent.assistantText), metadata)
     }
   }
 
@@ -820,15 +868,11 @@ export async function executePluginChatIntent(
     instance = store.createInstance(intent.pluginId, sessionId)
   }
   if (!instance) {
-    const blockedMessage = manifest ? getPluginAppAuthBlockedMessage(manifest) : null
-    if (blockedMessage) {
-      return applyPluginIntentMessageMetadata(createMessage('assistant', blockedMessage), metadata)
-    }
     throw new Error(`Failed to open plugin: ${intent.pluginId}`)
   }
 
   return applyPluginIntentMessageMetadata(
-    buildPluginAssistantMessage(intent.pluginId, instance.instanceId, appAuthBlockedMessage || intent.assistantText),
+    buildPluginAssistantMessage(intent.pluginId, instance.instanceId, intent.assistantText),
     metadata
   )
 }

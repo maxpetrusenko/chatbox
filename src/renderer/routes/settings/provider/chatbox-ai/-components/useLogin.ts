@@ -12,8 +12,25 @@ interface UseLoginParams {
   onLoginSuccess: (tokens: { accessToken: string; refreshToken: string }) => Promise<void>
 }
 
-const getLanguagePath = (language: string) => {
+export const getLanguagePath = (language: string) => {
   return language === 'zh-Hans' || language === 'zh-Hant' ? 'zh' : language.toLowerCase()
+}
+
+export async function startChatboxLoginFlow(
+  language: string,
+  options?: {
+    openInBrowser?: boolean
+  }
+): Promise<{ loginUrl: string; ticketId: string }> {
+  const ticketId = await requestLoginTicketId()
+  const loginUrl = `${getChatboxOrigin()}/${getLanguagePath(language)}/authorize?ticket_id=${ticketId}`
+
+  if (options?.openInBrowser) {
+    console.log('Opening browser for login:', loginUrl)
+    await platform.openLink(loginUrl)
+  }
+
+  return { loginUrl, ticketId }
 }
 
 export function useLogin({ language, onLoginSuccess }: UseLoginParams) {
@@ -32,17 +49,11 @@ export function useLogin({ language, onLoginSuccess }: UseLoginParams) {
       setLoginError('')
       loginSuccessHandled.current = false
 
-      const ticket = await requestLoginTicketId()
+      const { ticketId: ticket, loginUrl: url } = await startChatboxLoginFlow(language, {
+        openInBrowser: platform.type !== 'web',
+      })
       setTicketId(ticket)
-
-      const url = `${getChatboxOrigin()}/${getLanguagePath(language)}/authorize?ticket_id=${ticket}`
       setLoginUrl(url)
-
-      // 对于 web 平台，不自动打开链接，让用户自己点击
-      if (platform.type !== 'web') {
-        console.log('Opening browser for login:', url)
-        platform.openLink(url)
-      }
 
       setLoginState('polling')
       pollingStartTime.current = Date.now()

@@ -14,6 +14,7 @@ import {
   executePluginChatIntent,
   resolveActivePluginStatusMessage,
   resolveGenericPluginActionMessage,
+  resolvePluginAuthFollowupMessage,
   resolvePluginChatIntent,
   resolvePluginDiscoveryMessage,
   shouldEnablePluginTools,
@@ -364,6 +365,17 @@ describe('plugin chat intents', () => {
     expect(shouldEnablePluginTools('how are you?', 'session-1')).toBe(false)
   })
 
+  it('reopens the latest auth-blocked plugin when the user says login', () => {
+    const store = pluginRegistryStore.getState()
+    const blocked = store.createInstance('chess', 'session-1')
+    if (!blocked) throw new Error('failed to create blocked instance')
+
+    const message = resolvePluginAuthFollowupMessage('login', 'session-1')
+
+    expect(message?.contentParts[0]).toEqual({ type: 'text', text: 'Sign in to continue with Chess.' })
+    expect(message?.contentParts.some((part) => part.type === 'plugin' && part.pluginId === 'chess')).toBe(true)
+  })
+
   it('enables plugin tools for discovery and active plugin followups', () => {
     expect(shouldEnablePluginTools('what games do we have?', 'session-1')).toBe(true)
 
@@ -395,6 +407,30 @@ describe('plugin chat intents', () => {
     const afterRemove = (resolvePluginDiscoveryMessage('what plugins do we have')?.contentParts[0] as { text: string })
       .text
     expect(afterRemove).not.toContain('Calculator Lab')
+  })
+
+  it('hides disabled apps from discovery lists for managed teacher scope', () => {
+    k12Store.setState((state) => ({
+      ...state,
+      isAuthenticated: true,
+      currentUser: {
+        id: 'user-teacher',
+        email: 'teacher@westfield.edu',
+        name: 'Teacher Demo',
+        role: 'teacher',
+        districtId: 'district-1',
+        schoolId: 'school-1',
+      },
+      classes: state.classes.map((cls) =>
+        cls.teacherId === 'user-teacher'
+          ? { ...cls, activePlugins: cls.activePlugins.filter((pluginId) => pluginId !== 'chess') }
+          : cls
+      ),
+    }))
+
+    const text = (resolvePluginDiscoveryMessage('what apps do we have')?.contentParts[0] as { text: string }).text
+    expect(text).not.toContain('Chess')
+    expect(text).toContain('Weather Lab')
   })
 
   it('closes an active chess game without remounting', async () => {
@@ -477,7 +513,6 @@ describe('plugin chat intents', () => {
 
   it('blocks chess launch when Chatbox AI is signed out', async () => {
     authInfoStore.getState().setTokens({ accessToken: 'stale', refreshToken: 'stale' })
-    const existingInstances = pluginRegistryStore.getState().getInstancesForSession('session-1')
 
     const message = await executePluginChatIntent('session-1', {
       pluginId: 'chess',
@@ -485,8 +520,9 @@ describe('plugin chat intents', () => {
       toolName: 'start_game',
     })
 
-    expect(message.contentParts).toEqual([{ type: 'text', text: 'Sign in to Chatbox AI before using Chess.' }])
-    expect(pluginRegistryStore.getState().getInstancesForSession('session-1')).toEqual(existingInstances)
+    expect(message.contentParts[0]).toEqual({ type: 'text', text: 'Starting Chess.' })
+    expect(message.contentParts.some((part) => part.type === 'plugin' && part.pluginId === 'chess')).toBe(true)
+    expect(pluginRegistryStore.getState().getInstancesForSession('session-1')).toHaveLength(1)
   })
 
   it('does not resolve weather launch when Weather is uninstalled', () => {
@@ -599,9 +635,9 @@ describe('plugin chat intents', () => {
       toolName: 'start_game',
     })
 
-    expect(message.contentParts).toEqual([
-      { type: 'text', text: 'Chess is disabled for the current scope. Enable it in Installed Plugins first.' },
-    ])
+    expect(message.contentParts[0]).toEqual({ type: 'text', text: 'Starting Chess.' })
+    expect(message.contentParts.some((part) => part.type === 'plugin' && part.pluginId === 'chess')).toBe(true)
+    expect(pluginRegistryStore.getState().getInstancesForSession('session-1')).toHaveLength(1)
   })
 
   it('starts a fresh chess instance instead of reusing stale session state', async () => {

@@ -4,14 +4,14 @@
  * Used inside chat Message rendering when a `plugin` content part is encountered.
  */
 
-import { Alert, Stack, Text } from '@mantine/core'
+import { Alert, Badge, Button, Group, Stack, Text } from '@mantine/core'
 import type { AuthStatusMessage } from '@shared/plugin-protocol'
-import { IconAlertCircle } from '@tabler/icons-react'
-import { type FC, memo, useCallback, useEffect, useMemo } from 'react'
-import { getPluginAppAuthBlockedMessage } from '@/plugins/plugin-access'
+import { IconAlertCircle, IconLock } from '@tabler/icons-react'
+import { type FC, memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { setPluginEnabledForCurrentScopeInTellMe } from '@/packages/tellme/k12'
+import { getPluginAccessState } from '@/plugins/plugin-access'
 import { resolvePluginEntrypoint } from '@/plugins/resolve'
-import { navigateToSettings } from '@/modals/Settings'
-import { useChatboxAuthStore } from '@/stores/chatboxAuthStore'
+import { useK12 } from '@/stores/k12Store'
 import { getPluginAuthSetupError, usePluginAuth } from '@/stores/pluginAuthStore'
 import { usePluginRegistry } from '@/stores/pluginRegistry'
 import ChatboxAuthGate from './ChatboxAuthGate'
@@ -22,7 +22,30 @@ interface Props {
   instanceId: string
 }
 
+const K12_AUTH_WIDGET_PLUGIN_ID = '__k12_auth__'
+
+const GenericK12AuthInline: FC = () => {
+  const isAuthenticated = useK12((state) => state.isAuthenticated)
+
+  return (
+    <ChatboxAuthGate
+      authType="k12-login"
+      appName="your school account"
+      message="Sign in with your school account here."
+      defaultExpanded
+    >
+      <Alert color="teal" className="my-2">
+        <Text size="sm">{isAuthenticated ? 'School account signed in.' : 'School account ready.'}</Text>
+      </Alert>
+    </ChatboxAuthGate>
+  )
+}
+
 const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
+  if (pluginId === K12_AUTH_WIDGET_PLUGIN_ID) {
+    return <GenericK12AuthInline />
+  }
+
   const manifest = usePluginRegistry((s) => s.getManifest(pluginId))
   const instance = usePluginRegistry((s) => s.getInstance(instanceId))
   const updateInstanceAuth = usePluginRegistry((s) => s.updateInstanceAuth)
@@ -30,14 +53,23 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
   const authSession = usePluginAuth((s) => s.sessions[pluginId])
   const hydrateAuth = usePluginAuth((s) => s.hydrate)
   const beginAuth = usePluginAuth((s) => s.beginAuth)
-  const chatboxAuthStatus = useChatboxAuthStore((state) => state.status)
-  const isChatboxAiSignedIn = chatboxAuthStatus === 'signed_in'
-  const appAuthStatus = manifest?.appAuth ? (isChatboxAiSignedIn ? 'connected' : 'required') : 'none'
+  useK12((state) => ({
+    currentUser: state.currentUser,
+    isAuthenticated: state.isAuthenticated,
+    classes: state.classes,
+    schools: state.schools,
+    district: state.district,
+    installRecords: state.installRecords,
+  }))
+  const [isUpdatingScope, setIsUpdatingScope] = useState(false)
 
   const entrypointUrl = useMemo(() => {
     if (!manifest) return null
     return resolvePluginEntrypoint(pluginId, manifest.widget.entrypoint)
   }, [pluginId, manifest])
+
+  const access = manifest ? getPluginAccessState(manifest) : null
+  const appAuthStatus = access?.appAuthStatus ?? 'none'
 
   useEffect(() => {
     if (!manifest?.auth || manifest.auth.type === 'api-key') return
@@ -61,19 +93,22 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
   }, [appAuthStatus, authSession?.status, instance, manifest?.appAuth, manifest?.auth, updateInstanceAuth])
 
   const handleAuthRequest = useCallback(() => {
-    if (manifest?.appAuth?.type === 'chatbox-ai-login') {
-      navigateToSettings('/provider/chatbox-ai')
-      return
-    }
-
-    if (manifest?.appAuth?.type === 'k12-login') {
-      navigateToSettings('/settings/k12-login')
-      return
-    }
-
     if (!manifest?.auth || manifest.auth.type === 'api-key') return
     void beginAuth(pluginId, manifest.auth)
-  }, [beginAuth, pluginId, manifest?.appAuth, manifest?.auth])
+  }, [beginAuth, pluginId, manifest?.auth])
+
+  const handleSetPluginEnabled = useCallback(
+    async (enabled: boolean) => {
+      if (!manifest) return
+      try {
+        setIsUpdatingScope(true)
+        await setPluginEnabledForCurrentScopeInTellMe(manifest.id, enabled)
+      } finally {
+        setIsUpdatingScope(false)
+      }
+    },
+    [manifest]
+  )
 
   if (!manifest) {
     return (
@@ -91,7 +126,8 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
             {manifest.name} session archived
           </Text>
           <Text size="sm" c="dimmed">
-            This app session ended or was cleared after refresh. Ask Chatbox to reopen {manifest.name} if you want to use it again.
+            This app session ended or was cleared after refresh. Ask Chatbox to reopen {manifest.name} if you want to
+            use it again.
           </Text>
         </Stack>
       </Alert>
@@ -124,7 +160,7 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
           auth: {
             status: appAuthStatus,
             provider: manifest.appAuth.type,
-            message: getPluginAppAuthBlockedMessage(manifest),
+            message: access?.appAuthMessage,
           },
         }
       : undefined
@@ -163,10 +199,10 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
             status: appAuthStatus,
             authType: manifest.appAuth.type,
             metadata: {
-              message: getPluginAppAuthBlockedMessage(manifest) || undefined,
+              message: access?.appAuthMessage || undefined,
             },
           }
-      : undefined
+        : undefined
 
   const frame = (
     <PluginFrame
@@ -182,15 +218,80 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
     />
   )
 
+  const managedScope = access?.scope.managed && access.scope.isAllowed
+  const canManageScope = managedScope && access?.scope.canManage
+
+  if (access?.scope.blockedReason) {
+    return (
+      <Alert
+        icon={<IconLock size={16} />}
+        color={access.scope.blockedReason === 'disabled' ? 'yellow' : 'red'}
+        className="my-2"
+      >
+        <Stack gap="sm">
+          <Group justify="space-between" align="flex-start">
+            <Stack gap={4}>
+              <Text size="sm" fw={700}>
+                {manifest.name} unavailable
+              </Text>
+              <Text size="sm" c="dimmed">
+                {access.scope.blockedMessage}
+              </Text>
+            </Stack>
+            <Badge size="xs" variant="light" color={access.scope.blockedReason === 'disabled' ? 'yellow' : 'red'}>
+              {access.scope.blockedReason === 'disabled' ? 'Disabled' : 'Blocked'}
+            </Badge>
+          </Group>
+          {access.scope.blockedReason === 'disabled' && access.scope.canManage && (
+            <Button size="xs" onClick={() => void handleSetPluginEnabled(true)} loading={isUpdatingScope}>
+              Enable app
+            </Button>
+          )}
+          {access.scope.blockedReason === 'disabled' && access.scope.isStudent && (
+            <Text size="xs" c="dimmed">
+              Your teacher or admin controls app access for this scope.
+            </Text>
+          )}
+        </Stack>
+      </Alert>
+    )
+  }
+
+  const frameContent = canManageScope ? (
+    <Stack gap="xs" className="my-2">
+      <Group justify="space-between" align="center">
+        <Text size="xs" c="dimmed">
+          Enabled for the current scope
+        </Text>
+        <Button
+          size="compact-xs"
+          variant="subtle"
+          color="red"
+          onClick={() => void handleSetPluginEnabled(false)}
+          loading={isUpdatingScope}
+        >
+          Disable app
+        </Button>
+      </Group>
+      {frame}
+    </Stack>
+  ) : (
+    frame
+  )
+
   if (manifest.appAuth) {
     return (
-      <ChatboxAuthGate authType={manifest.appAuth.type} appName={manifest.name} message={getPluginAppAuthBlockedMessage(manifest) || undefined}>
-        {frame}
+      <ChatboxAuthGate
+        authType={manifest.appAuth.type}
+        appName={manifest.name}
+        message={access?.appAuthMessage || undefined}
+      >
+        {frameContent}
       </ChatboxAuthGate>
     )
   }
 
-  return frame
+  return frameContent
 }
 
 export default memo(PluginFrameInline)

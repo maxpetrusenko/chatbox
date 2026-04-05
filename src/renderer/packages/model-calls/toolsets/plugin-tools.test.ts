@@ -2,16 +2,13 @@
  * @vitest-environment jsdom
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PluginManifest } from '@shared/plugin-types'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { authInfoStore } from '@/stores/authInfoStore'
 import { chatboxAuthStore } from '@/stores/chatboxAuthStore'
+import { k12Store } from '@/stores/k12Store'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
-import {
-  consumeQueuedPluginToolInvocations,
-  getPluginToolSet,
-  isPluginMountToolResult,
-} from './plugin-tools'
+import { consumeQueuedPluginToolInvocations, getPluginToolSet, isPluginMountToolResult } from './plugin-tools'
 
 const chessManifest: PluginManifest = {
   id: 'chess',
@@ -20,9 +17,7 @@ const chessManifest: PluginManifest = {
   description: 'Play chess inline',
   category: 'internal',
   appAuth: { type: 'chatbox-ai-login' },
-  tools: [
-    { name: 'start_game', description: 'Start a new game', parameters: [] },
-  ],
+  tools: [{ name: 'start_game', description: 'Start a new game', parameters: [] }],
   widget: { entrypoint: 'ui.html' },
 }
 
@@ -33,7 +28,11 @@ const weatherManifest: PluginManifest = {
   description: 'Check the weather',
   category: 'internal',
   tools: [
-    { name: 'get_forecast', description: 'Get weather forecast', parameters: [{ name: 'city', type: 'string', description: 'City name', required: true }] },
+    {
+      name: 'get_forecast',
+      description: 'Get weather forecast',
+      parameters: [{ name: 'city', type: 'string', description: 'City name', required: true }],
+    },
   ],
   widget: { entrypoint: 'weather.html' },
 }
@@ -47,6 +46,11 @@ describe('plugin-tools', () => {
       profile: { id: 'user-1', email: 'max@example.com', created_at: new Date().toISOString() },
       initialized: true,
     })
+    k12Store.setState((state) => ({
+      ...state,
+      isAuthenticated: false,
+      currentUser: null,
+    }))
     pluginRegistryStore.setState({ manifests: [], instances: [] })
     pluginRegistryStore.getState().registerManifest(chessManifest)
   })
@@ -87,6 +91,31 @@ describe('plugin-tools', () => {
     const tools = getPluginToolSet('session-1')
     expect(tools['plugin__chess__start_game']).toBeUndefined()
   })
+
+  it('rejects stale tool executions after a teacher disables the app scope', async () => {
+    const tools = getPluginToolSet('session-1')
+    k12Store.setState((state) => ({
+      ...state,
+      isAuthenticated: true,
+      currentUser: {
+        id: 'user-teacher',
+        email: 'teacher@westfield.edu',
+        name: 'Teacher Demo',
+        role: 'teacher',
+        districtId: 'district-1',
+        schoolId: 'school-1',
+      },
+      classes: state.classes.map((cls) =>
+        cls.teacherId === 'user-teacher'
+          ? { ...cls, activePlugins: cls.activePlugins.filter((pluginId) => pluginId !== 'chess') }
+          : cls
+      ),
+    }))
+
+    await expect(tools['plugin__chess__start_game'].execute({})).rejects.toThrow(
+      'Chess is disabled for the current scope.'
+    )
+  })
 })
 
 describe('multi-plugin coexistence in same session', () => {
@@ -100,6 +129,11 @@ describe('multi-plugin coexistence in same session', () => {
       profile: { id: 'user-1', email: 'max@example.com', created_at: new Date().toISOString() },
       initialized: true,
     })
+    k12Store.setState((state) => ({
+      ...state,
+      isAuthenticated: false,
+      currentUser: null,
+    }))
     pluginRegistryStore.setState({ manifests: [], instances: [] })
     pluginRegistryStore.getState().registerManifest(chessManifest)
     pluginRegistryStore.getState().registerManifest(weatherManifest)

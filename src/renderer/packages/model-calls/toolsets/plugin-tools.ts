@@ -6,6 +6,7 @@
 import type { PluginToolParameter } from '@shared/plugin-types'
 import { tool } from 'ai'
 import z from 'zod'
+import { getPluginAccessState } from '@/plugins/plugin-access'
 import { k12Store } from '@/stores/k12Store'
 import { platformProxyStore } from '@/stores/platformProxyStore'
 import { pluginRegistryStore } from '@/stores/pluginRegistry'
@@ -119,6 +120,11 @@ export function getPluginToolSet(sessionId: string): Record<string, ReturnType<t
       execute: async (input: Record<string, unknown>) => {
         const callId = `${pt.namespacedName}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
         const currentUser = k12Store.getState().currentUser
+        const access = getPluginAccessState(manifest)
+
+        if (!access.canExposeTools) {
+          throw new Error(access.launchBlockedMessage || `${manifest.name} is not available right now.`)
+        }
 
         if (currentUser) {
           const quota = await platformProxyStore.getState().recordUsage({

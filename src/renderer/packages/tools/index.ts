@@ -15,6 +15,9 @@ export function getToolName(toolName: string): string {
     edit_file: t('Edit File'),
     delete_file: t('Delete File'),
     parse_link: t('Parse Link'),
+    sign_in: t('Sign In'),
+    sign_out: t('Sign Out'),
+    forgot_password: t('Forgot Password'),
   }
 
   return toolNames[toolName] || toolName

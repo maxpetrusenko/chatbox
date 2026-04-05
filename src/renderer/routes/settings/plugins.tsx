@@ -168,16 +168,7 @@ function PluginCard({ manifest }: { manifest: PluginManifest }) {
 
   const handleSetPluginEnabled = (enabled: boolean) => {
     void (async () => {
-      try {
-        await setPluginEnabledForCurrentScopeInTellMe(manifest.id, enabled)
-      } catch {
-        if (!enabled) {
-          k12Store.getState().deactivatePluginForCurrentScope(manifest.id)
-          return
-        }
-
-        k12Store.getState().activatePluginForCurrentScope(manifest.id)
-      }
+      await setPluginEnabledForCurrentScopeInTellMe(manifest.id, enabled)
     })()
   }
 

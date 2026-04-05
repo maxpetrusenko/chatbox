@@ -10,6 +10,7 @@ import {
 import { createMessage, type Message, ModelProviderEnum } from '@shared/types'
 import { countMessageWords } from '@shared/utils/message'
 import { createModelDependencies } from '@/adapters'
+import { executeChatAuthIntent, resolveChatAuthIntent } from '@/auth/chat-auth'
 import { runCompactionWithUIState } from '@/packages/context-management'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
 import { estimateTokensFromMessages } from '@/packages/token'
@@ -17,6 +18,7 @@ import platform from '@/platform'
 import {
   executePluginChatIntent,
   resolveActivePluginStatusMessage,
+  resolvePluginAuthFollowupMessage,
   resolveGenericPluginActionMessage,
   resolvePluginChatIntent,
   resolvePluginDiscoveryMessage,
@@ -157,6 +159,16 @@ export async function submitNewUserMessage(
   const globalSettings = settingsStore.getState().getSettings()
 
   if (needGenerating && plainText) {
+    const chatAuthIntent = resolveChatAuthIntent(plainText)
+    if (chatAuthIntent) {
+      const chatAuthMsg = await executeChatAuthIntent(sessionId, chatAuthIntent, {
+        aiProvider: settings.provider,
+        model: await getModelDisplayName(settings, globalSettings, 'chat'),
+      })
+      await insertMessage(sessionId, chatAuthMsg)
+      return chatAuthMsg
+    }
+
     const pluginDiscoveryMsg = resolvePluginDiscoveryMessage(plainText, {
       aiProvider: settings.provider,
       model: await getModelDisplayName(settings, globalSettings, 'chat'),
@@ -182,6 +194,15 @@ export async function submitNewUserMessage(
     if (genericPluginActionMsg) {
       await insertMessage(sessionId, genericPluginActionMsg)
       return genericPluginActionMsg
+    }
+
+    const pluginAuthFollowupMsg = resolvePluginAuthFollowupMessage(plainText, sessionId, {
+      aiProvider: settings.provider,
+      model: await getModelDisplayName(settings, globalSettings, 'chat'),
+    })
+    if (pluginAuthFollowupMsg) {
+      await insertMessage(sessionId, pluginAuthFollowupMsg)
+      return pluginAuthFollowupMsg
     }
 
     const pluginIntent = resolvePluginChatIntent(plainText, sessionId)

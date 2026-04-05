@@ -36,6 +36,7 @@ import {
   knowledgeBaseSearchByPromptEngineering,
   searchByPromptEngineering,
 } from './tools'
+import { authToolSetDescription, getAuthToolSet } from './toolsets/auth-tools'
 import fileToolSet from './toolsets/file'
 import { getToolSet } from './toolsets/knowledge-base'
 import { getPluginToolSet, isPluginMountToolResult } from './toolsets/plugin-tools'
@@ -213,7 +214,9 @@ export async function streamText(
   if (webBrowsing && !webNotSupported) {
     toolSetInstructions += websearchToolSet.description
   }
-  const shouldIncludePluginTools = shouldEnablePluginTools(getLatestUserText(params.messages), sessionId)
+  toolSetInstructions += `${toolSetInstructions ? '\n\n' : ''}${authToolSetDescription.trim()}`
+  const resolvedSessionId = sessionId || ''
+  const shouldIncludePluginTools = shouldEnablePluginTools(getLatestUserText(params.messages), resolvedSessionId)
   const visiblePluginManifests = pluginRegistryStore
     .getState()
     .manifests.filter((manifest) => !!pluginRegistryStore.getState().getManifest(manifest.id))
@@ -363,9 +366,14 @@ export async function streamText(
       }
     }
 
+    tools = {
+      ...tools,
+      ...getAuthToolSet(resolvedSessionId),
+    }
+
     // Plugin tools — inject tools from all registered plugins
     if (shouldIncludePluginTools) {
-      const pluginTools = getPluginToolSet(sessionId)
+      const pluginTools = getPluginToolSet(resolvedSessionId)
       if (Object.keys(pluginTools).length > 0) {
         tools = { ...tools, ...pluginTools }
       }

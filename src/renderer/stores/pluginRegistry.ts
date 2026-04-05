@@ -16,7 +16,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { createStore, useStore } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { getBuiltinManifests } from '@/plugins'
-import { getPluginAppAuthStatus, hasRequiredAppAuth } from '@/plugins/plugin-access'
+import { getPluginAccessState, getPluginAppAuthStatus } from '@/plugins/plugin-access'
 import { droppedPluginsStore } from '@/stores/droppedPluginsStore'
 import { hiddenBuiltinPluginsStore } from '@/stores/hiddenBuiltinPluginsStore'
 import { k12Store } from '@/stores/k12Store'
@@ -197,7 +197,8 @@ export function createPluginRegistryStore() {
             : visibleManifests
 
         for (const manifest of allowedManifests) {
-          if (!hasRequiredAppAuth(manifest)) {
+          const access = getPluginAccessState(manifest)
+          if (!access.canExposeTools) {
             continue
           }
           if (
