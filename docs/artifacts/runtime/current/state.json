@@ -30,24 +30,43 @@
   "drift_status": "attention",
   "heartbeats": {
     "coordination": {
-      "last_updated_at": "2026-04-03T20:40:41Z",
+      "last_updated_at": "2026-04-05T21:51:50Z",
       "status": "attention",
-      "next_move": "Review 1 changed repo file(s) against implementation, verification, and drift artifacts.",
+      "next_move": "Review 20 changed repo file(s) against implementation, verification, and drift artifacts.",
       "blocked": true
     },
     "drift": {
-      "last_updated_at": "2026-04-03T20:40:41Z",
+      "last_updated_at": "2026-04-05T21:51:50Z",
       "status": "attention",
       "flags": [
-        "1 repo files changed since base commit"
+        "20 repo files changed since base commit"
       ]
     }
   },
   "repo_delta": {
-    "compared_base": "fef0894c5e66db8ebc9d2ce160968b4a25390fde",
-    "compared_head": "3406ec123167fb9f70ada49d6a5e545a58f97d90",
+    "compared_base": "5b5cc44fea19b98e6b3b9829ead45c0911b09284",
+    "compared_head": "2ccb7ed62ae779c918b7506ab4702a94e1f8da5a",
     "files": [
-      ".github/workflows/stale-check.yml"
+      "src/renderer/auth/chat-auth.test.ts",
+      "src/renderer/auth/chat-auth.ts",
+      "src/renderer/components/ChatboxAuthGate.tsx",
+      "src/renderer/components/PluginFrameInline.test.tsx",
+      "src/renderer/components/PluginFrameInline.tsx",
+      "src/renderer/packages/model-calls/stream-text.ts",
+      "src/renderer/packages/model-calls/toolsets/auth-tools.test.ts",
+      "src/renderer/packages/model-calls/toolsets/auth-tools.ts",
+      "src/renderer/packages/model-calls/toolsets/plugin-tools.test.ts",
+      "src/renderer/packages/model-calls/toolsets/plugin-tools.ts",
+      "src/renderer/packages/tools/index.ts",
+      "src/renderer/plugins/chat-intents.test.ts",
+      "src/renderer/plugins/chat-intents.ts",
+      "src/renderer/plugins/plugin-access.ts",
+      "src/renderer/routes/settings/plugins.tsx",
+      "src/renderer/routes/settings/provider/chatbox-ai/-components/useAuthTokens.ts",
+      "src/renderer/routes/settings/provider/chatbox-ai/-components/useLogin.ts",
+      "src/renderer/stores/pluginRegistry.ts",
+      "src/renderer/stores/session/generation.ts",
+      "src/renderer/stores/session/messages.ts"
     ]
   },
   "extension_policy": {
@@ -56,14 +75,14 @@
   },
   "remote_proof": {
     "status": "verified",
-    "run_id": "23961423034",
-    "run_url": "https://github.com/maxpetrusenko/chatbox/actions/runs/23961423034",
-    "verified_at": "2026-04-03T20:40:41Z"
+    "run_id": "24011247937",
+    "run_url": "https://github.com/maxpetrusenko/chatbox/actions/runs/24011247937",
+    "verified_at": "2026-04-05T21:51:50Z"
   },
   "blocked": {
     "status": "blocked",
     "reasons": [
-      "1 repo files changed since base commit"
+      "20 repo files changed since base commit"
     ]
   }
 }
