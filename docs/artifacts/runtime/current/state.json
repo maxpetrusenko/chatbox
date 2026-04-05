@@ -30,13 +30,13 @@
   "drift_status": "attention",
   "heartbeats": {
     "coordination": {
-      "last_updated_at": "2026-04-05T23:37:22Z",
+      "last_updated_at": "2026-04-05T23:55:49Z",
       "status": "attention",
       "next_move": "Review 3 changed repo file(s) against implementation, verification, and drift artifacts.",
       "blocked": true
     },
     "drift": {
-      "last_updated_at": "2026-04-05T23:37:22Z",
+      "last_updated_at": "2026-04-05T23:55:49Z",
       "status": "attention",
       "flags": [
         "3 repo files changed since base commit"
@@ -44,12 +44,12 @@
     }
   },
   "repo_delta": {
-    "compared_base": "ea0bdd9cd0c8a3c80116389d5411ca75610fad9c",
-    "compared_head": "b534033870b5a0715d4593f4f217dd3bc5f4c109",
+    "compared_base": "f0a5976e03b8ee318bba5b862331b2b9a3b96cde",
+    "compared_head": "ee734cc82876188ac8ae9bc3523e2fb4cac5ffee",
     "files": [
-      "deploy/Caddyfile",
-      "electron.vite.config.ts",
-      "src/renderer/packages/remote.ts"
+      "src/renderer/components/PluginFrameInline.tsx",
+      "src/renderer/stores/pluginRegistry.test.ts",
+      "src/renderer/stores/pluginRegistry.ts"
     ]
   },
   "extension_policy": {
@@ -58,9 +58,9 @@
   },
   "remote_proof": {
     "status": "verified",
-    "run_id": "24013000811",
-    "run_url": "https://github.com/maxpetrusenko/chatbox/actions/runs/24013000811",
-    "verified_at": "2026-04-05T23:37:22Z"
+    "run_id": "24013294650",
+    "run_url": "https://github.com/maxpetrusenko/chatbox/actions/runs/24013294650",
+    "verified_at": "2026-04-05T23:55:49Z"
   },
   "blocked": {
     "status": "blocked",
