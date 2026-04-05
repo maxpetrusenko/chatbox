@@ -53,14 +53,6 @@ const PluginFrameInline: FC<Props> = ({ pluginId, instanceId }) => {
   const authSession = usePluginAuth((s) => s.sessions[pluginId])
   const hydrateAuth = usePluginAuth((s) => s.hydrate)
   const beginAuth = usePluginAuth((s) => s.beginAuth)
-  useK12((state) => ({
-    currentUser: state.currentUser,
-    isAuthenticated: state.isAuthenticated,
-    classes: state.classes,
-    schools: state.schools,
-    district: state.district,
-    installRecords: state.installRecords,
-  }))
   const [isUpdatingScope, setIsUpdatingScope] = useState(false)
 
   const entrypointUrl = useMemo(() => {

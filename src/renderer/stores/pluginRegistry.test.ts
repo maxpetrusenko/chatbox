@@ -310,6 +310,15 @@ describe('pluginRegistry', () => {
       get().updateInstanceAuth(inst.instanceId, 'connected')
       expect(get().getInstance(inst.instanceId)!.authStatus).toBe('connected')
     })
+
+    it('does not churn state when auth status is unchanged', () => {
+      get().registerManifest(spotifyManifest)
+      const inst = get().createInstance('spotify', 'session-1')!
+      const before = store.getState().instances
+      get().updateInstanceAuth(inst.instanceId, 'required')
+      expect(store.getState().instances).toBe(before)
+      expect(get().getInstance(inst.instanceId)!.authStatus).toBe('required')
+    })
   })
 
   // -- Session queries --

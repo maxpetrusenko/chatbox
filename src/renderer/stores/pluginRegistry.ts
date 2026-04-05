@@ -155,7 +155,8 @@ export function createPluginRegistryStore() {
       updateInstanceAuth: (instanceId, authStatus) => {
         set((s) => {
           const inst = s.instances.find((i) => i.instanceId === instanceId)
-          if (inst) inst.authStatus = authStatus
+          if (!inst || inst.authStatus === authStatus) return
+          inst.authStatus = authStatus
         })
       },
 
