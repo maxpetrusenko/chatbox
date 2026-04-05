@@ -254,6 +254,18 @@ export default defineConfig(({ mode }) => {
       },
       server: {
         port: 1212,
+        proxy: {
+          '/_chatbox_api': {
+            target: 'https://api.chatboxai.app',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/_chatbox_api/, ''),
+          },
+          '/_chatbox_origin': {
+            target: 'https://chatboxai.app',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/_chatbox_origin/, ''),
+          },
+        },
       },
       define: {
         'process.type': '"renderer"',

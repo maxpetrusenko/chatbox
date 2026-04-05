@@ -91,9 +91,25 @@ async function getAuthenticatedAfetch() {
 // ========== API ORIGIN 根据可用性维护 ==========
 
 // const RELEASE_ORIGIN = 'https://releases.chatboxai.app'
+const CHATBOX_API_PROXY_PREFIX = '/_chatbox_api'
+const CHATBOX_ORIGIN_PROXY_PREFIX = '/_chatbox_origin'
+
+function getSameOriginProxyOrigin(prefix: string) {
+  if (typeof window === 'undefined') {
+    return prefix
+  }
+  return `${window.location.origin}${prefix}`
+}
+
+function shouldUseSameOriginChatboxProxy() {
+  return platform.type === 'web' && !USE_LOCAL_API && !USE_LOCAL_CHATBOX && !USE_BETA_API && !USE_BETA_CHATBOX
+}
+
 function getAPIOrigin() {
   if (USE_LOCAL_API) {
     return 'http://localhost:8002'
+  } else if (shouldUseSameOriginChatboxProxy()) {
+    return getSameOriginProxyOrigin(CHATBOX_API_PROXY_PREFIX)
   } else {
     return chatboxaiAPI.getChatboxAPIOrigin()
   }
@@ -104,6 +120,18 @@ export function getChatboxOrigin() {
     return 'http://localhost:3002'
   } else if (USE_BETA_CHATBOX) {
     return 'https://beta.chatboxai.app'
+  } else {
+    return 'https://chatboxai.app'
+  }
+}
+
+function getChatboxFetchOrigin() {
+  if (USE_LOCAL_CHATBOX) {
+    return 'http://localhost:3002'
+  } else if (USE_BETA_CHATBOX) {
+    return 'https://beta.chatboxai.app'
+  } else if (shouldUseSameOriginChatboxProxy()) {
+    return getSameOriginProxyOrigin(CHATBOX_ORIGIN_PROXY_PREFIX)
   } else {
     return 'https://chatboxai.app'
   }
@@ -628,7 +656,7 @@ export async function requestLoginTicketId() {
 
   console.log('getChatboxOrigin()', getChatboxOrigin())
   const res = await afetch(
-    `${getChatboxOrigin()}/api/auth/request_login_ticket`,
+    `${getChatboxFetchOrigin()}/api/auth/request_login_ticket`,
     {
       method: 'POST',
       headers: {
@@ -661,7 +689,7 @@ export async function checkLoginStatus(ticketId: string) {
   }
   const afetch = await getAfetch()
   const res = await afetch(
-    `${getChatboxOrigin()}/api/auth/login_status`,
+    `${getChatboxFetchOrigin()}/api/auth/login_status`,
     {
       method: 'POST',
       headers: {
@@ -702,7 +730,7 @@ export async function refreshAccessToken(params: { refreshToken: string }) {
   }
   const afetch = await getAfetch()
   const res = await afetch(
-    `${getChatboxOrigin()}/api/auth/token_refresh`,
+    `${getChatboxFetchOrigin()}/api/auth/token_refresh`,
     {
       method: 'POST',
       headers: {
@@ -745,7 +773,7 @@ export async function getUserProfile() {
   }
   const afetch = await getAuthenticatedAfetch()
   const res = await afetch(
-    `${getChatboxOrigin()}/api/user/profile`,
+    `${getChatboxFetchOrigin()}/api/user/profile`,
     {
       method: 'GET',
       headers: {
@@ -791,7 +819,7 @@ export async function listLicensesByUser(): Promise<UserLicense[]> {
   }
   const afetch = await getAuthenticatedAfetch()
   const res = await afetch(
-    `${getChatboxOrigin()}/api/license/list_by_user`,
+    `${getChatboxFetchOrigin()}/api/license/list_by_user`,
     {
       method: 'GET',
       headers: {
