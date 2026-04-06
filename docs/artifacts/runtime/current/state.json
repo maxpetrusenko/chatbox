@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "active_intent": "living-docs-tree-handoff",
-  "active_stage": "drift",
+  "active_stage": "verification",
   "reply_lock": {
     "held": false,
     "owner": null,
@@ -27,30 +27,24 @@
   },
   "open_disagreements": [],
   "proof_status": "remote-verified",
-  "drift_status": "attention",
+  "drift_status": "clean",
   "heartbeats": {
     "coordination": {
-      "last_updated_at": "2026-04-05T23:55:49Z",
-      "status": "attention",
-      "next_move": "Review 3 changed repo file(s) against implementation, verification, and drift artifacts.",
-      "blocked": true
+      "last_updated_at": "2026-04-06T10:08:44Z",
+      "status": "active",
+      "next_move": "Monitor the next repo change or scheduled refresh.",
+      "blocked": false
     },
     "drift": {
-      "last_updated_at": "2026-04-05T23:55:49Z",
-      "status": "attention",
-      "flags": [
-        "3 repo files changed since base commit"
-      ]
+      "last_updated_at": "2026-04-06T10:08:44Z",
+      "status": "clean",
+      "flags": []
     }
   },
   "repo_delta": {
-    "compared_base": "f0a5976e03b8ee318bba5b862331b2b9a3b96cde",
-    "compared_head": "ee734cc82876188ac8ae9bc3523e2fb4cac5ffee",
-    "files": [
-      "src/renderer/components/PluginFrameInline.tsx",
-      "src/renderer/stores/pluginRegistry.test.ts",
-      "src/renderer/stores/pluginRegistry.ts"
-    ]
+    "compared_base": null,
+    "compared_head": null,
+    "files": []
   },
   "extension_policy": {
     "resolved": true,
@@ -58,14 +52,12 @@
   },
   "remote_proof": {
     "status": "verified",
-    "run_id": "24013294650",
-    "run_url": "https://github.com/maxpetrusenko/chatbox/actions/runs/24013294650",
-    "verified_at": "2026-04-05T23:55:49Z"
+    "run_id": "24027789541",
+    "run_url": "https://github.com/maxpetrusenko/chatbox/actions/runs/24027789541",
+    "verified_at": "2026-04-06T10:08:44Z"
   },
   "blocked": {
-    "status": "blocked",
-    "reasons": [
-      "3 repo files changed since base commit"
-    ]
+    "status": "clear",
+    "reasons": []
   }
 }
