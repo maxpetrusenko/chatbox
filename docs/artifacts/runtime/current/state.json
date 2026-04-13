@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "active_intent": "living-docs-tree-handoff",
-  "active_stage": "verification",
+  "active_stage": "drift",
   "reply_lock": {
     "held": false,
     "owner": null,
@@ -27,18 +27,20 @@
   },
   "open_disagreements": [],
   "proof_status": "remote-verified",
-  "drift_status": "clean",
+  "drift_status": "attention",
   "heartbeats": {
     "coordination": {
-      "last_updated_at": "2026-04-06T10:08:44Z",
-      "status": "active",
-      "next_move": "Monitor the next repo change or scheduled refresh.",
-      "blocked": false
+      "last_updated_at": "2026-04-13T10:45:32Z",
+      "status": "attention",
+      "next_move": "Repair stale artifacts and backlink gaps, then rerun docs refresh.",
+      "blocked": true
     },
     "drift": {
-      "last_updated_at": "2026-04-06T10:08:44Z",
-      "status": "clean",
-      "flags": []
+      "last_updated_at": "2026-04-13T10:45:32Z",
+      "status": "attention",
+      "flags": [
+        "13 artifact freshness issues"
+      ]
     }
   },
   "repo_delta": {
@@ -52,12 +54,14 @@
   },
   "remote_proof": {
     "status": "verified",
-    "run_id": "24027789541",
-    "run_url": "https://github.com/maxpetrusenko/chatbox/actions/runs/24027789541",
-    "verified_at": "2026-04-06T10:08:44Z"
+    "run_id": "24339202615",
+    "run_url": "https://github.com/maxpetrusenko/chatbox/actions/runs/24339202615",
+    "verified_at": "2026-04-13T10:45:32Z"
   },
   "blocked": {
-    "status": "clear",
-    "reasons": []
+    "status": "blocked",
+    "reasons": [
+      "13 artifact freshness issues"
+    ]
   }
 }
