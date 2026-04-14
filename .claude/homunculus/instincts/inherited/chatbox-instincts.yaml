@@ -1,0 +1,790 @@
+# Instincts generated from https://github.com/maxpetrusenko/chatbox
+# Generated: 2026-04-02T02:01:11.962Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: chatbox-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: fix, feat, chore, refactor
+
+## Evidence
+
+- 200 commits analyzed
+- Detected conventional commit pattern
+- Examples: docs: add submission artifacts — README, setup guide, cost analysis, plugin API, checklist, feat: add weather, spotify, and github plugins
+
+---
+id: chatbox-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Commit Length
+
+## Action
+
+Write moderate-length commit messages (~53 characters)
+
+## Evidence
+
+- Average commit message length: 53 chars
+- Based on 200 commits
+
+---
+id: chatbox-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: chatbox-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: chatbox-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Export Style
+
+## Action
+
+Prefer default exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: default
+
+---
+id: chatbox-test-colocate
+trigger: "when writing tests"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Test Colocate
+
+## Action
+
+Place test file next to the source file (e.g., Button.test.tsx next to Button.tsx)
+
+## Evidence
+
+- Colocated test pattern detected
+- Tests live alongside source files
+
+---
+id: chatbox-test-framework
+trigger: "when writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Test Framework
+
+## Action
+
+Use vitest as the test framework
+
+## Evidence
+
+- Test framework detected: vitest
+- File pattern: *.test.ts
+
+---
+id: chatbox-test-naming
+trigger: "when creating a test file"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Test Naming
+
+## Action
+
+Name test files using the pattern: *.test.ts
+
+## Evidence
+
+- File pattern: *.test.ts
+- Consistent across test files
+
+---
+id: chatbox-test-mocking
+trigger: "when mocking dependencies in tests"
+confidence: 0.75
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Test Mocking
+
+## Action
+
+Use msw for mocking
+
+## Evidence
+
+- Mocking pattern detected: msw
+- Consistent across test files
+
+---
+id: chatbox-test-types
+trigger: "when planning tests for a feature"
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Test Types
+
+## Action
+
+Write unit, integration tests to match project standards
+
+## Evidence
+
+- Test types detected: unit, integration
+- Coverage config: yes
+
+---
+id: chatbox-workflow-feature-development
+trigger: "when implementing a new feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Workflow Feature Development
+
+## Action
+
+Follow the feature-development workflow:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~17x per month
+- Files: src/renderer/components/*, src/renderer/routes/image-creator/*, src/renderer/components/inputbox/*
+
+---
+id: chatbox-workflow-refactoring
+trigger: "when refactoring code"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Workflow Refactoring
+
+## Action
+
+Follow the refactoring workflow:
+1. Ensure tests pass before refactor
+2. Refactor code structure
+3. Verify tests still pass
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/**/*
+
+---
+id: chatbox-workflow-add-plugin
+trigger: "when doing add plugin"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Workflow Add Plugin
+
+## Action
+
+Follow the add-plugin workflow:
+1. Create or update src/renderer/plugins/<plugin>/manifest.ts
+2. Create or update src/renderer/plugins/<plugin>/index.ts
+3. Create or update src/renderer/plugins/<plugin>/ui.html
+4. Update src/renderer/plugins/index.ts to register the new plugin
+5. Optionally update src/renderer/routes/__root.tsx to auto-init or QA the plugin
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/renderer/plugins/*/manifest.ts, src/renderer/plugins/*/index.ts, src/renderer/plugins/*/ui.html
+
+---
+id: chatbox-workflow-feature-with-tests-and-types
+trigger: "when doing feature with tests and types"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Workflow Feature With Tests And Types
+
+## Action
+
+Follow the feature-with-tests-and-types workflow:
+1. Create or update implementation files (e.g., src/shared/plugin-protocol.ts, src/renderer/packages/token-estimation/*.ts)
+2. Add or update corresponding test files (*.test.ts or __tests__/*.test.ts)
+3. Add or update type definitions (e.g., src/shared/plugin-types.ts, src/shared/types/session.ts)
+4. Update related stores or hooks as needed
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/shared/*.ts, src/shared/types/*.ts, src/renderer/packages/**/*.ts
+
+---
+id: chatbox-workflow-i18n-update
+trigger: "when doing i18n update"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Workflow I18n Update
+
+## Action
+
+Follow the i18n-update workflow:
+1. Edit multiple src/renderer/i18n/locales/*/translation.json files
+2. Optionally update UI components to use new translation keys
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/renderer/i18n/locales/*/translation.json
+
+---
+id: chatbox-workflow-release-changelog-update
+trigger: "when doing release changelog update"
+confidence: 0.55
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Workflow Release Changelog Update
+
+## Action
+
+Follow the release-changelog-update workflow:
+1. Update release/app/package.json with new version
+2. Update src/renderer/i18n/changelogs/changelog_en.ts and changelog_zh_Hans.ts
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~1x per month
+- Files: release/app/package.json, src/renderer/i18n/changelogs/changelog_en.ts, src/renderer/i18n/changelogs/changelog_zh_Hans.ts
+
+---
+id: chatbox-workflow-docs-bundle-update
+trigger: "when doing docs bundle update"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Workflow Docs Bundle Update
+
+## Action
+
+Follow the docs-bundle-update workflow:
+1. Edit or add files in docs/ or doc/ directories
+2. Edit README.md or .env.example as needed
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: README.md, .env.example, docs/**/*.md
+
+---
+id: chatbox-workflow-model-definition-update
+trigger: "when doing model definition update"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/maxpetrusenko/chatbox
+---
+
+# Chatbox Workflow Model Definition Update
+
+## Action
+
+Follow the model-definition-update workflow:
+1. Edit src/shared/providers/definitions/models/*.ts and/or src/shared/providers/definitions/gemini.ts
+2. Edit src/renderer/components/ImageModelSelect.tsx
+3. Edit src/renderer/routes/image-creator/-components/constants.ts
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/shared/providers/definitions/models/*.ts, src/shared/providers/definitions/gemini.ts, src/renderer/components/ImageModelSelect.tsx
+
+---
+id: chatbox-instinct-file-naming-camelCase
+trigger: "When creating or renaming a file in the codebase"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct File Naming CamelCase
+
+## Action
+
+Name the file using camelCase (e.g., inputBox.tsx)
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.files
+- src/renderer/components/InputBox/Attachments.tsx
+
+---
+id: chatbox-instinct-function-naming-camelCase
+trigger: "When defining a function"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Function Naming CamelCase
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.functions
+
+---
+id: chatbox-instinct-class-naming-PascalCase
+trigger: "When defining a class"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Class Naming PascalCase
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.classes
+
+---
+id: chatbox-instinct-constant-naming-SCREAMING_SNAKE_CASE
+trigger: "When defining a constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Constant Naming SCREAMING_SNAKE_CASE
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.constants
+
+---
+id: chatbox-instinct-imports-relative
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Imports Relative
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- Pattern in codeStyle.importStyle
+
+---
+id: chatbox-instinct-exports-default
+trigger: "When exporting modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Exports Default
+
+## Action
+
+Use default exports
+
+## Evidence
+
+- Pattern in codeStyle.exportStyle
+
+---
+id: chatbox-instinct-test-file-pattern
+trigger: "When creating a test file"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Test File Pattern
+
+## Action
+
+Name the file with the pattern *.test.ts
+
+## Evidence
+
+- Pattern in testing.filePattern
+- src/renderer/packages/**/*.test.ts
+
+---
+id: chatbox-instinct-test-framework-vitest
+trigger: "When writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Test Framework Vitest
+
+## Action
+
+Use the Vitest testing framework
+
+## Evidence
+
+- Pattern in testing.framework
+- vitest.config.ts
+
+---
+id: chatbox-instinct-test-types-unit-integration
+trigger: "When writing tests for new features or modules"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Test Types Unit Integration
+
+## Action
+
+Write both unit and integration tests as appropriate
+
+## Evidence
+
+- Pattern in testing.testTypes
+- src/renderer/packages/**/*.test.ts
+
+---
+id: chatbox-instinct-test-mocking-msw
+trigger: "When mocking APIs in tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Test Mocking Msw
+
+## Action
+
+Use MSW (Mock Service Worker) for mocking
+
+## Evidence
+
+- Pattern in testing.mockingStyle
+
+---
+id: chatbox-instinct-test-coverage-config
+trigger: "When configuring tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Test Coverage Config
+
+## Action
+
+Enable and maintain test coverage configuration
+
+## Evidence
+
+- Pattern in testing.coverageConfig
+
+---
+id: chatbox-instinct-commit-conventional-format
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Commit Conventional Format
+
+## Action
+
+Use conventional commit prefixes (feat, fix, chore, refactor, docs, build)
+
+## Evidence
+
+- Pattern in commits.prefixes
+- Example: 'feat: add weather, spotify, and github plugins'
+
+---
+id: chatbox-instinct-commit-length
+trigger: "When writing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Commit Length
+
+## Action
+
+Keep the commit message concise (around 53 characters on average)
+
+## Evidence
+
+- Pattern in commits.averageLength
+
+---
+id: chatbox-instinct-add-plugin-workflow
+trigger: "When someone wants to add a new plugin to the app"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Add Plugin Workflow
+
+## Action
+
+Create/Update manifest, implementation, UI, register in index.ts, and optionally QA/init in __root.tsx
+
+## Evidence
+
+- Workflow: add-plugin
+- Commits: 'feat: add weather, spotify, and github plugins'
+
+---
+id: chatbox-instinct-feature-with-tests-and-types-workflow
+trigger: "When implementing a new feature or module"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Feature With Tests And Types Workflow
+
+## Action
+
+Add implementation, corresponding tests (*.test.ts), type definitions, and update related stores/hooks
+
+## Evidence
+
+- Workflow: feature-with-tests-and-types
+- Commits: 'feat: complete plugin platform — auth broker, tool routing, error recovery, multi-app support'
+
+---
+id: chatbox-instinct-i18n-update-workflow
+trigger: "When updating or adding translations for features or UI"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct I18n Update Workflow
+
+## Action
+
+Edit multiple translation.json files and optionally update UI to use new keys
+
+## Evidence
+
+- Workflow: i18n-update
+- Files: src/renderer/i18n/locales/*/translation.json
+
+---
+id: chatbox-instinct-release-changelog-update-workflow
+trigger: "When preparing a new release"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Release Changelog Update Workflow
+
+## Action
+
+Update release/app/package.json version and changelog files
+
+## Evidence
+
+- Workflow: release-changelog-update
+- Files: release/app/package.json, src/renderer/i18n/changelogs/changelog_en.ts
+
+---
+id: chatbox-instinct-docs-bundle-update-workflow
+trigger: "When updating or adding documentation"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Docs Bundle Update Workflow
+
+## Action
+
+Edit or add files in docs/ or doc/ directories and update README.md or .env.example as needed
+
+## Evidence
+
+- Workflow: docs-bundle-update
+- Files: docs/**/*.md, README.md
+
+---
+id: chatbox-instinct-model-definition-update-workflow
+trigger: "When adding or updating AI model definitions or constants"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Model Definition Update Workflow
+
+## Action
+
+Edit model definition files, related components, and constants
+
+## Evidence
+
+- Workflow: model-definition-update
+- Files: src/shared/providers/definitions/models/*.ts
+
+---
+id: chatbox-instinct-error-handling-try-catch
+trigger: "When handling errors in code"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: maxpetrusenko/chatbox
+---
+
+# Chatbox Instinct Error Handling Try Catch
+
+## Action
+
+Use try-catch blocks for error handling
+
+## Evidence
+
+- Pattern in errorHandling.style
+
