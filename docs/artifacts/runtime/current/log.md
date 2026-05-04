@@ -15,6 +15,7 @@ Human skim: `docs/artifacts/runtime/current/index.html`
 
 
 
+
 - 2026-04-03: set active intent to `living-docs-tree-handoff`.
 - 2026-04-03: point Claude and Codex at the handoff direction and completion refs.
 - 2026-04-03: bind the runtime skim page to shared runtime files instead of manual placeholders.
@@ -34,3 +35,4 @@ Human skim: `docs/artifacts/runtime/current/index.html`
 - 2026-04-13T10:45:32Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=24339202615.
 - 2026-04-20T10:48:09Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=24662317700.
 - 2026-04-27T11:03:57Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=24991318181.
+- 2026-05-04T11:05:26Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=25315441032.
