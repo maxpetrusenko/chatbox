@@ -25,7 +25,7 @@ Human skim: `docs/artifacts/runtime/current/index.html`
 
 
 
-- 2026-04-03: keep remote stale-check proof as the remaining open blocker.
+
 - 2026-04-03T20:07:10Z: runtime heartbeat refreshed. stage=verification. proof=local-only. drift=tracked. next=Run the living-docs refresh workflow remotely once so runtime records remote proof..
 - 2026-04-03T20:07:12Z: runtime heartbeat refreshed. stage=verification. proof=local-only. drift=tracked. next=Run the living-docs refresh workflow remotely once so runtime records remote proof..
 - 2026-04-03T20:07:32Z: runtime heartbeat refreshed. stage=verification. proof=local-only. drift=tracked. next=Run the living-docs refresh workflow remotely once so runtime records remote proof.
@@ -50,3 +50,4 @@ Human skim: `docs/artifacts/runtime/current/index.html`
 - 2026-06-22T14:38:58Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=27960780033.
 - 2026-06-29T13:06:31Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=28374161734.
 - 2026-07-06T12:45:52Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=28792453048.
+- 2026-07-13T12:03:39Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=29248363176.
