@@ -1,0 +1,6 @@
+interface:
+  display_name: "Chatbox"
+  short_description: "Repo-specific patterns and workflows for chatbox"
+  default_prompt: "Use the chatbox repo skill to follow existing architecture, testing, and workflow conventions."
+policy:
+  allow_implicit_invocation: true
