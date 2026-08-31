@@ -30,13 +30,13 @@
   "drift_status": "attention",
   "heartbeats": {
     "coordination": {
-      "last_updated_at": "2026-08-24T09:45:24Z",
+      "last_updated_at": "2026-08-31T16:43:48Z",
       "status": "attention",
       "next_move": "Repair stale artifacts and backlink gaps, then rerun docs refresh.",
       "blocked": true
     },
     "drift": {
-      "last_updated_at": "2026-08-24T09:45:24Z",
+      "last_updated_at": "2026-08-31T16:43:48Z",
       "status": "attention",
       "flags": [
         "15 artifact freshness issues"
@@ -54,9 +54,9 @@
   },
   "remote_proof": {
     "status": "verified",
-    "run_id": "32713148995",
-    "run_url": "https://github.com/maxpetrusenko/chatbox/actions/runs/32713148995",
-    "verified_at": "2026-08-24T09:45:24Z"
+    "run_id": "33415614328",
+    "run_url": "https://github.com/maxpetrusenko/chatbox/actions/runs/33415614328",
+    "verified_at": "2026-08-31T16:43:48Z"
   },
   "blocked": {
     "status": "blocked",
