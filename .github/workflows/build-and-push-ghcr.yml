@@ -2,16 +2,21 @@ name: Build and push image
 
 # Builds the chatbox container image and publishes it to GHCR.
 #
-# IMPORTANT: this job runs on the self-hosted builder box (label
-# `contabo-builder`). It must NEVER run on the production VPS: the Coolify app
-# that serves chatbox.maxpetrusenko.com is a pull-only `dockerimage` app, so
-# production only ever pulls the image produced here.
+# This job runs on a GitHub-hosted runner (ubuntu-latest). It deliberately does
+# NOT use the self-hosted `contabo-builder` runner: that box is oversubscribed
+# (6 vCPU) and hosts other lanes' builds, so the compile belongs on a free
+# runner. Nothing here touches the production VPS.
+#
+# Production (Coolify app jr9thwkx7rg4jxnmg4wvp0qw) is a pull-only
+# `dockerimage` app, so production only ever PULLS the image produced here —
+# it never compiles.
 #
 # Tags published per commit:
 #   ghcr.io/maxpetrusenko/chatbox:<bare commit sha>
 #   ghcr.io/maxpetrusenko/chatbox:latest
 #
-# The bare commit sha tag is what Coolify's docker_registry_image_tag is set to.
+# The BARE commit sha tag is the one convention: Coolify's
+# docker_registry_image_tag is set to exactly `${{ github.sha }}`.
 
 on:
   push:
@@ -29,7 +34,7 @@ env:
 jobs:
   build-and-push:
     name: Build and push GHCR image
-    runs-on: [self-hosted, contabo-builder]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
