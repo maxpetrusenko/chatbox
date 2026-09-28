@@ -37,7 +37,7 @@ Human skim: `docs/artifacts/runtime/current/index.html`
 
 
 
-- 2026-04-13T10:45:32Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=24339202615.
+
 - 2026-04-20T10:48:09Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=24662317700.
 - 2026-04-27T11:03:57Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=24991318181.
 - 2026-05-04T11:05:26Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=25315441032.
@@ -62,3 +62,4 @@ Human skim: `docs/artifacts/runtime/current/index.html`
 - 2026-09-14T15:40:33Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=34863616171.
 - 2026-09-14T18:11:32Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=34879212545.
 - 2026-09-21T15:40:45Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=35620469339.
+- 2026-09-28T17:21:55Z: runtime heartbeat refreshed. stage=drift. proof=remote-verified. drift=attention. next=Repair stale artifacts and backlink gaps, then rerun docs refresh. remote-proof=36457485833.
